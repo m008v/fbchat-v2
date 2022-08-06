@@ -6,8 +6,8 @@ FacebookChat for Python: README.rst
 .. image:: https://travis-ci.com/psf/requests-html.svg?branch=master
     :target: https://travis-ci.com/psf/requests-html
 
-Xin chào, tôi là MinhHuyDev. Đây là gói module hỗ trợ cho `LorenBot`, không chỉ dùng được cho
-bot, mà nó còn có thể áp dụng cho nhiều loại tool khác nhau :D Cùng xem README để biết thêm chi tiết nhé!
+Xin chào, tôi là MinhHuyDev. Đây là gói module hỗ trợ cho **`LorenBot`**, không chỉ dùng được cho
+bot, mà nó còn có thể áp dụng cho nhiều loại tool khác nhau :D Cùng đọc README để biết thêm chi tiết nhé!
 
 Những ưu điểm tiêu biểu của gói module này:
 
