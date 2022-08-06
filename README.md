@@ -1,3 +1,0 @@
-# không có gì hot
-hmm... 
-
