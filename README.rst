@@ -42,7 +42,7 @@ Example:
     >>> print(threadData)
     
  
-**Kết quả:**
+**Kết quả (khi lấy dữ liệu thành công):**
 
 .. code-block:: json
 
@@ -76,3 +76,21 @@ Hoặc nó sẽ ra **LỖI** khi không GET được data:
     }
     
 
+*Chi tiết:* lỗi này xảy ra khi không lấy được dữ liệu từ máy chủ **FACEBOOK**. Không sao cả bạn có thử chạy lại
+file code để lấy lại dữ liệu.
+
+
+Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là điều tồi tệ nhất:
+
+.. code-block:: json
+
+    {
+        "error": true,
+         "error_code": 404,
+         "status": 404,
+         "error_description": "Mô tả chi tiết lỗi......."
+     }
+    
+ 
+*Chi tiết:* Lỗi này xảy ra khi không thể kết nối đến máy chủ **FACEBOOK** hoặc đã xảy ra lỗi khi thực thi code
+(xem thêm tại key 'error_description')
