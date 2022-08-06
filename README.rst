@@ -24,18 +24,55 @@ Những ưu điểm tiêu biểu của gói module này:
 Hướng dẫn & Cách sử dụng
 ================
 
-HƯỚNG DẪN IMPORT MODULE TỪ FOLDER
+***HƯỚNG DẪN IMPORT MODULE TỪ FOLDER***
 
 
 Example: 
 
 
 - Folder Name: **`LorenBotModule`**
-- FileModule Name: **`__fbTools`**
+- FileModule Name: **`__fbTools**, **__messageData`**
 
-.. code-block:: pycon
+.. code-block:: python
 
     >>> from LorenBotModule.__fbTools import *
+    >>> from LorenBotModule.__messageData import *
     >>> cookiesFB = "please enter your FB cookie"
     >>> threadData = __fbTools.dataTools.dataGetHome(cookiesFB)
     >>> print(threadData)
+    
+ 
+**Kết quả:**
+
+.. code-block:: json
+
+    {
+        "status": 200,
+        "fb_dtsg": "NAcNHJpSM......", 
+        "fb_dtsg_ag": "AQzivFLhZS_Dm4V-Pgdf.........", 
+        "sessionID": "16580732-26.......", 
+        "clientID": "ed5296b1-b7da-4.....", 
+        "appID": "222039.....", 
+        "jazoest": "25...", 
+        "lsd": "aO00EheU........",
+        "hash": "AT5s0V0E-......."
+    }
+
+
+Hoặc nó sẽ ra **LỖI** khi không GET được data:
+
+.. code-block:: json
+
+    {
+        "status": -1,
+        "fb_dtsg": null,
+        "fb_dtsg_ag": null,
+        "sessionID": null,
+         "clientID": null,
+         "appID": null,
+         "jazoest": null,
+         "lsd": null,
+         "hash": null
+    }
+    
+
