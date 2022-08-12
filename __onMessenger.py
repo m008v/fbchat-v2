@@ -151,9 +151,9 @@ class onMessenger():
                 return __getMessenger_encodeToJSon
 
             
-var = onMessenger.getListMessenger(threadID="4805171782880318",
-                                   setCookies='sb=RHbbYZIdmbpwkPhjWZSQyCu9; datr=RHbbYfYGXttmFufiC8bFzDbB; dpr=1.25; locale=vi_VN; c_user=100032189318161; xs=38:vrLsjo7tJZpjFw:2:1660285299:-1:6298; fr=0xfdMhlF0HUMauxko.AWVc0IYGEQG9aj3vTSFieE032JU.Bi9WCK.ec.AAA.0.0.Bi9fF1.AWWWTh-Vps0; m_pixel_ratio=1.25; wd=1519x754; x-referer=eyJyIjoiL2Jvb2ttYXJrcy8iLCJoIjoiL2Jvb2ttYXJrcy8iLCJzIjoibSJ9; presence=C{"t3":[],"utc3":1660286013977,"lm3":"u.100026754347158","v":1}')
+# var = onMessenger.getListMessenger(threadID="",
+#                                    setCookies='')
 
-print(var)
+# print(var)
 
 
