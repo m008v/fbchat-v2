@@ -1,4 +1,3 @@
-from ast import ListComp
 import requests_html
 import datetime
 import requests
