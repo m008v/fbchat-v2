@@ -21,7 +21,7 @@ Những ưu điểm tiêu biểu của gói module này:
     - Markdown export of pages and elements.
 
 
-*EXAMPLE*: **Hướng dẫn lấy dữ liệu cần thiết từ Facebook
+*EXAMPLE*: **Hướng dẫn lấy dữ liệu cần thiết từ Facebook**
 ================
 
 ***HƯỚNG DẪN IMPORT MODULE TỪ FOLDER***
