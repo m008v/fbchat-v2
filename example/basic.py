@@ -26,7 +26,7 @@ def headersFacebook(setCookies):
     headers["sec-fetch-user"] = "?1";
     headers["sec-fetch-dest"] = "document";
     headers["cookie"] = setCookies;
-        return headers;
+    return headers;
 
 def getMessengerText(threadID, cookieFB):
    getMessenger = __onMessenger.onMessenger.getListMessenger(threadID, cookieFB)
@@ -35,8 +35,8 @@ def getMessengerText(threadID, cookieFB):
 #    authorID = getMessenger["results"]["senderID"]
 #    timeStamp = getMessenger["results"]["timeStamp"]
    return messageToText
- def getDataFromFB(cookieFB):
-    threadData = __fbTools.dataTools.dataGetHome(cookiesFB)
+def getDataFromFB(cookieFB):
+    threadData = __fbTools.dataTools.dataGetHome(cookieFB)
     return threadData
 def commandReply(setCookies, threadID):
     
@@ -45,15 +45,15 @@ def commandReply(setCookies, threadID):
     Dataform = getDataFromFB(setCookies)
 
     while True:
-        getMessengerText = getMessengerText(threadID, setCookies)
-        if "hello" in getMessengerText:
-            sendMessages = __messageData.api.sendMessage(threadData=Dataform
+        getMessengerTextContents = getMessengerText(threadID, setCookies)
+        if "hello" in getMessengerTextContents:
+            sendMessages = __messageData.api.sendMessage(threadData=Dataform,
                                           threadContents="Hello, What help do you need? (LorenBot)",
                                           threadHeaders=headersFacebook(setCookies),
                                           threadID=threadID)
             print("COMMAND_REPLY: hello")
-        elif "What time is it?" in getMessengerText:
-            sendMessages = __messageData.api.sendMessage(threadData=Dataform
+        elif "What time is it?" in getMessengerTextContents:
+            sendMessages = __messageData.api.sendMessage(threadData=Dataform,
                                           threadContents="Datetime: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
                                           threadHeaders=headersFacebook(setCookies),
                                           threadID=threadID)
@@ -63,6 +63,6 @@ def commandReply(setCookies, threadID):
 
 while True:
     try:
-        commandReply("please enter your threadID", "please enter your cookieFB")
+        commandReply("please enter your threadID", "please enter your cookiesFB")
     except Exception as e:
         print("da xay ra loi:", str(e))
