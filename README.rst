@@ -1,7 +1,7 @@
 FacebookChat for Python: README.rst
 =======================================
 
-.. image:: https://i.ibb.co/gDkp3GP/facebook-chat-messenger-for-python-611ae2e22a45e-375x210.png
+.. image:: https://i.ibb.co/bmB7MQT/image.png
 
 .. image:: https://travis-ci.com/psf/requests-html.svg?branch=master
     :target: https://travis-ci.com/psf/requests-html
@@ -21,7 +21,7 @@ Những ưu điểm tiêu biểu của gói module này:
     - Markdown export of pages and elements.
 
 
-Hướng dẫn & Cách sử dụng
+*EXAMPLE*: **Hướng dẫn lấy dữ liệu cần thiết từ Facebook
 ================
 
 ***HƯỚNG DẪN IMPORT MODULE TỪ FOLDER***
@@ -94,3 +94,31 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
  
 *Chi tiết:* Lỗi này xảy ra khi không thể kết nối đến máy chủ **FACEBOOK** hoặc đã xảy ra lỗi khi thực thi code
 (xem thêm tại key 'error_description')
+
+*EXAMPLE*: **Nhận tin nhắn và trả lời tin nhắn threadID**
+================
+
+.. code-block:: python
+
+
+        import json, random, datetime
+        from LorenBotModule import (__messageData, 
+                                       __onMessenger,
+                                       __fbTools)
+
+        """
+         Code by MinhHuyDev
+         Contact: https://www.facebook.com/minhuydev
+         Github: https://github.com/minhuydev
+         Datetime: 05:11 12/08/2022 (GMT + 7)
+        """
+
+        # Please check below url to see more.... (URl: /fbchat-v2/example/basic.py)
+        
+
+**XEM THÊM TẠI:** *https://bit.ly/3drv3UO*
+
+**KẾT QUẢ KHI CHẠY THÀNH CÔNG**
+
+.. image:: https://i.ibb.co/5RJDS7R/image.png" 
+
