@@ -108,8 +108,8 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
         """
          Code by MinhHuyDev
-         Contact: https://www.facebook.com/minhuydev
-         Github: https://github.com/minhuydev
+         Contact: https://www.facebook.com/minhhuydev
+         Github: https://github.com/minhhuydev
          Datetime: 05:11 12/08/2022 (GMT + 7)
         """
 
