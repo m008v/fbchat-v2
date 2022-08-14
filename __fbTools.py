@@ -3,6 +3,22 @@ from requests_html import HTMLSession
 from bs4 import BeautifulSoup as BS
 from requests import get as GET
 session = HTMLSession()
+def Headers(setCookies):
+    Headers={};
+    Headers["Connection"] = "keep-alive"
+    Headers["Keep-Alive"] = "300"
+    Headers["authority"] = "m.facebook.com"
+    Headers["user-agent"] = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
+    Headers["ccept-Charset"] = "ISO-8859-1,utf-8;q=0.7,*;q=0.7"
+    Headers["accept-language"] = "vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5"
+    Headers["cache-control"] = "max-age=0"
+    Headers["accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+    Headers["sec-fetch-site"] = "none"
+    Headers["sec-fetch-mode"] = "navigate"
+    Headers["sec-fetch-user"] = "?1"
+    Headers["sec-fetch-dest"] = "document"
+    Headers["cookie"] = setCookies
+    return Headers;
 class dataTools():
     def dataGetHome(setCookies):
         try:
