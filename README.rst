@@ -120,5 +120,5 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 **KẾT QUẢ KHI CHẠY THÀNH CÔNG**
 
-.. image:: https://i.ibb.co/5RJDS7R/image.png" 
+- **Kết quả tại đây (Response):** *https://minhhuy.dev/assets/imgs/fbchat/response/*
 
