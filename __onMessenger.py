@@ -1,5 +1,8 @@
 import requests_html
 import datetime
+from requests.sessions import Session
+from concurrent.futures import ThreadPoolExecutor
+from threading import Thread,local
 import requests
 import random
 import json
@@ -37,10 +40,33 @@ ConfigEvent = {
     ]
 };
 
+thread_local = local()
+
+def getSessionRequests() -> Session:
+      if not hasattr(thread_local,'session'):
+          thread_local.session = requests.Session()
+      return thread_local.session
+
+def GET(url:str, headers):
+      session = getSessionRequests()
+      with session.get(url, headers=headers) as response:
+          return {
+            "contentsWebsite": response.text,
+            "statusCode": response.status_code,
+            "urlLocate": response.url,
+            "timeRequests": response.elapsed.total_seconds()
+          }
+def replyRequests(url, headers) -> None:
+      with ThreadPoolExecutor(max_workers=10) as executor:
+          var = GET(url, headers=headers)
+          return var
+
 session = requests_html.HTMLSession()
 listContentsMessage = []
 class onMessenger():
     def headersFacebook(setCookies):
+        # openRandomUseragent = open("./__cache__/userAgentList.txt").read().splitlines()
+        # userAgentRandom = str(random.choice(openRandomUseragent))
         headers = {}
         headers["Connection"] = "keep-alive";
         headers["Keep-Alive"] = "300";
@@ -101,10 +127,10 @@ class onMessenger():
         #     raise SystemExit("\033[1;91m" + checkThread["description"])
         while True:
             headersFB = onMessenger.headersFacebook(setCookies)
-            __getMessenger = session.get("https://m.facebook.com/messages/read/?tid=" + threadId, headers=headersFB)
-            if __getMessenger.status_code == 200:
-                __getMessenger.encoding = "utf-8"
-                __getMessenger_contents = __getMessenger.text
+            __getMessenger = replyRequests("https://m.facebook.com/messages/read/?tid=" + threadId, headers=headersFB)
+            if __getMessenger["statusCode"] == 200:
+                # __getMessenger.encoding = "utf-8"
+                __getMessenger_contents = __getMessenger["contentsWebsite"]
                 try:
                     __getMessenger_message_length = __getMessenger_contents.count(ConfigEvent['HTMLOptions'][0]['getMessenger'][0]['begin'])
                     __getMessenger_senderID_length = __getMessenger_contents.count(ConfigEvent['HTMLOptions'][0]['AuthorIDxTimeStamp'][0]['begin'])
@@ -141,7 +167,7 @@ class onMessenger():
                             "accountID": setCookies.split("user=")[1].split(";")[0],
                             "threadID": threadID, 
                             "messageReceived": len(listContentsMessage),
-                            "totalTimeRequests": __getMessenger.elapsed.total_seconds(),
+                            "totalTimeRequests": __getMessenger["timeRequests"],
                             "dateTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         }
                     }
@@ -149,10 +175,11 @@ class onMessenger():
 
                 return __getMessenger_encodeToJSon
 
-            
-# var = onMessenger.getListMessenger(threadID="",
-#                                    setCookies='')
 
-# print(var)
+
+while True:
+    var = onMessenger.getListMessenger(threadID="",
+                                    setCookies="")
+    print(var)
 
 
