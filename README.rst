@@ -122,3 +122,5 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 - **Kết quả tại đây (Response):** *https://minhhuy.dev/assets/imgs/fbchat/response/*
 
+Lịch sử cập nhật fbchat-v2
+================
