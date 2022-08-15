@@ -124,3 +124,8 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 Lịch sử cập nhật fbchat-v2
 ================
+  - **Ngày tạo Repositories:** 2022-07-21 00:34:33
+  - **Cập nhật đợt 1:** 2022-07-21 
+  - **Cập nhật đợt 2 (BIG UPDATE):** 2022-8-12
+  - **Cập nhật đợt 3 (BIG UPDATE):** YYYY-MM-DD
+
