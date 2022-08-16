@@ -122,7 +122,7 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 - **Kết quả tại đây (Response):** *https://minhhuy.dev/assets/imgs/fbchat/response/*
 
-Lịch sử cập nhật fbchat-v2
+**Lịch sử cập nhật fbchat-v2**
 ================
   - **Ngày tạo Repositories:** 2022-07-21 00:34:33
   - **Cập nhật đợt 1:** 2022-07-21 
