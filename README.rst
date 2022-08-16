@@ -129,3 +129,6 @@ Lịch sử cập nhật fbchat-v2
   - **Cập nhật đợt 2 (BIG UPDATE):** 2022-8-12
   - **Cập nhật đợt 3 (BIG UPDATE):** YYYY-MM-DD
 
+Liên hệ,hỗ trợ & MXH khác
+================
+
