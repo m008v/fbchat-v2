@@ -122,7 +122,7 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 - **Kết quả tại đây (Response):** *https://minhhuy.dev/assets/imgs/fbchat/response/*
 
-**Lịch sử cập nhật fbchat-v2**
+Lịch sử cập nhật fbchat-v2
 ================
   - **Ngày tạo Repositories:** 2022-07-21 00:34:33
   - **Cập nhật đợt 1:** 2022-07-21 
@@ -131,4 +131,18 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 Liên hệ,hỗ trợ & MXH khác
 ================
+
+**Hãy nhớ dùng não và ý thức của bản thân để có một cuộc trò chuyện
+mà mình có thể hỗ trợ tốt nhất nhé!**
+
+
+- **Facebook:** *https://www.facebook.com/MinhHuyDev*
+- **Instagram:** *https://www.instagram.com/MinhHuyDev*
+- **Youtube:** *https://www.youtube.com/MinhHuyDev*
+- **Github:** *https://www.github.com/MinhHuyDev*
+- **Tiktok:** *https://www.tiktok.com/@MinhHuyDev*
+- **Telegram:** *https://www.telegram.org/MinhHuyDev*
+- **Zalo:** *https://www.zalo.me/MinhHuyDev*
+- **Website:** *https://www.minhhuy.dev*
+- **Room Discord:** *https://discord.gg/bCdq4RyAvb*
 
