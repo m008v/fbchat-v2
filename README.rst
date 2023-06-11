@@ -94,14 +94,7 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 (xem thêm tại key 'error_description')
 
 *EXAMPLE*: **Nhận tin nhắn và trả lời tin nhắn threadID**
-================
-**Cách Lấy ThreadID:**
 
-
-
-
- 
-================
 .. code-block:: python
 
 
