@@ -3,18 +3,16 @@ FacebookChat for Python: README.rst
 
 .. image:: https://i.ibb.co/bmB7MQT/image.png
 
-.. image:: https://travis-ci.com/psf/requests-html.svg?branch=master
-    :target: https://travis-ci.com/psf/requests-html
 
 Xin chào, tôi là MinhHuyDev. Đây là gói module hỗ trợ cho **`LorenBot`**, không chỉ dùng được cho
 bot, mà nó còn có thể áp dụng cho nhiều loại tool khác nhau :D Cùng đọc README để biết thêm chi tiết nhé!
 
 Những ưu điểm tiêu biểu của gói module này:
 
-- **Hỗ trợ mọi loại thiết bị (miễn là chạy được Python:)))**
+- **Hỗ trợ mọi loại thiết bị (Yêu cầu Python > 3.9)**
 - **Dễ dàng sử dụng**
 - **Dễ dàng chỉnh sửa code**
-- **Sử dụng requests_html nên tỉ lệ bị die acc là không cao**
+- **Tốc độ xử lý nhanh (0.1~1.5s)**
 
 .. Other nice features include:
 
@@ -97,7 +95,13 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 *EXAMPLE*: **Nhận tin nhắn và trả lời tin nhắn threadID**
 ================
+**Cách Lấy ThreadID:**
 
+
+
+
+ 
+================
 .. code-block:: python
 
 
@@ -120,8 +124,12 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 **KẾT QUẢ KHI CHẠY THÀNH CÔNG**
 
-- **Kết quả tại đây (Response):** *https://minhhuy.dev/assets/imgs/fbchat/response/*
+- **Kết quả tại đây (Response):** *None Url*
 
+*Dự Án ChatBot Messenger Python (LorenBot)*
+================
+ .. image:: https://i.ibb.co/bQ0PKYh/Screenshot-2023-06-11-10-08-40-546-mark-via-gp.png
+================
 Lịch sử cập nhật fbchat-v2
 ================
   - **Ngày tạo Repositories:** 2022-07-21 00:34:33
@@ -136,13 +144,13 @@ Liên hệ,hỗ trợ & MXH khác
 mà mình có thể hỗ trợ tốt nhất nhé!**
 
 
-- **Facebook:** *https://www.facebook.com/MinhHuyDev*
+- **Facebook:** *https://www.facebook.com/Booking.MinhHuyDev*
 - **Instagram:** *https://www.instagram.com/MinhHuyDev*
 - **Youtube:** *https://www.youtube.com/MinhHuyDev*
 - **Github:** *https://www.github.com/MinhHuyDev*
 - **Tiktok:** *https://www.tiktok.com/@MinhHuyDev*
 - **Telegram:** *https://www.telegram.org/MinhHuyDev*
 - **Zalo:** *https://www.zalo.me/MinhHuyDev*
-- **Website:** *https://www.minhhuy.dev*
+- **Website:** *https://www.mhuyz.dev*
 - **Room Discord:** *https://discord.gg/bCdq4RyAvb*
 
