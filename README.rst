@@ -94,6 +94,14 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 (xem thêm tại key 'error_description')
 
 *EXAMPLE*: **Nhận tin nhắn và trả lời tin nhắn threadID**
+================
+*Cách Lấy* **ThreadID** *Trên Messenger*
+
+.. image:: https://i.ibb.co/n1k4cPk/IMG-20230611-101906.jpg
+
+Tại đường dẫn vào nhóm (thread). Trên *URL của Messenger* sẽ hiện thì một dãy số nằm sau **messenger.com/t/** hãy copy dãy số đó và tại 1 biến (variable) cho **ThreadID** để có thể gửi tin nhắn đến nhóm đã được chọn/chỉ định.
+
+================
 
 .. code-block:: python
 
@@ -105,7 +113,7 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
         """
          Code by MinhHuyDev
-         Contact: https://www.facebook.com/minhhuydev
+         Contact: https://www.facebook.com/booking.minhhuydev
          Github: https://github.com/minhhuydev
          Datetime: 05:11 12/08/2022 (GMT + 7)
         """
@@ -125,10 +133,10 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 ================
 Lịch sử cập nhật fbchat-v2
 ================
-  - **Ngày tạo Repositories:** 2022-07-21 00:34:33
-  - **Cập nhật đợt 1:** 2022-07-21 
-  - **Cập nhật đợt 2 (BIG UPDATE):** 2022-8-12
-  - **Cập nhật đợt 3 (BIG UPDATE):** YYYY-MM-DD
+  - **Ngày tạo Repositories:** 21-07-2022 00:34:33
+  - **Cập nhật đợt 1:** 21-07-2022
+  - **Cập nhật đợt 2 (BIG UPDATE):** 12-08-2022
+  - **Cập nhật đợt 3 (BIG UPDATE):** 11-06-2023
 
 Liên hệ,hỗ trợ & MXH khác
 ================
