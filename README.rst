@@ -95,11 +95,11 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 *EXAMPLE*: **Nhận tin nhắn và trả lời tin nhắn threadID**
 ================
-*Cách Lấy* **ThreadID** *Trên Messenger*
+*Cách Lấy* **ThreadID** *Trên Messenger:*
 
 .. image:: https://i.ibb.co/n1k4cPk/IMG-20230611-101906.jpg
 
-Tại đường dẫn vào nhóm (thread). Trên *URL của Messenger* sẽ hiện thì một dãy số nằm sau **messenger.com/t/** hãy copy dãy số đó và tại 1 biến (variable) cho **ThreadID** để có thể gửi tin nhắn đến nhóm đã được chọn/chỉ định.
+Tại đường dẫn vào nhóm (thread). Trên *URL của Messenger* sẽ hiện thị một dãy số nằm sau **messenger.com/t/** hãy copy dãy số đó và tại 1 biến (variable) cho **ThreadID** để có thể gửi tin nhắn đến nhóm đã được chọn/chỉ định.
 
 ================
 
@@ -129,7 +129,7 @@ Tại đường dẫn vào nhóm (thread). Trên *URL của Messenger* sẽ hi�
 
 *Dự Án ChatBot Messenger Python (LorenBot)*
 ================
- .. image:: https://i.ibb.co/bQ0PKYh/Screenshot-2023-06-11-10-08-40-546-mark-via-gp.png
+ .. image:: https://i.ibb.co/Tbvf20v/Screenshot-2023-06-15-14-56-18-433-mark-via-gp.png
 ================
 Lịch sử cập nhật fbchat-v2
 ================
