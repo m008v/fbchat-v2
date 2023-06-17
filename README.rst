@@ -7,11 +7,11 @@ Xin chào, tôi là MinhHuyDev. Đây là gói module hỗ trợ cho **`LorenBot
 
 **Thông tin cơ bản về FBChat V2:**
 
-- **Được làm lại dựa trên:** *fbchat*
+- **Được lấy ý tưởng từ:** *fbchat*
 - **Ngôn ngữ lập trình:** *Python*
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *2.0.1*
-- **Cập nhật lần cuối:** *17:35 17/06/2023*
+- **Cập nhật lần cuối:** *17:38 17/06/2023*
 
 ================
 
