@@ -99,7 +99,7 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
 
 .. image:: https://i.ibb.co/n1k4cPk/IMG-20230611-101906.jpg
 
-Tại đường dẫn vào nhóm (thread). Trên *URL của Messenger* sẽ hiện thị một dãy số nằm sau **messenger.com/t/** hãy copy dãy số đó và tại 1 biến (variable) cho **ThreadID** để có thể gửi tin nhắn đến nhóm đã được chọn/chỉ định.
+Tại đường dẫn vào nhóm (thread). Trên *URL của Messenger* sẽ hiện thị một dãy số nằm sau **messenger.com/t/** hãy copy dãy số đó và dán tại 1 biến (variable) cho **ThreadID** để có thể gửi tin nhắn đến nhóm đã được chọn/chỉ định.
 
 ================
 
