@@ -129,7 +129,7 @@ Tại đường dẫn vào nhóm (thread). Trên *URL của Messenger* sẽ hi�
 
 *Dự Án ChatBot Messenger Python (LorenBot)*
 ================
- .. image:: https://i.ibb.co/Tbvf20v/Screenshot-2023-06-15-14-56-18-433-mark-via-gp.png
+ .. image:: https://mhuyz.dev/assets/imgs/LorenBot_Demo.png
 ================
 Lịch sử cập nhật fbchat-v2
 ================
