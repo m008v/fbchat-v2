@@ -1,5 +1,19 @@
-FacebookChat for Python: README.rst
+FacebookChat for Python
 =======================================
+
+.. image:: https://i.ibb.co/vD5mV22/Picsart-23-06-17-17-08-34-067.jpg
+
+**Thông tin cơ bản về FBChat V2:**
+
+- **Được làm lại dựa trên:** *fbchat*
+- **Ngôn ngữ lập trình:** *Python*
+- **Phát triển bởi:** *Nguyễn Minh Huy*
+- **Phiên bản hiện tại:** *2.0.1*
+- **Cập nhật lần cuối:** *17:32 17/06/2023*
+
+================
+
+**DEMO**: *Login Facebook with Username & Password*
 
 .. image:: https://i.ibb.co/bmB7MQT/image.png
 
