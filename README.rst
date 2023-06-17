@@ -35,9 +35,9 @@ Example:
 
     >>> from LorenBotModule.__fbTools import *
     >>> from LorenBotModule.__messageData import *
-    >>> cookiesFB = "please enter your FB cookie"
+    >>> cookiesFB = "datr=....; sb=.....; m_pixel_ratio=......; fr=......; ....."
     >>> threadData = __fbTools.dataTools.dataGetHome(cookiesFB)
-    >>> print(threadData)
+    >>> threadData
     
  
 **Kết quả (khi lấy dữ liệu thành công):**
@@ -57,7 +57,7 @@ Example:
     }
 
 
-Hoặc nó sẽ ra **LỖI** khi không GET được data:
+Hoặc nó sẽ ra **LỖI** khi không GET được dữ liệu:
 
 .. code-block:: json
 
@@ -74,11 +74,10 @@ Hoặc nó sẽ ra **LỖI** khi không GET được data:
     }
     
 
-*Chi tiết:* lỗi này xảy ra khi không lấy được dữ liệu từ máy chủ **FACEBOOK**. Không sao cả bạn có thử chạy lại
-file code để lấy lại dữ liệu.
+*Chi tiết:* lỗi này xảy ra khi không lấy được dữ liệu từ máy chủ **FACEBOOK** (**Die Cookie, Requests timeout**). Không sao cả bạn có thử chạy lại chương trình để thử lại.
 
 
-Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là điều tồi tệ nhất:
+**Lỗi code**: Đây là *JSON* khi có lỗi code xảy ra (có thể xảy ra khi dữ liệu được **Facebook** thay đổi):
 
 .. code-block:: json
 
@@ -90,8 +89,7 @@ Bạn nghĩ đó là những gì toàn tệ nhất? **KHÔNG** đây mới là �
      }
     
  
-*Chi tiết:* Lỗi này xảy ra khi không thể kết nối đến máy chủ **FACEBOOK** hoặc đã xảy ra lỗi khi thực thi code
-(xem thêm tại key 'error_description')
+*Chi tiết:* 
 
 *EXAMPLE*: **Nhận tin nhắn và trả lời tin nhắn threadID**
 ================
@@ -127,16 +125,20 @@ Tại đường dẫn vào nhóm (thread). Trên *URL của Messenger* sẽ hi�
 
 - **Kết quả tại đây (Response):** *None Url*
 
+
 *Dự Án ChatBot Messenger Python (LorenBot)*
 ================
- .. image:: https://mhuyz.dev/assets/imgs/LorenBot_Demo.png
+**Ngày thực hiện dự án**: *07/11/2021* | **Đã hoàn thành**: *81.5%* | **Tác giả**: *Nguyễn Minh Huy*
+
+.. image:: https://mhuyz.dev/assets/imgs/LorenBot_Demo.png
+
 ================
 Lịch sử cập nhật fbchat-v2
 ================
-  - **Ngày tạo Repositories:** 21-07-2022 00:34:33
-  - **Cập nhật đợt 1:** 21-07-2022
-  - **Cập nhật đợt 2 (BIG UPDATE):** 12-08-2022
-  - **Cập nhật đợt 3 (BIG UPDATE):** 11-06-2023
+- **Ngày tạo Repositories:** 21-07-2022 *00:34:33*
+- **Cập nhật đợt 1:** 21-07-2022
+- **Cập nhật đợt 2 (BIG UPDATE):** 12-08-2022
+- **Cập nhật đợt 3 (BIG UPDATE):** 11-06-2023
 
 Liên hệ,hỗ trợ & MXH khác
 ================
@@ -146,10 +148,8 @@ mà mình có thể hỗ trợ tốt nhất nhé!**
 
 
 - **Facebook:** *https://www.facebook.com/Booking.MinhHuyDev*
-- **Instagram:** *https://www.instagram.com/MinhHuyDev*
 - **Youtube:** *https://www.youtube.com/MinhHuyDev*
 - **Github:** *https://www.github.com/MinhHuyDev*
-- **Tiktok:** *https://www.tiktok.com/@MinhHuyDev*
 - **Telegram:** *https://www.telegram.org/MinhHuyDev*
 - **Zalo:** *https://www.zalo.me/MinhHuyDev*
 - **Website:** *https://www.mhuyz.dev*
