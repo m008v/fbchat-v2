@@ -1,6 +1,8 @@
 FacebookChat for Python
 =======================================
 
+Xin chào, tôi là MinhHuyDev. Đây là gói module hỗ trợ cho **`LorenBot`**, không chỉ dùng được cho bot, mà nó còn có thể áp dụng cho nhiều loại tool khác nhau :D Cùng đọc README để biết thêm chi tiết nhé!
+
 .. image:: https://i.ibb.co/vD5mV22/Picsart-23-06-17-17-08-34-067.jpg
 
 **Thông tin cơ bản về FBChat V2:**
@@ -9,17 +11,13 @@ FacebookChat for Python
 - **Ngôn ngữ lập trình:** *Python*
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *2.0.1*
-- **Cập nhật lần cuối:** *17:32 17/06/2023*
+- **Cập nhật lần cuối:** *17:35 17/06/2023*
 
 ================
 
-**DEMO**: *Login Facebook with Username & Password*
+**DEMO** *Login Facebook with Username & Password:* 
 
 .. image:: https://i.ibb.co/bmB7MQT/image.png
-
-
-Xin chào, tôi là MinhHuyDev. Đây là gói module hỗ trợ cho **`LorenBot`**, không chỉ dùng được cho
-bot, mà nó còn có thể áp dụng cho nhiều loại tool khác nhau :D Cùng đọc README để biết thêm chi tiết nhé!
 
 Những ưu điểm tiêu biểu của gói module này:
 
