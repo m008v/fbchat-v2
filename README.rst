@@ -3,7 +3,7 @@ FacebookChat for Python
 
 Xin chào, tôi là MinhHuyDev. Đây là gói module hỗ trợ cho **`LorenBot`**, không chỉ dùng được cho bot, mà nó còn có thể áp dụng cho nhiều loại tool khác nhau :D Cùng đọc README để biết thêm chi tiết nhé!
 
-.. image:: https://i.ibb.co/vD5mV22/Picsart-23-06-17-17-08-34-067.jpg
+.. image:: https://camo.githubusercontent.com/467b153c8738634f7c04b5e86941ab807f329ff432acaf3ea01a0ea78892a985/68747470733a2f2f692e6962622e636f2f7644356d5632322f506963736172742d32332d30362d31372d31372d30382d33342d3036372e6a7067
 
 **Thông tin cơ bản về FBChat V2:**
 
@@ -142,7 +142,7 @@ Tại đường dẫn vào nhóm (thread). Trên *URL của Messenger* sẽ hi�
 ================
 **Ngày thực hiện dự án**: *07/11/2021* | **Đã hoàn thành**: *81.5%* | **Tác giả**: *Nguyễn Minh Huy*
 
-.. image:: https://mhuyz.dev/assets/imgs/LorenBot_Demo.png
+.. image:: https://i.ibb.co/pryHzBD/Screenshot-2023-06-17-11-46-43-542-mark-via-gp.png
 
 ================
 Lịch sử cập nhật fbchat-v2
