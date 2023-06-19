@@ -8,6 +8,7 @@ Xin chào, tôi là MinhHuyDev. Đây là gói module hỗ trợ cho **`LorenBot
 **Thông tin cơ bản về FBChat V2:**
 
 - **Được lấy ý tưởng từ:** *fbchat*
+- **Người đóng góp**: **
 - **Ngôn ngữ lập trình:** *Python*
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *2.0.1*
