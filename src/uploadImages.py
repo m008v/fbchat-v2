@@ -96,6 +96,6 @@ def Main(filenames, setCookies):
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 14:03 ngày 19/6/2023
+✓Hoàn thành vào lúc 14:03 ngày 19/6/2023 • Cập nhật mới nhất: 22:17 20/6/2023
 ✓Tôn trọng tác giả ❤️
 """
