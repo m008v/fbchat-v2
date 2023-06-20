@@ -5,10 +5,8 @@ try:
  import json,os, random
  import requests, attr
  import time, json
- from requests.sessions import Session
- from concurrent.futures import ThreadPoolExecutor
  from threading import Thread,local
- import __fbTools
+ from LorenBot.plugins import __fbTools
  from threading import Thread
 except ImportError:
  pass
@@ -59,75 +57,78 @@ def parse_cookie_string(cookie_string):
      return cookie_dict
      
 class api():
-     def sendMessage(dataFB, contentSend, headersFB, threadID, photoID=None, files=None):
+     def sendMessage(dataFB, contentSend, threadID, photoID=None):
           __reg = attr.ib(0).counter
           _revision = attr.ib()
           __reg += 1
           randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
           dataForm = {}
           
-          dataForm["action_type"] = "ma-type:user-generated-message"
-          dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
-          dataForm["jazoest"] = dataFB["jazoest"]
-          dataForm["__a"] = 1
-          dataForm["__user"] =str(dataFB["FacebookID"])
-          dataForm["__req"] = str_base(__reg, 36) 
-          dataForm["__rev"] = dataFB["client_revision"]
-          dataForm["client"] = "mercury"
-          dataForm["body"] = contentSend
-          dataForm["author"] = "fbid:" + str(dataFB["FacebookID"])
-          dataForm["is_unread"] = False
-          dataForm["is_cleared"] = False
-          dataForm["is_forward"] = False
-          dataForm["is_filtered_content"] = False
-          dataForm["is_filtered_content_bh"] = False
-          dataForm["is_filtered_content_account"] = False
-          dataForm["is_filtered_content_quasar"] = False
-          dataForm["is_filtered_content_invalid_app"] = False
-          dataForm["is_spoof_warning"] = False
-          dataForm["thread_fbid"] = str(threadID)
-          dataForm["timestamp"] =  int(time.time() * 1000)
-          dataForm["timestamp_absolute"] = "Today"
-          dataForm["source"] = "source:chat:web"
-          dataForm["source_tags[0]"] = "source:chat"
-          dataForm["client_thread_id"] = "root:" + randomNumber
-          dataForm["offline_threading_id"] = randomNumber
-          dataForm["message_id"] = randomNumber
-          dataForm["threading_id"] = "<{}:{}-{}@mail.projektitan.com>".format(int(time.time() * 1000), int(random.random() * 4294967295), hex(int(random.random() * 2 ** 31))[2:])
-          dataForm["ephemeral_ttl_mode"] = "0"
-          dataForm["manual_retry_cnt"] = "0"
-          dataForm["ui_push_phase"] = "V3"
-          dataForm["has_attachment"] = True
-          if (photoID != None):
-               if ((str(type(photoID)).find("int") != -1) | (str(type(photoID)).find("str") != -1)):
-                    dataForm["image_ids[0]"] = photoID
-               elif (str(type(photoID)).find("list") != -1):
-                    for dataID, countPhoto in zip(photoID, range(0, len(photoID))):
-                         dataForm["image_ids[" + str(countPhoto) + "]"] = dataID
-                         
-               
-          mainRequests = {
-               "headers": Headers(getData["cookieFacebook"], dataForm),
-               "timeout": 60000,
-               "url": "https://www.facebook.com/messaging/send/",
-               "data": dataForm,
-               "cookies": parse_cookie_string(getData["cookieFacebook"]),
-               "verify": True
-          }
-               
-          sendRequests = json.loads(requests.post(**mainRequests).text.split("for (;;);")[1])
-          if (sendRequests.get("error") != None):
-               return {
-                    "errorCode": sendRequests["error"],
-                    "errorSummary": sendRequests["errorSummary"],
-                    "errorDescription": sendRequests["errorDescription"]
+          if (contentSend != None and contentSend != ""):
+          
+               dataForm["action_type"] = "ma-type:user-generated-message"
+               dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
+               dataForm["jazoest"] = dataFB["jazoest"]
+               dataForm["__a"] = 1
+               dataForm["__user"] =str(dataFB["FacebookID"])
+               dataForm["__req"] = str_base(__reg, 36) 
+               dataForm["__rev"] = dataFB["client_revision"]
+               dataForm["client"] = "mercury"
+               dataForm["body"] = str(contentSend)
+               dataForm["author"] = "fbid:" + str(dataFB["FacebookID"])
+               dataForm["is_unread"] = False
+               dataForm["is_cleared"] = False
+               dataForm["is_forward"] = False
+               dataForm["is_filtered_content"] = False
+               dataForm["is_filtered_content_bh"] = False
+               dataForm["is_filtered_content_account"] = False
+               dataForm["is_filtered_content_quasar"] = False
+               dataForm["is_filtered_content_invalid_app"] = False
+               dataForm["is_spoof_warning"] = False
+               dataForm["thread_fbid"] = str(threadID)
+               dataForm["timestamp"] =  int(time.time() * 1000)
+               dataForm["timestamp_absolute"] = "Today"
+               dataForm["source"] = "source:chat:web"
+               dataForm["source_tags[0]"] = "source:chat"
+               dataForm["client_thread_id"] = "root:" + randomNumber
+               dataForm["offline_threading_id"] = randomNumber
+               dataForm["message_id"] = randomNumber
+               dataForm["threading_id"] = "<{}:{}-{}@mail.projektitan.com>".format(int(time.time() * 1000), int(random.random() * 4294967295), hex(int(random.random() * 2 ** 31))[2:])
+               dataForm["ephemeral_ttl_mode"] = "0"
+               dataForm["manual_retry_cnt"] = "0"
+               dataForm["ui_push_phase"] = "V3"
+               dataForm["replied_to_message_id"] = dataFB["messageID"]
+               dataForm["has_attachment"] = True
+               if (photoID != None):
+                    if ((str(type(photoID)).find("int") != -1) | (str(type(photoID)).find("str") != -1)):
+                         dataForm["image_ids[0]"] = photoID
+                    elif (str(type(photoID)).find("list") != -1):
+                         for dataID, countPhoto in zip(photoID, range(0, len(photoID))):
+                              dataForm["image_ids[" + str(countPhoto) + "]"] = dataID
+                              
+                    
+               mainRequests = {
+                    "headers": Headers(dataFB["cookieFacebook"], dataForm),
+                    "timeout": 5,
+                    "url": "https://www.facebook.com/messaging/send/",
+                    "data": dataForm,
+                    "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
+                    "verify": True
                }
-          else: 
-               return {
-                    "threadID": sendRequests["payload"]["actions"][0]["thread_fbid"],
-                    "messageID": sendRequests["payload"]["actions"][0]["message_id"],
-                    "timeStamps": sendRequests["payload"]["actions"][0]["timestamp"]
-               }
+                    
+               sendRequests = json.loads(requests.post(**mainRequests).text.split("for (;;);")[1])
+               if (sendRequests.get("error") != None):
+                    return {
+                         "errorCode": sendRequests["error"],
+                         "errorSummary": sendRequests["errorSummary"],
+                         "errorDescription": sendRequests["errorDescription"]
+                    }
+               else: 
+                    return {
+                         "threadID": sendRequests["payload"]["actions"][0]["thread_fbid"],
+                         "messageID": sendRequests["payload"]["actions"][0]["message_id"],
+                         "timeStamps": sendRequests["payload"]["actions"][0]["timestamp"]
+                    }
 
 """ Hướng dẫn sử dụng (User manual)
 
@@ -153,6 +154,6 @@ class api():
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 13:53 ngày 19/6/2023
+✓Hoàn thành vào lúc 13:53 ngày 19/6/2023 • Cập nhật mới nhất: 18:49 20/6/2023
 ✓Tôn trọng tác giả ❤️
 """
