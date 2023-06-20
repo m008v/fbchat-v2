@@ -130,7 +130,7 @@ class api():
                          "timeStamps": sendRequests["payload"]["actions"][0]["timestamp"]
                     }
 
-""" Hướng dẫn sử dụng (User manual)
+""" Hướng dẫn sử dụng (Tutorial)
 
  * Dữ liệu yêu cầu (args):
  
@@ -154,6 +154,6 @@ class api():
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 13:53 ngày 19/6/2023 • Cập nhật mới nhất: 18:49 20/6/2023
+✓Hoàn thành vào lúc 13:53 ngày 19/6/2023 • Cập nhật mới nhất: 22:16 20/6/2023
 ✓Tôn trọng tác giả ❤️
 """
