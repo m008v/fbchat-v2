@@ -3,10 +3,10 @@ try:
  from time import sleep
  from datetime import datetime
  import json,os, random
+ import __facebookToolsV2
  import requests, attr
  import time, json
  from threading import Thread,local
- from LorenBot.plugins import __fbTools
  from threading import Thread
 except ImportError:
  pass
@@ -133,11 +133,13 @@ class api():
 """ Hướng dẫn sử dụng (Tutorial)
 
  * Dữ liệu yêu cầu (args):
- 
-     - dataFB: lấy từ __fbTools
+
+     -setCookies: Cookie account Facebook
+     - dataFB: lấy từ __facebookToolsV2.dataGetHome(setCookies)
      - threadID: ID nhóm cần gửi tin nhắn
      - images_ids: ID ảnh đã được tải lên facebook (có thể sl nhiều)
      - Nhiều dữ liệu khác
+
 * Kết quả trả về:
 
      - khi gửi tin nhắn thành công: 
@@ -154,6 +156,6 @@ class api():
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 13:53 ngày 19/6/2023 • Cập nhật mới nhất: 22:16 20/6/2023
+✓Hoàn thành vào lúc 13:53 ngày 19/6/2023 • Cập nhật mới nhất: 12:06 22/6/2023
 ✓Tôn trọng tác giả ❤️
 """
