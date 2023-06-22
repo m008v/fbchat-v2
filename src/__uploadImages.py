@@ -7,7 +7,7 @@ import random, attr
 from os.path import basename
 from mimetypes import guess_type
 import requests, json
-from LorenBot.plugins import __fbTools
+import __facebookToolsV2
 def Main(filenames, setCookies):
      def digitToChar(digit):
           if digit < 10:
@@ -34,7 +34,7 @@ def Main(filenames, setCookies):
      
      USER_AGENTS = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/601.1.10 (KHTML, like Gecko) Version/8.0.5 Safari/601.1.10", "Mozilla/5.0 (Windows NT 6.3; WOW64; ; NCT50_AAP285C84A1328) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1", "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6"]
      
-     getData = __fbTools.dataTools.dataGetHome(setCookies)
+     getData = __facebookToolsV2.dataGetHome(setCookies)
      headers = {
      "Referer": "https://www.facebook.com",
      "Accept": "text/html",
@@ -81,7 +81,7 @@ def Main(filenames, setCookies):
 
  * Dữ liệu yêu cầu (args):
  
-     - getData: lấy từ __fbTools
+     - getData: lấy từ __facebookToolsV2.dataGetHome(setCookies)
      - filenames: đường dẫn đến ảnh (VD: "../DCIM/100PINT/Ghim/aecc74......png/jpg/...)
      - setCookies: cookie tài khoản FB
 
@@ -96,6 +96,6 @@ def Main(filenames, setCookies):
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 14:03 ngày 19/6/2023 • Cập nhật mới nhất: 22:17 20/6/2023
+✓Hoàn thành vào lúc 14:03 ngày 19/6/2023 • Cập nhật mới nhất: 12:08 22/6/2023
 ✓Tôn trọng tác giả ❤️
 """
