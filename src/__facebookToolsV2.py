@@ -133,7 +133,8 @@ def typeCommand(commandUsed, threadID, dataGet):
      listData = []
      
      try: getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
-     finally: pass
+     except: 
+          return print("Error: ")
      for getNeedIDThread in getData:
           if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(threadID)):
                dataThread = getNeedIDThread
