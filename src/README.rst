@@ -1,4 +1,4 @@
-FBChat-Remake: Source
+FBChat-Remake: Open source
 =======================================
 
 Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu tiên mà mình làm lại một source lớn như vậy nên sẽ không tránh được những *sai sót* trong quá trình code, rất mong sẽ được người dùng báo cáo lại **Lỗi** tại issues của GitHub này nhé:3
@@ -15,8 +15,8 @@ Thông tin cơ bản về FBChat Remake
 - **Người đóng góp**: *KanzuWakazaki* **,** *hakuOwO*
 - **Ngôn ngữ lập trình:** *Python*
 - **Phát triển bởi:** *Nguyễn Minh Huy*
-- **Phiên bản hiện tại:** *1.0.1*
-- **Cập nhật lần cuối:** *12:31 22/06/2023*
+- **Phiên bản hiện tại:** *1.0.2*
+- **Cập nhật lần cuối:** *02:41 26/06/2023*
 
 =======================================
 Tutorial (Hướng dẫn)
