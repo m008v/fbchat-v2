@@ -127,13 +127,13 @@ def getAllThreadList(dataFB):
      }
                
      sendRequests = requests.post(**mainRequests)
-     return sendRequests
+     return sendRequests.text.split('{"successful_results":')[0]
 
 def typeCommand(commandUsed, threadID, dataGet):
      listData = []
      
      try: getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
-     except: return getData["o0"]["error"]
+     finally: pass
      for getNeedIDThread in getData:
           if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(threadID)):
                dataThread = getNeedIDThread
@@ -211,6 +211,6 @@ def typeCommand(commandUsed, threadID, dataGet):
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: Không có dữ liệu
+✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 00:12 26/06/2023
 ✓Tôn trọng tác giả ❤️
 """
