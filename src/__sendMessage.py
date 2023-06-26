@@ -3,12 +3,15 @@ try:
  from time import sleep
  from datetime import datetime
  import json,os, random
- import __facebookToolsV2
- import requests, attr
+ try: import __facebookToolsV2
+ except: from LorenBot.plugins import __facebookToolsV2 
+ import requests
+ import attr
  import time, json
  from threading import Thread,local
  from threading import Thread
-except ImportError:
+except Exception as errLOg:
+ print("err: " + str(errLOg))
  pass
 USER_AGENTS = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/601.1.10 (KHTML, like Gecko) Version/8.0.5 Safari/601.1.10", "Mozilla/5.0 (Windows NT 6.3; WOW64; ; NCT50_AAP285C84A1328) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1", "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6"]
 
@@ -57,7 +60,7 @@ def parse_cookie_string(cookie_string):
      return cookie_dict
      
 class api():
-     def sendMessage(dataFB, contentSend, threadID, photoID=None):
+     def sendMessage(dataFB, contentSend, threadID, typeAttachment=None, attachmentID=None):
           __reg = attr.ib(0).counter
           _revision = attr.ib()
           __reg += 1
@@ -99,13 +102,27 @@ class api():
                dataForm["ui_push_phase"] = "V3"
                dataForm["replied_to_message_id"] = dataFB["messageID"]
                dataForm["has_attachment"] = True
-               if (photoID != None):
-                    if ((str(type(photoID)).find("int") != -1) | (str(type(photoID)).find("str") != -1)):
-                         dataForm["image_ids[0]"] = photoID
-                    elif (str(type(photoID)).find("list") != -1):
-                         for dataID, countPhoto in zip(photoID, range(0, len(photoID))):
-                              dataForm["image_ids[" + str(countPhoto) + "]"] = dataID
-                              
+               dictAttachment = {
+                    "gif": "gif_ids",
+                    "image": "image_ids",
+                    "audio": "audio_ids",
+                    "file": "file_ids",
+                    "audio": "audio_ids",
+                    None: "this is not a Attachment we requested, try again later (đây không phải là Tệp đính kèm mà chúng tôi đã yêu cầu, hãy thử lại sau)"
+               }
+               if (typeAttachment != None):
+                    try:
+                         dictItemAttachment = dictAttachment[typeAttachment]                     
+                         if (attachmentID != None):
+                              if ((str(type(attachmentID)).find("int") != -1) | (str(type(attachmentID)).find("str") != -1)):
+                                   dataForm[dictItemAttachment + "[0]"] = attachmentID
+                              elif (str(type(attachmentID)).find("list") != -1):
+                                   for dataID, countPhoto in zip(attachmentID, range(0, len(attachmentID))):
+                                        dataForm[dictItemAttachment + "[" + str(countPhoto) + "]"] = dataID
+                         else:
+                              pass
+                    except:
+                         pass      
                     
                mainRequests = {
                     "headers": Headers(dataFB["cookieFacebook"], dataForm),
@@ -117,6 +134,8 @@ class api():
                }
                     
                sendRequests = json.loads(requests.post(**mainRequests).text.split("for (;;);")[1])
+
+               return print(dataForm)
                if (sendRequests.get("error") != None):
                     return {
                          "errorCode": sendRequests["error"],
@@ -136,9 +155,10 @@ class api():
 
      -setCookies: Cookie account Facebook
      - dataFB: lấy từ __facebookToolsV2.dataGetHome(setCookies)
+     - contentSend: nội dung tin nhắn
      - threadID: ID nhóm cần gửi tin nhắn
-     - images_ids: ID ảnh đã được tải lên facebook (có thể sl nhiều)
-     - Nhiều dữ liệu khác
+     - typeAttachment: chọn loại tệp- đính kèm cần gửi (image, video, gif, file.....)
+     - attachmentID: ID tệp đính kèm đã được upload lên từ __uploadImages (có thể dùng list để gửi nhiều Attachment cùng lúc. VD: [45647...., 5443754....., 54492115.....])
 
 * Kết quả trả về:
 
@@ -156,6 +176,6 @@ class api():
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 13:53 ngày 19/6/2023 • Cập nhật mới nhất: 12:06 22/6/2023
+✓Hoàn thành vào lúc 13:53 ngày 19/6/2023 • Cập nhật mới nhất: 13:24 26/6/2023
 ✓Tôn trọng tác giả ❤️
 """
