@@ -16,7 +16,7 @@ Thông tin cơ bản về FBChat Remake
 - **Ngôn ngữ lập trình:** *Python*
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *1.0.2*
-- **Cập nhật lần cuối:** *21:25 26/06/2023*
+- **Cập nhật lần cuối:** *23:58 26/06/2023*
 
 =======================================
 Tutorial (Hướng dẫn)
@@ -24,13 +24,13 @@ Tutorial (Hướng dẫn)
 
 **Đầu tiên**: Người dùng cần phải cài đặt *tất cả* các gói tài nguyên cần thiết để có thể sử dụng. Nếu bạn chưa cài đặt, hãy dùng lệnh sau:
 
-.. code-block:: git
+.. code-block:: bash
 
   git clone https://github.com/MinhHuyDev/fbchat-v2
 
 **Tiếp theo**: Hãy tạo thư mục trong chính folder mà mình vừa tải về từ *GitHub* về bằng cách:
 
-.. code-block:: git
+.. code-block:: bash
   
   cd fbchat-v2/src && touch mainBot.py 
 
