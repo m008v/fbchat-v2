@@ -16,7 +16,7 @@ Thông tin cơ bản về FBChat Remake
 - **Ngôn ngữ lập trình:** *Python*
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *1.0.2*
-- **Cập nhật lần cuối:** *21:22 26/06/2023*
+- **Cập nhật lần cuối:** *21:25 26/06/2023*
 
 =======================================
 Tutorial (Hướng dẫn)
@@ -34,7 +34,7 @@ Tutorial (Hướng dẫn)
   
   cd fbchat-v2/src && touch mainBot.py 
 
-**Sau đó**: Tiếp tục vào file `**mainBot.py**`, viết những thứ cần thiếu sau:
+**Sau đó**: Tiếp tục vào file **mainBot.py**, viết những thứ cần thiếu sau:
 
 .. code-block:: python
 
