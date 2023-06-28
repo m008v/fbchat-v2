@@ -158,15 +158,47 @@ def changeThreadEmoji(threadID, newEmoji, dataFB): # Thay đổi biểu tượng
 
 def changeNameThread(threadID, newNameThread, dataFB): # Thay đổi tên nhóm
      
+     randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
+
      dataForm = formAll(dataFB)
 
+     dataForm["client"] = "mercury"
+     dataForm["action_type"] = "ma-type:log-message"
+     dataForm["thread_id"] = ""
+     dataForm["author_email"] = ""
+     dataForm["action_type"] = ""
+     dataForm["timestamp"] = int(time.time() * 1000)
+     dataForm["timestamp_absolute"] = "Today"
+     dataForm["author"] = "fbid:" + str(dataFB["FacebookID"])
+     dataForm["is_unread"] = False
+     dataForm["is_cleared"] = False
+     dataForm["is_forward"] = False
+     dataForm["is_filtered_content"] = False
+     dataForm["is_filtered_content_bh"] = False
+     dataForm["is_filtered_content_account"] = False
+     dataForm["is_filtered_content_quasar"] = False
+     dataForm["is_filtered_content_invalid_app"] = False
+     dataForm["is_spoof_warning"] = False
+     dataForm["thread_fbid"] = str(threadID)
      dataForm["thread_name"] = newNameThread
-     dataForm["thread_id"] = threadID
+     dataForm["thread_id"] = str(threadID)
+     dataForm["source"] = "source:chat:web"
+     dataForm["source_tags[0]"] = "source:chat"
+     dataForm["client_thread_id"] = "root:" + randomNumber
+     dataForm["offline_threading_id"] = randomNumber
+     dataForm["message_id"] = randomNumber
+     dataForm["threading_id"] = "<{}:{}-{}@mail.projektitan.com>".format(int(time.time() * 1000), int(random.random() * 4294967295), hex(int(random.random() * 2 ** 31))[2:])
+     dataForm["ephemeral_ttl_mode"] = "0"
+     dataForm["manual_retry_cnt"] = "0"
+     dataForm["ui_push_phase"] = "V3"
+     dataForm["log_message_type"] = "log:thread-name"
+     # dataForm["thread_name"] = newNameThread
+     # dataForm["thread_id"] = threadID
 
      mainRequests = {
         "headers": Headers(dataFB["cookieFacebook"], dataForm),
         "timeout": 5,
-        "url": "https://m.facebook.com/messaging/set_thread_name",
+        "url": "https://www.facebook.com/messaging/set_thread_name/",
         "data": dataForm,
         "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
         "verify": True
@@ -174,14 +206,17 @@ def changeNameThread(threadID, newNameThread, dataFB): # Thay đổi tên nhóm
 
      sendRequests = json.loads(requests.post(**mainRequests).text.split("for (;;);")[1])
 
-     if (str(sendRequests["payload"]["actions"][0]["html"]).find("Trang bạn yêu cầu không thể hiển thị ngay bây giờ.") != -1):
-          return Exception({"error": "Không thể thay đổi tên nhóm không toòn tại."})
+     if (sendRequests.get("error")):
+          error = sendRequests.get("error")
+          if error == 1545012:
+               return Exception({"error": "Bạn không thể thay đổi tên nhóm khi bạn không phải là một thành viên của nhóm"})
+          elif error == 1545003:
+               return Exception({"error": "Không thể thay đổi tên nhóm không tồn tại."})  
      else:
           return {
                "success": 1,
                "messages": "Thay đổi tên nhóm thành công."
           }
-
 
 """ Hướng dẫn sử dụng (Tutorial)
 
@@ -220,6 +255,6 @@ def changeNameThread(threadID, newNameThread, dataFB): # Thay đổi tên nhóm
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 03:32 ngày 28/6/2023 • Cập nhật mới nhất: 12:34 28/6/2023
+✓Hoàn thành vào lúc 03:32 ngày 28/6/2023 • Cập nhật mới nhất: Không có dữ liệu: 13:43 28/06/2023
 ✓Tôn trọng tác giả ❤️
 """
