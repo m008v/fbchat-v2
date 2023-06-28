@@ -106,6 +106,120 @@ def changeNicknameUser(threadID, idUser , NewNickname, dataFB): # Thay đổi bi
         "timeout": 5,
         "url": "https://www.facebook.com/messaging/save_thread_nickname/?source=thread_settings&dpr=1",
         "data": dataForm,
-        "cookies": parse_cookie_string(dataFB33 ngày 28/6/2023 • Cập nhật mới nhất: Không có dữ liệu
+        "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
+        "verify": True
+    }
+     
+     sendRequests = json.loads(requests.post(**mainRequests).text.split("for (;;);")[1])
+     
+     if sendRequests.get("error"):
+          error = sendRequests.get("error")
+          if error == 1545014:
+               return Exception({"error": "Đã xảy ra lỗi: Người dùng không tồn tại trong nhóm/cuộc trò chuyện."})
+          elif error == 1357031:
+               return Exception({"error": "Đã xảy ra lỗi: Người dùng không tồn tại."})
+          else:
+               return Exception({"error": "Lỗi không xác định"})
+     else:
+          return {
+               "success": 1,
+               "messages": "Thay đổi biệt danh người dùng thành công"
+          }
+     
+def changeThreadEmoji(threadID, newEmoji, dataFB): # Thay đổi biểu tượng cảm xúc nhanh 
+
+     dataForm = formAll(dataFB)
+
+     dataForm["emoji_choice"] = newEmoji
+     dataForm["thread_or_other_fbid"] = threadID
+     
+     mainRequests = {
+        "headers": Headers(dataFB["cookieFacebook"], dataForm),
+        "timeout": 5,
+        "url": "https://www.facebook.com/messaging/save_thread_emoji/?source=thread_settings&__pc=EXP1%3Amessengerdotcom_pkg",
+        "data": dataForm,
+        "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
+        "verify": True
+    }
+
+     sendRequests = json.loads(requests.post(**mainRequests).text.split("for (;;);")[1])
+
+     if (sendRequests.get("error")):
+          error = sendRequests.get("error")
+          if error == 1357031:
+               return Exception({"error": "Không thể thay đổi trạng thái emoji của một cuộc trò chuyện không tồn tại."})
+          else:
+               return Exception({"error": "Lỗi không xác định"})
+     else:
+          return {
+               "success": 1,
+               "messages": "Thay đổi biểu tượng cảm xúc nhanh thành công."
+          }
+
+def changeNameThread(threadID, newNameThread, dataFB): # Thay đổi tên nhóm
+     
+     dataForm = formAll(dataFB)
+
+     dataForm["thread_name"] = newNameThread
+     dataForm["thread_id"] = threadID
+
+     mainRequests = {
+        "headers": Headers(dataFB["cookieFacebook"], dataForm),
+        "timeout": 5,
+        "url": "https://m.facebook.com/messaging/set_thread_name",
+        "data": dataForm,
+        "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
+        "verify": True
+    }
+
+     sendRequests = json.loads(requests.post(**mainRequests).text.split("for (;;);")[1])
+
+     if (str(sendRequests["payload"]["actions"][0]["html"]).find("Trang bạn yêu cầu không thể hiển thị ngay bây giờ.") != -1):
+          return Exception({"error": "Không thể thay đổi tên nhóm không toòn tại."})
+     else:
+          return {
+               "success": 1,
+               "messages": "Thay đổi tên nhóm thành công."
+          }
+
+
+""" Hướng dẫn sử dụng (Tutorial)
+
+ * Dữ liệu yêu cầu (args):
+     
+     * DỮ LIỆU CHUNG:
+
+          - threadID: ID Nhóm (Thread)
+          - dataFB: lấy từ __facebookToolsV2.dataGetHome(setCookies)
+          - setCookies: Cookie account Facebook
+     
+     * Đối với: addUserToAdminThread
+          - idUser: ID Facebook người dùng cần thêm làm quản trị viên nhóm
+          - StatusChoice: Lựa chọn add hoặc không (True/False)
+     
+     * Đối với changeNicknameUser:
+          - idUser: ID Facebook người dùng cần đổi biệt danh
+          - NewNickname: biệt danh cần dặt cho người dùng đã được chỉ định
+     
+     * Đối với: changeThreadEmoji
+          - newEmoji: biểu tượng cảm xúc cần đặt
+     
+     * Đối với: changeNameThread
+          - newNameThread: Tên nhóm mới cần đặt 
+     
+* Kết quả trả về:
+     
+     Không có dữ liệu cụ thể.
+     
+     - Ghi chú: Nếu cảm thấy khó hiểu, hãy liên hệ với tui.
+
+* Thông tin tác giả:
+     Facebook:  m.me/Booking.MinhHuyDev
+     Telegram: t.me/minhhuydev
+     Github: MinhHuyDev
+
+✓Remake by Nguyễn Minh Huy
+✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
+✓Hoàn thành vào lúc 03:32 ngày 28/6/2023 • Cập nhật mới nhất: 12:34 28/6/2023
 ✓Tôn trọng tác giả ❤️
 """
