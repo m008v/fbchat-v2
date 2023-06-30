@@ -12,11 +12,11 @@ Thông tin cơ bản về FBChat Remake
 =======================================
 
 - **Được làm lại từ:** *fbchat (Python)* 
-- **Người đóng góp**: *KanzuWakazaki* **,** *hakuOwO*
+- **Người đóng góp**: *hakuOwO*
 - **Ngôn ngữ lập trình:** *Python*
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *1.0.2*
-- **Cập nhật lần cuối:** *08:29 30/06/2023*
+- **Cập nhật lần cuối:** *01:06 01/07/2023*
 
 =======================================
 Tutorial (Hướng dẫn)
@@ -41,7 +41,7 @@ Tutorial (Hướng dẫn)
 .. code-block:: bash
   
   cd fbchat-v2/src && touch mainBot.py
-**Sau đó**: Tiếp tục vào file **mainBot.py**, viết những thứ cần thiếu sau:
+**Sau đó**: Tiếp tục vào file **mainBot.py**, Viết những dòng code cài đặt module như sau:
 
 .. code-block:: python
 
@@ -49,7 +49,7 @@ Tutorial (Hướng dẫn)
   import __messageListen # BẮT BUỘC
   import __sendMessage # BẮT BUỘC
   import __uploadImages # KHÔNG BẮT BUỘC (Tùy thuộc vào b có muốn dùng ảnh hay không)
-  import json, requests, dsatetime, time
+  import json, requests, datetime, time
 
   # Đợi thêm nhé, lười viết nữa òi ^^
 
