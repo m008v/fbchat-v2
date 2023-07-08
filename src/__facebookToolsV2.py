@@ -87,7 +87,7 @@ def dataGetHome(setCookies):
           "cookieFacebook": setCookies
      }
 
-def getAllThreadList(dataFB):
+def getAllThreadList(dataFB): # Lấy dữ liệu những thành phần tin nhắn ở INBOX
 
      __reg = attr.ib(0).counter
      _revision = attr.ib()
@@ -127,14 +127,13 @@ def getAllThreadList(dataFB):
      }
                
      sendRequests = requests.post(**mainRequests)
-     return sendRequests.text.split('{"successful_results":')[0]
+     return sendRequests.text.split("{\"successful_results\"")[0]
 
-def typeCommand(commandUsed, threadID, dataGet):
+def typeCommand(commandUsed, threadID, dataGet): # Tổng hợp các lệnh có thể làm
      listData = []
      
      try: getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
-     except: 
-          return print("Error: ")
+     except: return json.loads(dataGet)["o0"]["error"]
      for getNeedIDThread in getData:
           if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(threadID)):
                dataThread = getNeedIDThread
@@ -188,6 +187,21 @@ def typeCommand(commandUsed, threadID, dataGet):
      else:
           return "Không lấy được dữ liệu ThreadList, đã xảy ra lỗi T___T"
 
+def getListThreadID(dataGet): # Lấy danh sách threadID
+     try:
+          threadIDList = []
+          getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
+          for getThreadID in getData:
+               if (getThreadID["thread_key"]["thread_fbid"] != None):
+                    threadIDList.append(getThreadID["thread_key"]["thread_fbid"])
+          return {
+               "threadIDList": threadIDList,
+               "countThread": len(threadIDList)
+          }
+     except:
+          return {
+               "ERR": {}
+          }
 
 """ Hướng dẫn sử dụng (Tutorial)
 
@@ -212,6 +226,6 @@ def typeCommand(commandUsed, threadID, dataGet):
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 00:12 26/06/2023
+✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 18:20 08/07/2023
 ✓Tôn trọng tác giả ❤️
 """
