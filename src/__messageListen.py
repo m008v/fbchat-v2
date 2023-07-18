@@ -1,6 +1,7 @@
 import json, requests, re, json
 from bs4 import BeautifulSoup
 import __facebookToolsV2
+# from LorenBot.plugins import __facebookToolsV2
 import datetime
 """
 Lời nói đầu, Xin NHẮC là đây là lấy tin nhắn từ m.facebook.com, chứ không phải từ
@@ -57,7 +58,7 @@ def Listen(dataFB, threadID, Url="https://m.facebook.com"):
                    "Sec-Fetch-Dest": "document",
                    "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
                },
-               "timeout": 5,
+               "timeout": 30,
                "url": "{}/messages/t/{}".format(Url, threadID), 
                "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
                "verify": True
@@ -69,6 +70,7 @@ def Listen(dataFB, threadID, Url="https://m.facebook.com"):
      }
      
      sendRequests = requests.get(**mainRequests)
+     open("../../Telegram/test1.html", "w").write(str(sendRequests.text))
      countHtmlTags = str(sendRequests.text).count("data-sigil=\"message-text") + 1
      for i in range(countHtmlTags):
           try:
@@ -76,10 +78,10 @@ def Listen(dataFB, threadID, Url="https://m.facebook.com"):
                senderID = dataSplit(dashboardHTML["senderID"][0], dashboardHTML["senderID"][1], i, 1, sendRequests.text, 3, dashboardHTML["senderID"][2], 0)
                messageID = dataSplit(dashboardHTML["messageID"][0], dashboardHTML["messageID"][1], i, 0, sendRequests.text)
                classValue = dataSplit("<div class=\"", "\">", 1, 0, dataThreadMessage)      
-               messageContentsHTML = str(dataSplit("<div class=\"" + str(classValue) + "\">", "</div>", 1, 0, dataThreadMessage))
+               messageContentsHTML = str(dataSplit("<div class=\"" + str(classValue) + "\">", "</div>", 1, 0, dataThreadMessage)).replace("&#064;","@").replace("&#039;","'").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"').replace("&#123;","{").replace("&#125;","}")
                if (len(messageContentsHTML.split(">")) >= 1):
                     classValue = dataSplit("<div class=\"", "\">", 1, 0, messageContentsHTML)
-                    try: messageContents = clearHTML(messageContentsHTML.split("<div class=\"" + classValue + "\">")[1])
+                    try: messageContents = clearHTML(messageContentsHTML.split("<div class=\"" + classValue + "\">")[1].replace("<br /> ","\n"))
                     except: 
                          if (clearHTML(messageContentsHTML.split("<div class=\"" + classValue + "\">")[1]) == ""):
                               messageContents = "Ký tự đặc biệt hoặc file được gửi"
@@ -98,7 +100,7 @@ def Listen(dataFB, threadID, Url="https://m.facebook.com"):
                          return resultJson
           except Exception as errLog:
                pass
-               
+
 """ Hướng dẫn sử dụng (Tutorial):
 
  * Dữ liệu yêu cầu (args):
@@ -121,6 +123,6 @@ def Listen(dataFB, threadID, Url="https://m.facebook.com"):
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 12:01 ngày 22/6/2023
+✓Hoàn thành vào lúc 12:01 ngày 22/6/2023 • Cập nhật mới nhất: 23:29 18/07/2023
 ✓Tôn trọng tác giả ❤️
 """
