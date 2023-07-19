@@ -1,49 +1,54 @@
 import requests, threading, random
-
+from utils import parse_cookie_string
 """
 Được phát triển bởi Nguyễn Minh Huy, do vấn đề MessageListen khi đến một thời gian nhất định sẽ bị chặn tính năng (từ 1h đến 3 ngày). Nên từ đó MODULE này sẽ giải quyết được vấn đề đó :)
 Được viết vào lúc 10:18 11/7/2023
 """
 
-
-def parse_cookie_string(cookie_string):
-     cookie_dict = {}
-     cookies = cookie_string.split(";")
-
-     for cookie in cookies:
-          if "=" in cookie:
-               key, value = cookie.split("=")
-          else:
-               pass
-          try: cookie_dict[key] = value
-          except: pass
-
-     return cookie_dict
-     
-
 def antiBlockMain(setCookies, Url = "https://m.facebook.com"):
      listUrl = [
-          "/home.php", # Trang chủ / Facebook
+          "/home.php", # Trang chủ / Facebook.
+          
           "/profile.php", # Trang cá nhân / Facebook
+          
           "/friends/center/requests/", # Yêu cầu kết bạn / Facebook
+          
           "/marketplace/hochiminhcity/", # Chợ / Facebook
+          
           "/watch", # Watch / Facebook
+          
           "/notifications.php", # Thông báo / Facebook
+          
           "/buddylist.php", # Danh sách bạn bè đang hoạt động / Facebook
+          
           "/bookmarks/", # Menu khác / Facebook
+          
           "/onthisday/", # Ngày này năm xưa / Facebook
+          
           "/saved/", # Đã lưu / Facebook
+          
           "/events/", # Sự kiện / Facebook
+          
           "/nt/?id=gaming", # Gaming / Facebook
+          
           "/climatescienceinfo/", # Trung tâm khoa học khí hậu / Facebook
+          
           "/help/", # Trung tâm trợ giúp / Facebook
+          
           "/bugnub/", # Báo cáo sự cố / Facebook
+          
           "/policies/", # Chính sách / Facebook
+          
           "/language/", # Ngôn ngữ / Facebook
+          
           "/privacy/center/", # Quyền riêng tư / Facebook
+          
           "/groups/", # Nhóm / Facebook
+          
           "/archive/", # Kho lưu trữ / Facebook
+          
           "/hacked/" # Bảo vệ tài khoản / Facebook
+          
      ]
      
      mainRequests = {
