@@ -1,96 +1,28 @@
 import json, requests, time, json, attr, random, re, string
 import datetime
 import __facebookToolsV2
-# from LorenBot.plugins import __facebookToolsV2
+from utils import Headers, digitToChar, str_base, dataSplit, parse_cookie_string, formAll
 
 def randStr(length):
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
-    
-def digitToChar(digit):
-          if digit < 10:
-               return str(digit)
-          return chr(ord("a") + digit - 10)
-
-def str_base(number, base):
-     if number < 0:
-          return "-" + str_base(-number, base)
-     (d, m) = divmod(number, base)
-     if d > 0:
-          return str_base(d, base) + digitToChar(m)
-     return digitToChar(m)
-
-def parse_cookie_string(cookie_string):
-     cookie_dict = {}
-     cookies = cookie_string.split(";")
-
-     for cookie in cookies:
-          if "=" in cookie:
-               key, value = cookie.split("=")
-          else:
-               pass
-          try: cookie_dict[key] = value
-          except: pass
-
-     return cookie_dict
-
-def dataSplit(string1, string2, numberSplit1, numberSplit2, HTML):
-     return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2]
-     
-
-def Headers(setCookies, dataForm=None):
-     headers = {}
-     headers["Host"] = "www.facebook.com"
-     headers["Connection"] = "keep-alive"
-     if (dataForm != None):
-          headers["Content-Length"] = str(len(dataForm))
-     headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
-     headers["Accept"] = "*/*"
-     headers["Origin"] = "https://www.facebook.com"
-     headers["Sec-Fetch-Site"] = "same-origin"
-     headers["Sec-Fetch-Mode"] = "cors"
-     headers["Sec-Fetch-Dest"] = "empty"
-     headers["Referer"] = "https://www.facebook.com/"
-     headers["Accept-Language"] = "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
-
-
-def formAll(dataFB):
-     __reg = attr.ib(0).counter
-     _revision = attr.ib()
-     __reg += 1 
-     dataForm = {}
-     
-     dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
-     dataForm["jazoest"] = dataFB["jazoest"]
-     dataForm["__a"] = 1
-     dataForm["__user"] =str(dataFB["FacebookID"])
-     dataForm["__req"] = str_base(__reg, 36) 
-     dataForm["__rev"] = dataFB["client_revision"]
-     dataForm["av"] = dataFB["FacebookID"]
-
-     return dataForm
 
 def changeBioFacebook(newContents, dataFB, uploadPost): # Thay đổi Bio trên trang Facebook
      
      # Được lấy dữ liệu và viết vào lúc: 09:10 Thứ 4, ngày 05/07/2023. Tác giả: MinhHuyDev
      
-     dataForm = formAll(dataFB)
-     dataForm["fb_api_caller_class"] = "RelayModern"
-     dataForm["fb_api_req_friendly_name"] = "ProfileCometSetBioMutation"
-     dataForm["server_timestamps"] = "true"
-     dataForm["doc_id"] = "6293552847364844"
+     dataForm = formAll(dataFB, "ProfileCometSetBioMutation", 6293552847364844)
      dataForm["variables"] = json.dumps(
           {
-               "input":
-                    {
-                         "bio": str(newContents),
-                         "publish_bio_feed_story": uploadPost,
-                         "actor_id": dataFB["FacebookID"],
-                         "client_mutation_id": str(round(random.random() * 1024))
-                    },
-                    "hasProfileTileViewID": False,
-                    "profileTileViewID": None,
-                    "scale": 1
-               }
+               "input": {
+                    "bio": str(newContents),
+                    "publish_bio_feed_story": uploadPost,
+                    "actor_id": dataFB["FacebookID"],
+                    "client_mutation_id": str(round(random.random() * 1024))
+               },
+               "hasProfileTileViewID": False,
+               "profileTileViewID": None,
+               "scale": 1
+          }
      )
      
      mainRequests = {
@@ -129,11 +61,7 @@ def createPostFacebook(newContents, dataFB, attachmentID=None): # Tạo bài vi�
      
      # Được lấy dữ liệu và viết vào lúc: 09:40 Thứ 4, ngày 05/07/2023. Tác giả: MinhHuyDev
      
-     dataForm = formAll(dataFB)
-     dataForm["fb_api_caller_class"] = "RelayModern"
-     dataForm["fb_api_req_friendly_name"] = "ComposerStoryCreateMutation"
-     dataForm["server_timestamps"] = "true"
-     dataForm["doc_id"] = "6534257523262244"
+     dataForm = formAll(dataFB, "ComposerStoryCreateMutation", 6534257523262244)
      dataForm["variables"] = json.dumps(
           {
                "input": {
@@ -272,8 +200,6 @@ def onBusinessOnFacebookProfile(dataFB, statusBusiness=None): # Bật chế đ�
      
      # Được lấy dữ liệu và viết vào lúc: 01:03 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
      
-     dataForm = formAll(dataFB)
-     
      if ((statusBusiness.lower() == "on") | (statusBusiness.lower() == "bật")):
           docID = "6580386111988379"
           friendlyName = "CometProfilePlusOnboardingDialogTransitionMutation"
@@ -293,10 +219,7 @@ def onBusinessOnFacebookProfile(dataFB, statusBusiness=None): # Bật chế đ�
                "messages": "Không có sự lựa chọn được đưa ra."
           }
      
-     dataForm["fb_api_caller_class"] = "RelayModern"
-     dataForm["fb_api_req_friendly_name"] = friendlyName
-     dataForm["server_timestamps"] = "true"
-     dataForm["doc_id"] = docID
+     dataForm = formAll(dataFB, friendlyName, docID)
      dataForm["variables"] = variables
           
      
@@ -328,11 +251,7 @@ def registerAccountProfileOnProfile(newName, newUsername, dataFB): # Tạo một
 
      # Được lấy dữ liệu và viết vào lúc: 01:14 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
 
-     dataForm = formAll(dataFB)
-     dataForm["fb_api_caller_class"] = "RelayModern"
-     dataForm["fb_api_req_friendly_name"] = "AdditionalProfileCreateMutation"
-     dataForm["server_timestamps"] = "true"
-     dataForm["doc_id"] = "4699419010168408"
+     dataForm = formAll(dataFB, "AdditionalProfileCreateMutation", 4699419010168408)
      dataForm["variables"] = json.dumps(
           {
                "input": {
@@ -377,11 +296,7 @@ def searchInFacebook(keywordSearch, dataFB): # Tìm kiếm trên Facebook
      
      # Được lấy dữ liệu và viết vào lúc: 01:42 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
      
-     dataForm = formAll(dataFB)
-     dataForm["fb_api_caller_class"] = "RelayModern"
-     dataForm["fb_api_req_friendly_name"] = "SearchCometResultsInitialResultsQuery"
-     dataForm["server_timestamps"] = "true"
-     dataForm["doc_id"] = "6866854183333610"
+     dataForm = formAll(dataFB, "SearchCometResultsInitialResultsQuery", 6866854183333610)
      dataForm["variables"] = json.dumps(
           {
                "count": 5,
@@ -452,11 +367,7 @@ def getNotificationRecentlyFacebook(dataFB): # Lấy thông báo Facebook
      
      # Được lấy dữ liệu và viết vào lúc: 02:32 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
      
-     dataForm = formAll(dataFB)
-     dataForm["fb_api_caller_class"] = "RelayModern"
-     dataForm["fb_api_req_friendly_name"] = "CometNotificationsDropdownQuery"
-     dataForm["server_timestamps"] = "true"
-     dataForm["doc_id"] = "6770067089747450"
+     dataForm = formAll(dataFB, "CometNotificationsDropdownQuery", 6770067089747450)
      dataForm["variables"] = json.dumps(
           {
                "count":15,
@@ -498,15 +409,12 @@ def InteractBlockedAndUnBlocked(idUser, choiceInteract, dataFB): # Tương tác 
 
      # Được lấy dữ liệu và viết vào lúc: 03:12 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
 
-     dataForm = formAll(dataFB)
 
      if (choiceInteract == "block"):
           
-          dataForm["fb_api_caller_class"] = "RelayModern"
-          dataForm["fb_api_req_friendly_name"] = "ProfileCometActionBlockUserMutation"
-          dataForm["server_timestamps"] = "true"
-          dataForm["doc_id"] = "6305880099497989"
-          dataForm["variables"] = json.dumps(
+          friendlyName = "ProfileCometActionBlockUserMutation"
+          docID = "6305880099497989"
+          variables = json.dumps(
                {
                     "collectionID": None,
                     "hasCollectionAndSectionID": False,
@@ -525,11 +433,9 @@ def InteractBlockedAndUnBlocked(idUser, choiceInteract, dataFB): # Tương tác 
      
      elif (choiceInteract == "unblock"):
      
-          dataForm["fb_api_caller_class"] = "RelayModern"
-          dataForm["fb_api_req_friendly_name"] = "BlockingSettingsBlockMutation"
-          dataForm["server_timestamps"] = "true"
-          dataForm["doc_id"] = "6009824239038988"
-          dataForm["variables"] = json.dumps(
+          friendlyName = "BlockingSettingsBlockMutation"
+          docID = "6009824239038988"
+          variables = json.dumps(
                {
                     "input": {
                          "block_action": "UNBLOCK",
@@ -548,7 +454,9 @@ def InteractBlockedAndUnBlocked(idUser, choiceInteract, dataFB): # Tương tác 
                "error": 1,
                "messages": "Không tồn tại lệnh này."
           }
-          
+     
+     dataForm = formAll(dataFB, friendlyName, docID)
+     dataForm["variables"] = variables
      mainRequests = {
           "headers": Headers(dataFB["cookieFacebook"], dataForm),
           "timeout": 60000,
