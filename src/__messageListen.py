@@ -1,37 +1,13 @@
 import json, requests, re, json
 from bs4 import BeautifulSoup
 import __facebookToolsV2
-# from LorenBot.plugins import __facebookToolsV2
 import datetime
+from utils import parse_cookie_string, dataSplit, clearHTML
 """
 Lời nói đầu, Xin NHẮC là đây là lấy tin nhắn từ m.facebook.com, chứ không phải từ
 wss://edge-chat.facebook.com/chat (websocket) nên là CHẮC CHẮN sẽ có độ trễ (tùy thuộc vào tốc độ mạng của bạn)
 Kí Tên: Nguyễn Minh Huy
 """
-
-
-def parse_cookie_string(cookie_string):
-     cookie_dict = {}
-     cookies = cookie_string.split(";")
-
-     for cookie in cookies:
-          if "=" in cookie:
-               key, value = cookie.split("=")
-          else:
-               pass
-          try: cookie_dict[key] = value
-          except: pass
-
-     return cookie_dict
-
-def dataSplit(string1, string2, numberSplit1, numberSplit2, HTML, amount=None, string3=None, numberSplit3=None):
-     if (amount == None):
-          return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2]
-     elif (amount == 3):
-          return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2].split(string3)[numberSplit3]
-def clearHTML(text):
-     regex = re.compile(r'<[^>]+>')
-     return regex.sub('', text)
 
 def jsonFormat(senderID, messageContents, messageID, overviewRequests):
      return {
@@ -70,7 +46,6 @@ def Listen(dataFB, threadID, Url="https://m.facebook.com"):
      }
      
      sendRequests = requests.get(**mainRequests)
-     open("../../Telegram/test1.html", "w").write(str(sendRequests.text))
      countHtmlTags = str(sendRequests.text).count("data-sigil=\"message-text") + 1
      for i in range(countHtmlTags):
           try:
@@ -123,6 +98,6 @@ def Listen(dataFB, threadID, Url="https://m.facebook.com"):
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 12:01 ngày 22/6/2023 • Cập nhật mới nhất: 23:29 18/07/2023
+✓Hoàn thành vào lúc 12:01 ngày 22/6/2023 • Cập nhật mới nhất: 7:21 20/07/2023
 ✓Tôn trọng tác giả ❤️
 """
