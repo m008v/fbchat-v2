@@ -168,6 +168,6 @@ def getListThreadID(dataGet): # Lấy danh sách threadID
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 18:20 08/07/2023
+✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 7:18 20/07/2023
 ✓Tôn trọng tác giả ❤️
 """
