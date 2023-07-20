@@ -1,4 +1,4 @@
-import attr
+import attr, re
 
 def parse_cookie_string(cookie_string):
      cookie_dict = {}
@@ -56,8 +56,11 @@ def parse_cookie_string(cookie_string):
 
      return cookie_dict
 
-def dataSplit(string1, string2, numberSplit1, numberSplit2, HTML):
-     return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2]
+def dataSplit(string1, string2, numberSplit1, numberSplit2, HTML, amount=None, string3=None, numberSplit3=None):
+     if (amount == None):
+          return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2]
+     elif (amount == 3):
+          return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2].split(string3)[numberSplit3]
      
 def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None):
      __reg = attr.ib(0).counter
@@ -88,3 +91,6 @@ def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None):
 
      return dataForm
      
+def clearHTML(text):
+     regex = re.compile(r'<[^>]+>')
+     return regex.sub('', text)
