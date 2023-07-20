@@ -1,52 +1,5 @@
 import requests, attr, json, time, random
- 
-def Headers(setCookies, dataForm=None):
-     headers = {}
-     headers["Host"] = "www.facebook.com"
-     headers["Connection"] = "keep-alive"
-     if (dataForm != None):
-          headers["Content-Length"] = str(len(dataForm))
-     headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
-     headers["Accept"] = "*/*"
-     headers["Origin"] = "https://www.facebook.com"
-     headers["Sec-Fetch-Site"] = "same-origin"
-     headers["Sec-Fetch-Mode"] = "cors"
-     headers["Sec-Fetch-Dest"] = "empty"
-     headers["Referer"] = "https://www.facebook.com/"
-     headers["Accept-Language"] = "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
-     
-     return headers
-     
-def digitToChar(digit):
-          if digit < 10:
-               return str(digit)
-          return chr(ord("a") + digit - 10)
-     
-     
-def str_base(number, base):
-     if number < 0:
-          return "-" + str_base(-number, base)
-     (d, m) = divmod(number, base)
-     if d > 0:
-          return str_base(d, base) + digitToChar(m)
-     return digitToChar(m)
-
-def parse_cookie_string(cookie_string):
-     cookie_dict = {}
-     cookies = cookie_string.split(";")
-
-     for cookie in cookies:
-          if "=" in cookie:
-               key, value = cookie.split("=")
-          else:
-               pass
-          try: cookie_dict[key] = value
-          except: pass
-
-     return cookie_dict
-
-def dataSplit(string1, string2, numberSplit1, numberSplit2, HTML):
-     return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2]
+from utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll
 
 def dataGetHome(setCookies):
      
@@ -93,15 +46,7 @@ def getAllThreadList(dataFB): # Lấy dữ liệu những thành phần tin nh�
      _revision = attr.ib()
      __reg += 1
      randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
-     dataForm = {}
-     
-     dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
-     dataForm["jazoest"] = dataFB["jazoest"]
-     dataForm["__a"] = 1
-     dataForm["__user"] =str(dataFB["FacebookID"])
-     dataForm["__req"] = str_base(__reg, 36) 
-     dataForm["__rev"] = dataFB["client_revision"]
-     dataForm["av"] = dataFB["FacebookID"]
+     dataForm = formAll(dataFB, requireGraphql=None)
      dataForm["queries"] = json.dumps({
           "o0": {
                "doc_id": "1349387578499440",
@@ -127,20 +72,20 @@ def getAllThreadList(dataFB): # Lấy dữ liệu những thành phần tin nh�
      }
                
      sendRequests = requests.post(**mainRequests)
-     return sendRequests.text.split("{\"successful_results\"")[0]
+     # return sendRequests.text.split("{\"successful_results\"")[0]
+     return sendRequests
 
 def typeCommand(commandUsed, threadID, dataGet): # Tổng hợp các lệnh có thể làm
      listData = []
      
      try: getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
-     except: return json.loads(dataGet)["o0"]["error"]
+     except: return json.loads(dataGet)["o0"]["errors"][0]["summary"]
      for getNeedIDThread in getData:
           if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(threadID)):
                dataThread = getNeedIDThread
-               
-     # if (str(globals().keys()).find("dataThread") != 0):
+     # if (str(globals().keys()).find("dataThread") != 0):>
           # dataThread = None
-          
+     
      if (dataThread != None):
           if (commandUsed == "getAdmin"): # Lấy id Admin Thread
                for dataID in dataThread["thread_admins"]:

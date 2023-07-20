@@ -59,24 +59,32 @@ def parse_cookie_string(cookie_string):
 def dataSplit(string1, string2, numberSplit1, numberSplit2, HTML):
      return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2]
      
-def formAll(dataFB, FBApiReqFriendlyName, docID):
+def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None):
      __reg = attr.ib(0).counter
      _revision = attr.ib()
      __reg += 1 
      dataForm = {}
      
-     dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
-     dataForm["jazoest"] = dataFB["jazoest"]
-     dataForm["__a"] = 1
-     dataForm["__user"] =str(dataFB["FacebookID"])
-     dataForm["__req"] = str_base(__reg, 36) 
-     dataForm["__rev"] = dataFB["client_revision"]
-     dataForm["av"] = dataFB["FacebookID"]
-     dataForm["fb_api_caller_class"] = "RelayModern"
-     dataForm["fb_api_req_friendly_name"] = FBApiReqFriendlyName
-     dataForm["server_timestamps"] = "true"
-     dataForm["doc_id"] = str(docID)
-     
+     if (requireGraphql == None):
+          dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
+          dataForm["jazoest"] = dataFB["jazoest"]
+          dataForm["__a"] = 1
+          dataForm["__user"] =str(dataFB["FacebookID"])
+          dataForm["__req"] = str_base(__reg, 36) 
+          dataForm["__rev"] = dataFB["client_revision"]
+          dataForm["av"] = dataFB["FacebookID"]
+          dataForm["fb_api_caller_class"] = "RelayModern"
+          dataForm["fb_api_req_friendly_name"] = FBApiReqFriendlyName
+          dataForm["server_timestamps"] = "true"
+          dataForm["doc_id"] = str(docID)
+     else:
+          dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
+          dataForm["jazoest"] = dataFB["jazoest"]
+          dataForm["__a"] = 1
+          dataForm["__user"] =str(dataFB["FacebookID"])
+          dataForm["__req"] = str_base(__reg, 36) 
+          dataForm["__rev"] = dataFB["client_revision"]
+          dataForm["av"] = dataFB["FacebookID"]
 
      return dataForm
      
