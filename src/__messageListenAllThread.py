@@ -1,14 +1,13 @@
 import json, requests, re, json
 from bs4 import BeautifulSoup
-import __facebookToolsV2
 import datetime
-from utils import parse_cookie_string, dataSplit, clearHTML
+from LorenBot.plugins.utils import parse_cookie_string, dataSplit, clearHTML
 
 def jsonFormat(idUserOrThread, getName, contentMessages, timeStampSent, DatetimeSent, timeHasPassed, formatType, unseenCount=None):
      return {
           "IDThread/User": idUserOrThread,
           "nameThread/User": getName,
-          "ContentMessages": contentMessages,
+          "ContentMessages": clearHTML(contentMessages.replace("</span", "")),
           "timeStampSent": timeStampSent,
           "datetimeSent": str(DatetimeSent),
           "timeHasPassed": timeHasPassed,
@@ -43,11 +42,13 @@ def Listen(dataFB):
      for totalCount in range(1, classGetNameLength + 1):
           try:
                getName = dataSplit("<header><h3 class=\"", ">", totalCount, 1, sendRequests.text, 3, "<", 0)
-               contentMessages = dataSplit("class=\"snippet ellipsis", ">", totalCount, 1, sendRequests.text, 3, "<", 0)
+               contentMessages = dataSplit("class=\"snippet ellipsis", ">", totalCount, 1, sendRequests.text, 3, "</span></header></div></div><div", 0)
                timeStampSent = dataSplit("<abbr data-store=\"&#123;&quot;time&quot;:", ",", totalCount, 0, sendRequests.text)
                DatetimeSent = datetime.datetime.fromtimestamp(int(timeStampSent))
                timeHasPassed= dataSplit("data-sigil=\"timestamp\">", "<", totalCount, 0, sendRequests.text)
                senderID = dataSplit("id=\"threadlist_row_", "\"", totalCount, 0, sendRequests.text)
+               if (contentMessages.find("messageicons img") == 0):
+                    contentMessages = "Đã gửi 1 ảnh."
                if (senderID.find("thread_fbid_") != 0):
                     formatType, idUserOrThread = "User", senderID.split("_")[3] 
                else:
