@@ -41,12 +41,9 @@ def dataGetHome(setCookies):
      }
 
 def getAllThreadList(dataFB): # Lấy dữ liệu những thành phần tin nhắn ở INBOX
-
-     __reg = attr.ib(0).counter
-     _revision = attr.ib()
-     __reg += 1
+     
      randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
-     dataForm = formAll(dataFB, requireGraphql=None)
+     dataForm = formAll(dataFB, requireGraphql=False)
      dataForm["queries"] = json.dumps({
           "o0": {
                "doc_id": "1349387578499440",
