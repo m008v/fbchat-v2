@@ -3,7 +3,7 @@ FBChat-Remake: Open Source
 
 Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu tiên mà mình làm lại một source lớn như vậy nên sẽ không tránh được những *sai sót* trong quá trình code, rất mong sẽ được người dùng báo cáo lại **Lỗi** tại issues của GitHub này nhé:3
 
-.. image:: https://i.ibb.co/tbDvDvR/Picsart-23-07-20-08-26-28-991.jpg
+.. image:: https://i.ibb.co/Vp7Xqq6/Picsart-23-08-04-21-27-19-979.jpg
 
 **📢Dành cho người mới**: *Lướt xuống cuối trang bạn sẽ thấy* **TUTORIAL (Hướng dẫn)** *nhận tin nhắn và gửi tin nhắn nhé!*
 
