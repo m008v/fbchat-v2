@@ -1,5 +1,6 @@
 import requests, attr, json, time, random
-from utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll
+from utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll, mainRequests
+# from LorenBot.plugins.utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll, mainRequests
 
 def dataGetHome(setCookies):
      
@@ -40,124 +41,131 @@ def dataGetHome(setCookies):
           "cookieFacebook": setCookies
      }
 
-def getAllThreadList(dataFB): # Lấy dữ liệu những thành phần tin nhắn ở INBOX
+class fbTools:
+
+     def __init__(self, dataFB, threadID):
+         
+          self.threadID = threadID
+          self.dataGet = None
+          self.dataFB = dataFB
      
-     randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
-     dataForm = formAll(dataFB, requireGraphql=False)
-     dataForm["queries"] = json.dumps({
-          "o0": {
-               "doc_id": "1349387578499440",
-               "query_params": {
-                    "thread_and_message_id": {
-                         "limit": 1,
-                         "before": None,
-                         "tags": ["INBOX"],
-                         "includeDeliveryReceipts": False,
-                         "includeSeqID": True,
+     def getAllThreadList(self): # Lấy dữ liệu những thành phần tin nhắn ở INBOX
+     
+          randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
+          dataForm = formAll(self.dataFB, requireGraphql=None)
+          dataForm["queries"] = json.dumps({
+               "o0": {
+                    "doc_id": "1349387578499440",
+                    "query_params": {
+                         "thread_and_message_id": {
+                              "limit": 1,
+                              "before": None,
+                              "tags": ["INBOX"], # INBOX, PENDING, ARCHIVED
+                              "includeDeliveryReceipts": False,
+                              "includeSeqID": True,
+                         }
                     }
                }
-          }
-     })
-     
-     mainRequests = {
-               "headers": Headers(dataFB["cookieFacebook"], dataForm),
-               "timeout": 60000,
-               "url": "https://www.facebook.com/api/graphqlbatch/",
-               "data": dataForm,
-               "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
-               "verify": True
-     }
-               
-     sendRequests = requests.post(**mainRequests)
-     # return sendRequests.text.split("{\"successful_results\"")[0]
-     return sendRequests
-
-def typeCommand(commandUsed, threadID, dataGet): # Tổng hợp các lệnh có thể làm
-     listData = []
-     
-     try: getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
-     except: return json.loads(dataGet)["o0"]["errors"][0]["summary"]
-     for getNeedIDThread in getData:
-          if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(threadID)):
-               dataThread = getNeedIDThread
-     # if (str(globals().keys()).find("dataThread") != 0):>
-          # dataThread = None
-     
-     if (dataThread != None):
-          if (commandUsed == "getAdmin"): # Lấy id Admin Thread
-               for dataID in dataThread["thread_admins"]:
-                    listData.append(str(dataID["id"]))
-               exportData = {
-                    "adminThreadList": listData
-               }
-          elif (commandUsed == "threadInfomation"): # Lấy thông tin Thread
-               threadInfoList = dataThread["customization_info"]
-               exportData = {
-                    "nameThread": dataThread["name"], 
-                    "IDThread": threadID, 
-                    "emojiThread": threadInfoList["emoji"],
-                    "messageCount": dataThread["messages_count"],
-                    "adminThreadCount": len(dataThread["thread_admins"]),
-                    "memberCount": len(dataThread["all_participants"]["nodes"]),
-                    "approvalMode": "Bật" if (dataThread["approval_mode"] != 0) else "Tắt",
-                    "joinableMode": "Bật" if (dataThread["joinable_mode"]["mode"] != "0") else "Tắt",
-                    "urlJoinableThread": dataThread["joinable_mode"]["link"]
-               }
-          elif (commandUsed == "exportMemberListToJson"): # Chuyển đổi dữ liệu member Thread
-               getMemberList = dataThread["all_participants"]["nodes"]
-               for exportMemberList in getMemberList:
-                    dataUserThread = exportMemberList["messaging_actor"]
-                    exportData = json.dumps({
-                         dataUserThread["id"]: {
-                              "nameFB": str(dataUserThread.get("name")),
-                              "idFacebook": str(dataUserThread.get("id")),
-                              "profileUrl": str(dataUserThread.get("url")),
-                              "avatarUrl": str(dataUserThread["big_image_src"]["uri"]),
-                              "gender": str(dataUserThread.get("gender")),
-                              "usernameFB": str(dataUserThread.get("username"))
-                         }
-                    }, skipkeys=True, allow_nan=True, ensure_ascii=False, indent=5)
-                    listData.append(exportData)
-               exportData = listData
-          else:
-               exportData = {
-                    "err": "no data"
-               }
-               
-          return exportData
+          })
           
-     else:
-          return "Không lấy được dữ liệu ThreadList, đã xảy ra lỗi T___T"
-
-def getListThreadID(dataGet): # Lấy danh sách threadID
-     try:
-          threadIDList = []
-          getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
-          for getThreadID in getData:
-               if (getThreadID["thread_key"]["thread_fbid"] != None):
-                    threadIDList.append(getThreadID["thread_key"]["thread_fbid"])
-          return {
-               "threadIDList": threadIDList,
-               "countThread": len(threadIDList)
-          }
-     except:
-          return {
-               "ERR": {}
-          }
-
+          sendRequests = requests.post(**mainRequests("https://www.facebook.com/api/graphqlbatch/", dataForm, self.dataFB["cookieFacebook"]))
+          # return sendRequests.text.split("{\"successful_results\"")[0]
+          self.dataGet = sendRequests.text.split('{"successful_results"')[0]
+          return True
+     
+     def typeCommand(self, commandUsed): # Tổng hợp các lệnh có thể làm
+          listData = []
+          
+          try: getData = json.loads(self.dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
+          except: return json.loads(self.dataGet)["o0"]["errors"][0]["summary"]
+          for getNeedIDThread in getData:
+               if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(self.threadID)):
+                    dataThread = getNeedIDThread
+          # if (str(globals().keys()).find("dataThread") != 0):>
+               # dataThread = None
+          
+          if (dataThread != None):
+               if (commandUsed == "getAdmin"): # Lấy id Admin Thread
+                    for dataID in dataThread["thread_admins"]:
+                         listData.append(str(dataID["id"]))
+                    exportData = {
+                         "adminThreadList": listData
+                    }
+               elif (commandUsed == "threadInfomation"): # Lấy thông tin Thread
+                    threadInfoList = dataThread["customization_info"]
+                    exportData = {
+                         "nameThread": dataThread["name"], 
+                         "IDThread": self.threadID, 
+                         "emojiThread": threadInfoList["emoji"],
+                         "messageCount": dataThread["messages_count"],
+                         "adminThreadCount": len(dataThread["thread_admins"]),
+                         "memberCount": len(dataThread["all_participants"]["nodes"]),
+                         "approvalMode": "Bật" if (dataThread["approval_mode"] != 0) else "Tắt",
+                         "joinableMode": "Bật" if (dataThread["joinable_mode"]["mode"] != "0") else "Tắt",
+                         "urlJoinableThread": dataThread["joinable_mode"]["link"]
+                    }
+               elif (commandUsed == "exportMemberListToJson"): # Chuyển đổi dữ liệu member Thread
+                    getMemberList = dataThread["all_participants"]["nodes"]
+                    for exportMemberList in getMemberList:
+                         dataUserThread = exportMemberList["messaging_actor"]
+                         exportData = json.dumps({
+                              dataUserThread["id"]: {
+                                   "nameFB": str(dataUserThread.get("name")),
+                                   "idFacebook": str(dataUserThread.get("id")),
+                                   "profileUrl": str(dataUserThread.get("url")),
+                                   "avatarUrl": str(dataUserThread["big_image_src"]["uri"]),
+                                   "gender": str(dataUserThread.get("gender")),
+                                   "usernameFB": str(dataUserThread.get("username"))
+                              }
+                         }, skipkeys=True, allow_nan=True, ensure_ascii=False, indent=5)
+                         listData.append(exportData)
+                    exportData = listData
+               else:
+                    exportData = {
+                         "err": "no data"
+                    }
+                    
+               return exportData
+               
+          else:
+               return "Không lấy được dữ liệu ThreadList, đã xảy ra lỗi T___T"
+     
+     def getListThreadID(dataGet): # Lấy danh sách threadID
+          try:
+               threadIDList = []
+               getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
+               for getThreadID in getData:
+                    if (getThreadID["thread_key"]["thread_fbid"] != None):
+                         threadIDList.append(getThreadID["thread_key"]["thread_fbid"])
+               return {
+                    "threadIDList": threadIDList,
+                    "countThread": len(threadIDList)
+               }
+          except:
+               return {
+                    "ERR": {}
+               }
+     
 """ Hướng dẫn sử dụng (Tutorial)
 
  * Dữ liệu yêu cầu (args):
  
-     - dataFB: lấy từ dataGetHome
      - setCookies: Cookie account Facebook
      - commandUsed: Lệnh cần dùng (get thứ gì đó)[List Command: getAdmin, exportMemberListToJson, threadInfomation (Đọc command trên if, elif để hiểu rõ thêm)]
      - threadID: ID nhóm (Thread)
-     - dataGet: lấy từ getAllThreadList(args - dữ liệu đầu vào)
+  
+* Code mẫu:
      
+   _ = fbTools(dataGetHome("<setCookies>"), "<threadID>")
+     print(_.getAllThreadList())
+     print(_.typeCommand("getAdmin")) # Lấy thông tin List ID Admin của nhóm
+    
 * Kết quả trả về:
      
-     Không có dữ liệu.
+     - Khi lấy thành công:
+          {'adminThreadList': ['9209278', '100025536690946', '100034821226355']}
+     - Khi lấy thất bại:
+          <description error from Facebook>
      
      - Ghi chú: nếu không hiểu gì hãy ib tui nhé hehe.
 
@@ -168,6 +176,6 @@ def getListThreadID(dataGet): # Lấy danh sách threadID
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 7:18 20/07/2023
+✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 00:37 06/08/2023
 ✓Tôn trọng tác giả ❤️
 """
