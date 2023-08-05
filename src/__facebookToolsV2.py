@@ -130,10 +130,10 @@ class fbTools:
           else:
                return "Không lấy được dữ liệu ThreadList, đã xảy ra lỗi T___T"
      
-     def getListThreadID(dataGet): # Lấy danh sách threadID
+     def getListThreadID(self): # Lấy danh sách threadID
           try:
                threadIDList = []
-               getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
+               getData = json.loads(self.dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
                for getThreadID in getData:
                     if (getThreadID["thread_key"]["thread_fbid"] != None):
                          threadIDList.append(getThreadID["thread_key"]["thread_fbid"])
@@ -176,6 +176,6 @@ class fbTools:
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 00:37 06/08/2023
+✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 00:48 06/08/2023
 ✓Tôn trọng tác giả ❤️
 """
