@@ -1,33 +1,22 @@
 import attr, re
 
-def parse_cookie_string(cookie_string):
-     cookie_dict = {}
-     cookies = cookie_string.split(";")
-
-     for cookie in cookies:
-          if "=" in cookie:
-               key, value = cookie.split("=")
-          else:
-               pass
-          try: cookie_dict[key] = value
-          except: pass
-
-     return cookie_dict
-
-def Headers(setCookies, dataForm=None):
+def Headers(setCookies, dataForm=None, Host=None):
+     if (Host == None): Host = "www.facebook.com"
      headers = {}
-     headers["Host"] = "www.facebook.com"
+     headers["Host"] = Host
      headers["Connection"] = "keep-alive"
      if (dataForm != None):
           headers["Content-Length"] = str(len(dataForm))
      headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
      headers["Accept"] = "*/*"
-     headers["Origin"] = "https://www.facebook.com"
+     headers["Origin"] = "https://" + Host
      headers["Sec-Fetch-Site"] = "same-origin"
      headers["Sec-Fetch-Mode"] = "cors"
      headers["Sec-Fetch-Dest"] = "empty"
-     headers["Referer"] = "https://www.facebook.com/"
+     headers["Referer"] = "https://" + Host
      headers["Accept-Language"] = "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
+     
+     return headers
      
 def digitToChar(digit):
           if digit < 10:
@@ -94,3 +83,13 @@ def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None):
 def clearHTML(text):
      regex = re.compile(r'<[^>]+>')
      return regex.sub('', text)
+     
+def mainRequests(urlRequests, dataForm, setCookies):
+     return {
+          "headers": Headers(setCookies, dataForm),
+          "timeout": 5,
+          "url": urlRequests, # "https://www.facebook.com/api/graphql/",
+          "data": dataForm,
+          "cookies": parse_cookie_string(setCookies),
+          "verify": True
+     }
