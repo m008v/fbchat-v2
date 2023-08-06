@@ -1,18 +1,7 @@
-try:
- from re import search as regex
- from time import sleep
- from datetime import datetime
- import json,os, random
- try: import __facebookToolsV2
- except: from LorenBot.plugins import __facebookToolsV2 
- import requests
- import attr
- import time, json
- from threading import Thread,local
- from threading import Thread
- from utils import Headers, digitToChar, str_base, parse_cookie_string, formAll
-except Exception as errLOg:
- print("err: " + str(errLOg))
+from datetime import datetime
+import json, random, requests, attr, time
+from threading import Thread
+from LorenBot.plugins.utils import Headers, digitToChar, str_base, parse_cookie_string, formAll
      
 class api():
      def sendMessage(dataFB, contentSend, threadID, typeAttachment=None, attachmentID=None, typeChat=None, replyMessage=None):
