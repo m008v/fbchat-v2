@@ -5,7 +5,7 @@ Remake from fbchat-python
 """
 import random, attr
 from os.path import basename
-from mimetypes import guess_type
+from mimetypes import guess_type 
 import requests, json
 # from LorenBot.plugins import __facebookToolsV2
 import __facebookToolsV2
