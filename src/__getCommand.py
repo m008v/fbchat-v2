@@ -1,6 +1,6 @@
 import json
 
-def Main(contents):
+def Main(contents): 
     try:
         ContentsArgs = contents.split()
     except:
