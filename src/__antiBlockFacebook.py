@@ -70,7 +70,7 @@ def antiBlockMain(setCookies, Url = "https://m.facebook.com"):
      }
      
      sendRequests = requests.get(**mainRequests)
-     
+   
      if (sendRequests.status_code == 200): 
           return 1
      else:
