@@ -1,6 +1,5 @@
 import requests, attr, json, time, random
-try: import __facebookToolsV2
-except: from LorenBot.plugins import __facebookToolsV2
+import __facebookToolsV2
 from utils import Headers, digitToChar, str_base, parse_cookie_string, formAll
      
 def Main(dataFB, typeAdded, messageID, emojiChoice):
