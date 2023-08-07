@@ -15,8 +15,8 @@ Thông tin cơ bản về FBChat Remake
 - **Người đóng góp**: *hakuOwO*
 - **Ngôn ngữ lập trình:** *Python*
 - **Phát triển bởi:** *Nguyễn Minh Huy*
-- **Phiên bản hiện tại:** *1.0.2*
-- **Cập nhật lần cuối:** *21:33 04/08/2023*
+- **Phiên bản hiện tại:** *1.0.3*
+- **Cập nhật lần cuối:** *10:46 07/08/2023*
 
 =======================================
 Tutorial (Hướng dẫn)
