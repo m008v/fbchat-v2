@@ -4,7 +4,7 @@ from utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit
 
 def dataGetHome(setCookies):
      
-     mainRequests = {
+     mainRequests = { 
                "headers": {
                     "authority": "m.facebook.com",
                     "user-agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36",
