@@ -16,7 +16,7 @@ def jsonFormat(idUserOrThread, getName, contentMessages, timeStampSent, Datetime
           "__type": formatType
      }
      
-          
+         
 def Listen(dataFB):
      mainRequests = {
           "headers": {
