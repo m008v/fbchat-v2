@@ -20,7 +20,7 @@ def Main(contents):
     num_args = len(ContentsArgs) - 1
     ArgsFull = " ".join(ContentsArgs[1:])
     Args1 = ContentsArgs[1] if num_args >= 1 else None
-    Args2 = ContentsArgs[2] if num_args >= 2 else None
+    Args2 = ContentsArgs[2] if num_args >= 2 else None 
     Args3 = ContentsArgs[3] if num_args >= 3 else None
     Args4 = " ".join([ContentsArgs[i] for i in range(4, len(ContentsArgs))]) if num_args >= 4 else None
 
