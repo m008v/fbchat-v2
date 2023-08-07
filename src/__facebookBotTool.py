@@ -7,7 +7,7 @@ from LorenBot.plugins.utils import dataSplit, formAll, parse_cookie_string, digi
 # Này dành cho mấy bạn sẽ làm Nuôi Facebook =)) nếu biết cách phối hợp
 
 class fbht:
-     
+    
      def __init__(self, cookieFB):
      
           self.cookies = cookieFB
