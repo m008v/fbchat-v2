@@ -16,7 +16,7 @@ Thông tin cơ bản về FBChat Remake
 - **Ngôn ngữ lập trình:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *1.0.3.1*
-- **Cập nhật lần cuối:** *15:12 12/08/2023*
+- **Cập nhật lần cuối:** *16:07 12/08/2023*
 - **Vùng thời gian**: *GMT + 07*
 
 =======================================
@@ -58,7 +58,11 @@ Tutorial (Hướng dẫn)
 Thông báo về phiên bản mới
 =======================================
 
-*📢*: Cũng chẳng hứa hẹn gì nhiều, hiện tại code đã được clean sạch nhất có thể (theo cá nhân của mình nhìn thấy). Trong những lần cập nhật **sắp tới** sẽ xuất hiện *MessageListenMqtt* và nhận tin nhắn bằng wss (**websocket**) hoàn toàn giống Facebook chống block tốt hơn.
+*📢*: I am trying my best to complete receiving messages from **Facebook's websocket** as quickly as possible, however, I am encountering some issues with it, specifically: 
+
+.. image:: https://i.ibb.co/L5kTYPX/Screenshot-2023-08-12-16-01-24-843-com-termux.png
+
+I will try to fix it as soon as possible. Last update notification: 16:06 12/08/2023 (GMT +7)
 
 =======================================
 Thông tin liên hệ
