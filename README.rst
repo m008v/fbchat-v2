@@ -11,12 +11,12 @@ Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu ti
 Thông tin cơ bản về FBChat Remake
 =======================================
 
-- **Được làm lại từ:** *fbchat (Python)* 
+- **Được làm lại từ:** `𝘧𝘣𝘤𝘩𝘢𝘵 (𝘗𝘺𝘵𝘩𝘰𝘯) <https://fbchat.readthedocs.io/en/stable/>`_
 - **Người đóng góp**: *hakuOwO*
-- **Ngôn ngữ lập trình:** *Python*
+- **Ngôn ngữ lập trình:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *1.0.3.1*
-- **Cập nhật lần cuối:** *14:41 12/08/2023*
+- **Cập nhật lần cuối:** *14:56 12/08/2023*
 - **Vùng thời gian**: *GMT + 07*
 
 =======================================
@@ -64,6 +64,6 @@ Thông báo về phiên bản mới
 Thông tin liên hệ
 =======================================
 
-- **FB:** *https://m.me/Booking.MinhHuyDev*
-- **Telegram:** *https://t.me/MinhHuyDev*
-- **Website**: *https://mhuyz.dev*
+- **Facebook:** `Nguyễn Minh Huy :( !! <https://www.facebook.com/Booking.MinhHuyDev>`_
+- **Telegram:** `MinhHuyDev <https://t.me/MinhHuyDev>`_
+- **Website**: `mhuyz.dev <https://mhuyz.dev>`_
