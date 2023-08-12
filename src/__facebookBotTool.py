@@ -1,7 +1,7 @@
 import attr, requests, json, re, base64
-from LorenBot.plugins.utils import dataSplit, formAll, parse_cookie_string, digitToChar, str_base, Headers
-# from utils import dataSplit, formAll, parse_cookie_string, digitToChar, str_base, Headers
-# import __facebookToolsV2
+# from LorenBot.plugins.utils import dataSplit, formAll, parse_cookie_string, digitToChar, str_base, Headers
+from utils import dataSplit, formAll, parse_cookie_string, digitToChar, str_base, Headers
+import __facebookToolsV2
 
 # Author: MinhHuyDev (GitHub)
 # Này dành cho mấy bạn sẽ làm Nuôi Facebook =)) nếu biết cách phối hợp
