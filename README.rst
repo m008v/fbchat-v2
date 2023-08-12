@@ -3,7 +3,7 @@ FBChat-Remake: Open Source
 
 Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu tiên mà mình làm lại một source lớn như vậy nên sẽ không tránh được những *sai sót* trong quá trình code, rất mong sẽ được người dùng báo cáo lại **Lỗi** tại issues của GitHub này nhé:3
 
-.. image:: https://i.ibb.co/Vp7Xqq6/Picsart-23-08-04-21-27-19-979.jpg
+.. image:: https://i.ibb.co/3TWntY6/Picsart-23-08-12-15-11-30-693.jpg
 
 **📢Dành cho người mới**: *Lướt xuống cuối trang bạn sẽ thấy* **TUTORIAL (Hướng dẫn)** *nhận tin nhắn và gửi tin nhắn nhé!*
 
@@ -16,7 +16,7 @@ Thông tin cơ bản về FBChat Remake
 - **Ngôn ngữ lập trình:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *1.0.3.1*
-- **Cập nhật lần cuối:** *14:56 12/08/2023*
+- **Cập nhật lần cuối:** *15:12 12/08/2023*
 - **Vùng thời gian**: *GMT + 07*
 
 =======================================
