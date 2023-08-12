@@ -1,7 +1,7 @@
 from datetime import datetime
 import json, random, requests, attr, time
 from threading import Thread 
-from LorenBot.plugins.utils import Headers, digitToChar, str_base, parse_cookie_string, formAll
+from utils import Headers, digitToChar, str_base, parse_cookie_string, formAll
      
 class api():
      def sendMessage(dataFB, contentSend, threadID, typeAttachment=None, attachmentID=None, typeChat=None, replyMessage=None):
