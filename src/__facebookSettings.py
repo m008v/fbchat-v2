@@ -1,9 +1,9 @@
 import json, requests, time, json, attr, random, re, string
 import datetime 
-# import __facebookToolsV2
-# from utils import Headers, digitToChar, str_base, dataSplit, parse_cookie_string, formAll, mainRequests
-from LorenBot.plugins.utils import Headers, digitToChar, str_base, dataSplit, parse_cookie_string, formAll, mainRequests
-from LorenBot.plugins import __facebookToolsV2
+import __facebookToolsV2
+from utils import Headers, digitToChar, str_base, dataSplit, parse_cookie_string, formAll, mainRequests
+# from LorenBot.plugins.utils import Headers, digitToChar, str_base, dataSplit, parse_cookie_string, formAll, mainRequests
+# from LorenBot.plugins import __facebookToolsV2
 
 def randStr(length):
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
