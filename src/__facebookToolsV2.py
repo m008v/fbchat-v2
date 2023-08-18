@@ -1,6 +1,6 @@
 import requests, attr, json, time, random
 from utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll, mainRequests
-
+ 
 def dataGetHome(setCookies):
      
      mainRequests = {
