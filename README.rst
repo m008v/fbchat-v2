@@ -42,17 +42,91 @@ Tutorial (Hướng dẫn)
 .. code-block:: bash
   
   cd fbchat-v2/src && touch mainBot.py
-**Sau đó**: Tiếp tục vào file **mainBot.py**, Viết những dòng code cài đặt module như sau:
+**Sau đó**: Tiếp tục vào file **mainBot.py**, Và copy đoạn code sau và dán vào file:
 
 .. code-block:: python
 
-  import __facebooKToolsV2 # BẮT BUỘC
-  import __messageListen # BẮT BUỘC
-  import __sendMessage # BẮT BUỘC
-  import __uploadImages # KHÔNG BẮT BUỘC (Tùy thuộc vào b có muốn dùng ảnh hay không)
-  import json, requests, datetime, time
+     from __facebookToolsV2 import dataGetHome
+     from __messageListen import Listen
+     from __sendMessage import *
+     import datetime
+     
+     class fbchatClient: # initialize client
+     
+          def __init__(self, setCookies, threadID): 
+               self.cookies = setCookies
+               self.threadID = threadID
+          
+          def getData(self): # Get value fb_dtsg, jazoest and more...
+               try: self.dataFB = dataGetHome(self.cookies)
+               except: return 0
+          
+          def messageListen(self):
+               _ = Listen(self.dataFB, self.threadID)
+               try: return _.get('results')
+               except: pass
+               
+          def sendMsg(self, contentSend):
+               _ = api.sendMessage(self.dataFB, contentSend, self.threadID)
+               return _
+     
+     setCookies = "<cookies get from Facebook>"
+     threadID = "<threadID>"
+     client = fbchatClient(setCookies, threadID)
+     dataFB = client.getData()
+     listMessages = ['fbchat-v2 _⁠(⁠ツ⁠)⁠_']
+     if (dataFB != 0):
+          print("\033[1;92mLOGIN\033[0m Success")
+          print("\033[1;92mDATABASE\033[0m Get messages....")
+          
+          try:
+               while 1:
+                    resultMessage = client.messageListen() # Nhận tin nhắn
+                    if (client.dataFB["FacebookID"] != resultMessage["senderID"]): # Không nhận tin nhắn của bot
+                         if listMessages[len(listMessages) - 1] != resultMessage['messageID']: # Kiểm tra tin nhắn cũ trong List
+                              client.dataFB["messageID"] = resultMessage['messageID'] # Cập nhật messageID lên dataFB
+                              print(f'\033[0mUser: \033[1;96m{resultMessage["senderID"]}\033[0m | Content: \033[1;96m{resultMessage["messageContents"]}\033[0m | IDMsg: \033[1;96m{resultMessage["messageID"]}\033[0m')
+                              listMessages.append(resultMessage['messageID'])
+                              match (resultMessage["messageContents"]):
+                                   case "uptime": # Xem thời gian thực
+                                        client.sendMsg(str(datetime.datetime.today()))
+                                   case "ping": # Reply tin nhắn nếu thấy tin nhắn là 'ping'
+                                        client.sendMsg('Pong!')
+                                   case __: # Nhái lại tin nhắn người dùng
+                                        client.sendMsg(str(resultMessage["messageContents"]))
+          except: pass         
+               
+     else:
+          raise SystemExit("\033[1;91mLOGIN\033[0m Failed.")
+          
+     # Author: MinhHuyDev
+     # Datetime: 20:29 Thứ 6, 18/08/2023 (GMT + 7)
 
-  # Đợi thêm nhé, lười viết nữa òi ^^
+Sau đó, quay lại Terminal/CMD và chạy file này bằng cách:
+
+.. code-block:: bash
+
+ python mainBot.py
+
+Nếu xảy ra lỗi và không chạy được, hãy thử lại bằng hay lệnh sau:
+
+.. code-block:: bash
+
+ python3 mainBot.py
+
+hoặc
+
+.. code-block:: bash
+
+ py mainBot.py
+
+💔Nếu vẫn xảy ra lỗi. Vui lòng kiểm tra xem đã tải Python về thiết bị hay chưa. Nếu chưa tải, hãy nhấp `vào đây <https://www.python.org/downloads/>`_ để được chuyển đến trang tải Python chính thức.
+
+**🏅Dưới đây là ví dụ khi chạy được bot thành công**:
+
+.. image:: https://i.ibb.co/fvJq87Z/Screenshot-2023-08-18-20-25-51-435-com-offsec-nethunter-kex.png
+
+🫶🏻Cảm ơn bạn đã đọc đến đây! Nếu bạn vẫn còn **nhiều câu hỏi thắc mắc**. Hãy lướt xuống dưới để tìm **câu trả lời** cho riêng mình nhé :3 Yêuuuuuu
 
 =======================================
 Thông báo về phiên bản mới
