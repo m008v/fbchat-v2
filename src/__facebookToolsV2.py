@@ -1,10 +1,9 @@
 import requests, attr, json, time, random
 from utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll, mainRequests
-# from LorenBot.plugins.utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll, mainRequests
 
 def dataGetHome(setCookies):
      
-     mainRequests = { 
+     mainRequests = {
                "headers": {
                     "authority": "m.facebook.com",
                     "user-agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36",
@@ -48,22 +47,22 @@ class fbTools:
           self.threadID = threadID
           self.dataGet = None
           self.dataFB = dataFB
+          self.ProcessingTime = None
      
      def getAllThreadList(self): # Lấy dữ liệu những thành phần tin nhắn ở INBOX
      
           randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
-          dataForm = formAll(self.dataFB, requireGraphql=None)
+          dataForm = formAll(self.dataFB, requireGraphql=0)
+          # dataForm["av"] = self.dataFB["cookieFacebook"].split("c_user=")[1].split(";")[0]
           dataForm["queries"] = json.dumps({
                "o0": {
-                    "doc_id": "1349387578499440",
+                    "doc_id": "3336396659757871",
                     "query_params": {
-                         "thread_and_message_id": {
-                              "limit": 1,
-                              "before": None,
-                              "tags": ["INBOX"], # INBOX, PENDING, ARCHIVED
-                              "includeDeliveryReceipts": False,
-                              "includeSeqID": True,
-                         }
+                         "limit": 150,
+                         "before": None,
+                         "tags": ["INBOX"], # INBOX, PENDING, ARCHIVED
+                         "includeDeliveryReceipts": False,
+                         "includeSeqID": True,
                     }
                }
           })
@@ -71,6 +70,7 @@ class fbTools:
           sendRequests = requests.post(**mainRequests("https://www.facebook.com/api/graphqlbatch/", dataForm, self.dataFB["cookieFacebook"]))
           # return sendRequests.text.split("{\"successful_results\"")[0]
           self.dataGet = sendRequests.text.split('{"successful_results"')[0]
+          self.ProcessingTime = sendRequests.elapsed.total_seconds()
           return True
      
      def typeCommand(self, commandUsed): # Tổng hợp các lệnh có thể làm
@@ -99,15 +99,15 @@ class fbTools:
                          "emojiThread": threadInfoList["emoji"],
                          "messageCount": dataThread["messages_count"],
                          "adminThreadCount": len(dataThread["thread_admins"]),
-                         "memberCount": len(dataThread["all_participants"]["nodes"]),
+                         "memberCount": len(dataThread["all_participants"]["edges"]),
                          "approvalMode": "Bật" if (dataThread["approval_mode"] != 0) else "Tắt",
                          "joinableMode": "Bật" if (dataThread["joinable_mode"]["mode"] != "0") else "Tắt",
                          "urlJoinableThread": dataThread["joinable_mode"]["link"]
                     }
                elif (commandUsed == "exportMemberListToJson"): # Chuyển đổi dữ liệu member Thread
-                    getMemberList = dataThread["all_participants"]["nodes"]
+                    getMemberList = dataThread["all_participants"]["edges"]
                     for exportMemberList in getMemberList:
-                         dataUserThread = exportMemberList["messaging_actor"]
+                         dataUserThread = exportMemberList["node"]["messaging_actor"]
                          exportData = json.dumps({
                               dataUserThread["id"]: {
                                    "nameFB": str(dataUserThread.get("name")),
@@ -133,17 +133,20 @@ class fbTools:
      def getListThreadID(self): # Lấy danh sách threadID
           try:
                threadIDList = []
+               threadNameList = []
                getData = json.loads(self.dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
                for getThreadID in getData:
                     if (getThreadID["thread_key"]["thread_fbid"] != None):
                          threadIDList.append(getThreadID["thread_key"]["thread_fbid"])
+                         threadNameList.append(getThreadID["name"])
                return {
                     "threadIDList": threadIDList,
+                    "threadNameList": threadNameList,
                     "countThread": len(threadIDList)
                }
-          except:
+          except Exception as errLog:
                return {
-                    "ERR": {}
+                    "ERR": str(errLog)
                }
      
 """ Hướng dẫn sử dụng (Tutorial)
@@ -176,6 +179,6 @@ class fbTools:
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 00:48 06/08/2023
+✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 03:06 19/08/2023
 ✓Tôn trọng tác giả ❤️
 """
