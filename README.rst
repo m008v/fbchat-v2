@@ -102,13 +102,13 @@ Tutorial (Hướng dẫn)
      # Author: MinhHuyDev
      # Datetime: 20:29 Thứ 6, 18/08/2023 (GMT + 7)
 
-Sau đó, quay lại Terminal/CMD và chạy file này bằng cách:
+Sau đó, quay lại **Terminal/CMD** và chạy file này bằng lệnh sau:
 
 .. code-block:: bash
 
  python mainBot.py
 
-Nếu xảy ra lỗi và không chạy được, hãy thử lại bằng hay lệnh sau:
+Nếu xảy ra lỗi và không chạy được, hãy thử lại bằng hai lệnh sau:
 
 .. code-block:: bash
 
