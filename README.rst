@@ -136,7 +136,7 @@ Các câu hỏi thường gặp
 
 Rất đơn giản, đầu tiên bạn truy vào **www.facebook.com** và mở cuộc trò chuyện Messenger lên. Sau đó nhấp vào nút **Xem tất cả trong Messenger**, hình ảnh minh hoạ:
 
-.. image:: https://i.ibb.co/X4ZqJm6/Screenshot-2023-08-18-20-49-08-436-com-offsec-nethunter-kex.png
+.. image:: https://i.ibb.co/tDK4nzT/IMG-20230820-133755.jpg
 
 **Bước tiếp theo**, bạn click vào *nhóm chat* cần lấy **ThreadID**. Lúc này trên thanh url của **website** sẽ hiện ra 1 dãy số, Việc cuối cùng bạn cần làm là **copy** dãy số đó. Hình ảnh minh hoạ:
 
