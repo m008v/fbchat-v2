@@ -5,6 +5,8 @@ Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu ti
 
 .. image:: https://i.ibb.co/3TWntY6/Picsart-23-08-12-15-11-30-693.jpg
 
+**👽Bạn không phải là người Việt Nam?**, bạn có thể đọc **README** (*ENGLISH*):  `tại đây <https://github.com/MinhHuyDev/fbchat-v2/blob/main/README_EN.rst>`_
+
 **📢Dành cho người mới**: *Lướt xuống cuối trang bạn sẽ thấy* **TUTORIAL (Hướng dẫn)** *nhận tin nhắn và gửi tin nhắn nhé!*
 
 =======================================
@@ -16,7 +18,7 @@ Thông tin cơ bản
 - **Ngôn ngữ lập trình:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *1.0.3.2*
-- **Cập nhật lần cuối:** *03:31 19/08/2023*
+- **Cập nhật lần cuối:** *19:33 11/10/2023*
 - **Vùng thời gian**: *GMT + 07*
 
 =======================================
