@@ -16,7 +16,7 @@ Basic Information
 - **Programming Language:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Developed by:** *Nguyễn Minh Huy*
 - **Current Version:** *1.0.3.2*
-- **Last Updated:** *03:31 19/08/2023*
+- **Last Updated:** *19:30 11/10/2023*
 - **Time Zone**: *GMT + 07*
 
 =======================================
