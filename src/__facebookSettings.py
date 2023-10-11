@@ -2,8 +2,6 @@ import json, requests, time, json, attr, random, re, string
 import datetime 
 import __facebookToolsV2
 from utils import Headers, digitToChar, str_base, dataSplit, parse_cookie_string, formAll, mainRequests
-# from LorenBot.plugins.utils import Headers, digitToChar, str_base, dataSplit, parse_cookie_string, formAll, mainRequests
-# from LorenBot.plugins import __facebookToolsV2
 
 def randStr(length):
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
@@ -20,6 +18,10 @@ class facebookTools:
      def changeBioFacebook(self, newContents, uploadPost): # Thay đổi Bio trên trang Facebook
           
           # Được lấy dữ liệu và viết vào lúc: 09:10 Thứ 4, ngày 05/07/2023. Tác giả: MinhHuyDev
+          """Args:
+               newContents: new content bio FB (eg. MinhHuyDev) | typeInput: str
+               uploadPost: Create an post about this change (eg. True/False) | typeInput: bool
+          """
           
           dataForm = formAll(self.dataFB, "ProfileCometSetBioMutation", 6293552847364844)
           dataForm["variables"] = json.dumps(
@@ -59,6 +61,10 @@ class facebookTools:
      def createPostFacebook(self, newContents, attachmentID=None): # Tạo bài viết trên Facebook
           
           # Được lấy dữ liệu và viết vào lúc: 09:40 Thứ 4, ngày 05/07/2023. Tác giả: MinhHuyDev
+          """Args:
+               newContents: content of post to create (eg. MinhHuy create new post!) | typeInput: str
+               attachmentID: Coming soon....
+          """
           
           dataForm = formAll(self.dataFB, "ComposerStoryCreateMutation", 6534257523262244)
           dataForm["variables"] = json.dumps(
@@ -181,6 +187,9 @@ class facebookTools:
      def onBusinessOnFacebookProfile(self, statusBusiness=None): # Bật chế độ chuyên nghiệp Trang cá nhân
           
           # Được lấy dữ liệu và viết vào lúc: 01:03 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
+          """Args:
+               statusBusiness: Do you want it on or off? (eg. True/False) | typeInput: bool
+          """
           
           if ((statusBusiness.lower() == "on") | (statusBusiness.lower() == "bật")):
                docID = "6580386111988379"
@@ -267,6 +276,9 @@ class facebookTools:
      def searchInFacebook(self, keywordSearch): # Tìm kiếm trên Facebook
           
           # Được lấy dữ liệu và viết vào lúc: 01:42 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
+          """Args:
+               keywordSearch: Content to search for on FB (eg. Mark Zuckerberg) | typeInput: str
+          """
           
           dataForm = formAll(self.dataFB, "SearchCometResultsInitialResultsQuery", 6866854183333610)
           dataForm["variables"] = json.dumps(
@@ -364,7 +376,10 @@ class facebookTools:
      def InteractBlockedAndUnBlocked(self, idUser, choiceInteract): # Tương tác Chặn và bỏ chặn người dùng
      
           # Được lấy dữ liệu và viết vào lúc: 03:12 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
-     
+          """Args:
+               idUser: ID of the user to block/unblock (eg. 4) | typeInput: str/int
+               choiceInteract: Do you want to block or unblock? (eg. block/unblock) | typeInput: str
+          """
      
           if (choiceInteract == "block"):
                
@@ -442,4 +457,175 @@ class facebookTools:
                          "messages": "Bỏ chặn người dùng thất bại!!!!!!"
                     } 
     
+     def createItemMarketplace(self, nameItem, brandItem, priceItem, currencyItem, decriptionItem, hashtagList, typeItem, photoIDList, locationSeller):
+          
+          # Được lấy dữ liệu và viết vào lúc: 22:25 Thứ 3, ngày 10/10/2023. Tác giả: MinhHuyDev
+          # Thank you @syrex1013 (Github) very much for your idea
+          
+          """Args:
+               nameItem: Name of item for sale (eg. Gucci Flora) | typeInput: str
+               brandItem: Brand of item for sale (eg. Gucci) | typeInput: str
+               priceItem: Price of item for sale (eg. 1050) | typeInput: int
+               currencyItem: Currency of item for sale (eg. USD) | typeInput: str
+               decriptionItem: Description of item | typeInput: str
+               hashtagList: Hashtag of item (eg. ["Gucci", "GucciFlora"]) | typeInput: list
+               typeItem: type of item (eg. Tools) | typeItem: str
+               photoIDList: image of item (eg. [1, 2, 3]) | typeInput: list
+               locationSeller: location of seller/item (eg. {"latitude": 11.5614, "longitude": 108.9935}) typeInput: dict
+          """
+          #Note: You can upload images & get ID images from plugins: __uploadImages.py
+          
+          categoryDict = {
+               "Home&Garden": {
+                    "Tools": 2171028376552553,
+                    "Furniture": 1583634935226685,
+                    "Household": 1569171756675761,
+                    "Garden": 800089866739547,
+                    "Appliances": 678754142233400
+               }
+               # There are more options than that... Please continue to develop it for me ¯⁠\⁠_⁠(⁠ツ⁠)⁠_⁠/⁠¯
+          }
+          
+          dataForm = formAll(self.dataFB, "useCometMarketplaceListingCreateMutation", 5033081016747999)
+          dataForm["variables"] = json.dumps(
+               {
+                    "input": {
+                         "client_mutation_id": "3",
+                         "actor_id": self.dataFB["FacebookID"],
+                         "attribution_id_v2": f"CometMarketplaceComposerRoot.react,comet.marketplace.composer,unexpected,{int(time.time() * 1000)},{self.dataFB['jazoest']},1606854132932955,;CometMarketplaceComposerRoot.react,comet.marketplace.composer,via_cold_start,{int(time.time() * 1000)},{self.dataFB['jazoest']},1606854132932955,",
+                         "audience": {
+                              "marketplace": {
+                                   "marketplace_id":"2171028376552553"
+                              }
+                         },
+                         "data": {
+                              "common": {
+                                   "attribute_data_json": '{\"vt_attributes_free_form\":{\"372885700169792\":\"' + brandItem + '\"},\"vt_attributes_normalized\":{},\"condition\":\"new\",\"brand\":\"' + brandItem + '\"}',
+                                   "category_id": categoryDict["Home&Garden"][typeItem], # id Type of item
+                                   "commerce_shipping_carrier": None,
+                                   "commerce_shipping_carriers": [],
+                                   "comparable_price": "null",
+                                   "cost_per_additional_item": None,
+                                   "delivery_types":["IN_PERSON"],
+                                   "description":{
+                                        "text": decriptionItem
+                                   },
+                                   "draft_type": None,
+                                   "hidden_from_friends_visibility": "VISIBLE_TO_EVERYONE",
+                                   "is_personalization_required": None,
+                                   "is_preview": False,
+                                   "item_price":{
+                                        "currency": currencyItem, #"VND",
+                                        "price": priceItem #"400000"
+                                   },
+                                   "latitude": locationSeller.get('latitude'),
+                                   "longitude": locationSeller.get('longitude'), 
+                                   "min_acceptable_checkout_offer_price": "null",
+                                   "personalization_info": None,
+                                   "product_hashtag_names": hashtagList,
+                                   "quantity": -1,
+                                   "shipping_calculation_logic_version": None,
+                                   "shipping_cost_option": "BUYER_PAID_SHIPPING",
+                                   "shipping_cost_range_lower_cost": None,
+                                   "shipping_cost_range_upper_cost": None,
+                                   "shipping_label_price": "0",
+                                   "shipping_label_rate_code": None,
+                                   "shipping_label_rate_type": None,
+                                   "shipping_offered": False,
+                                   "shipping_options_data": [],
+                                   "shipping_package_weight": None,
+                                   "shipping_price": "null",
+                                   "shipping_service_type": None,
+                                   "sku": "",
+                                   "source_type": "marketplace_unknown",
+                                   "suggested_hashtag_names": [],
+                                   "surface": "composer",
+                                   "title": nameItem,
+                                   "variants": [],
+                                   "video_ids": [],
+                                   "xpost_target_ids": [],
+                                   "photo_ids": photoIDList #["10108549460594323"]
+                              }
+                         }
+                    }
+               }
+          )
+          
+          sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/api/graphql/", dataForm, self.dataFB["cookieFacebook"])).text)
+          
+          try:
+               urlPost = sendRequests['data']['marketplace_listing_create']['listing']['story']['url']
+               idPost = sendRequests['data']['marketplace_listing_create']['listing']['story']['id']
+               a = {
+                    "success": 1, 
+                    "messages": "Tạo bài bán hàng thành công!", 
+                    "data": {
+                         "url": urlPost,
+                         "id": idPost
+                    }
+               }
+          except:
+               a = {
+                    "error": 1,
+                    "messages": "Đã xảy ra lỗi, tạo bài bán hàng thất bại: " + str(sendRequests)
+               }
+          
+          return a
+          
+     def getInformationProductItemMarketPlace(self, idProductItem):
+     
+          # Được lấy dữ liệu và viết vào lúc: 22:25 Thứ 3, ngày 10/10/2023. Tác giả: MinhHuyDev
+          # Thank you @syrex1013 (Github) very much for your idea
+
+     
+          """Args:
+               idProductItem: ID of item (eg. 1176770623712137) | typeInput: str
+          """
+          
+          #Note: How to get ID of item? It's right on the product link: https://www.facebook.com/marketplace/item/1176770623712137/ | ID item: 1176770623712137
+          
+          dataForm = formAll(self.dataFB, "MarketplacePDPContainerQuery", 6720440741405337)
+          dataForm["variables"] = json.dumps(
+               {
+                    "UFI2CommentsProvider_commentsKey": "MarketplacePDP",
+                    "feedbackSource": 56,
+                    "feedLocation": "MARKETPLACE_MEGAMALL",
+                    "referralCode": "marketplace_top_picks",
+                    "scale": 3,
+                    "should_show_new_pdp": False,
+                    "targetId": idProductItem,
+                    "useDefaultActor": False,
+                    "__relay_internal__pv__CometUFIIsRTAEnabledrelayprovider": False
+               }
+          )
+     
+          sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/api/graphql/", dataForm, self.dataFB["cookieFacebook"])).text)
+          
+          try:
+               mainData = sendRequests['data']['viewer']['marketplace_product_details_page']
+               a = {
+                    "success": 1,
+                    "messages": "Lấy thông tin sản phẩm thành công!",
+                    "data": {
+                         "productName": mainData['marketplace_listing_renderable_target']['marketplace_listing_title'],
+                         "locationSeller": mainData['marketplace_listing_renderable_target']['location'],
+                         "productDescription": mainData['target']['redacted_description']['text'],
+                         "productPrice": {
+                              "price": mainData['target']['listing_price']['amount'],
+                              "currency": mainData['target']['listing_price']['currency']
+                         },
+                         "nameSeller": mainData['target']['story']['actors'][0]['name'],
+                         "idSeller": mainData['target']['story']['actors'][0]['id'],
+                         "urlProduct": mainData['target']['story']['url'],
+                         "createdAt": str(datetime.datetime.fromtimestamp(mainData['target']['creation_time']))
+                    }
+               }
+          except:
+               a = {
+                    "error": 1,
+                    "messages": "Đã xảy ra lỗi, lấy thông tin bài viết thất bại bại: " + str(sendRequests)
+               }
+               
+          return a
+               
 #Author: MinhHuyDev (Nguyen Minh Huy)
