@@ -8,7 +8,7 @@ Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu ti
 **📢Dành cho người mới**: *Lướt xuống cuối trang bạn sẽ thấy* **TUTORIAL (Hướng dẫn)** *nhận tin nhắn và gửi tin nhắn nhé!*
 
 =======================================
-Thông tin cơ bản về FBChat Remake
+Thông tin cơ bản
 =======================================
 
 - **Được làm lại từ:** `𝘧𝘣𝘤𝘩𝘢𝘵 (𝘗𝘺𝘵𝘩𝘰𝘯) <https://fbchat.readthedocs.io/en/stable/>`_
@@ -18,6 +18,18 @@ Thông tin cơ bản về FBChat Remake
 - **Phiên bản hiện tại:** *1.0.3.2*
 - **Cập nhật lần cuối:** *03:31 19/08/2023*
 - **Vùng thời gian**: *GMT + 07*
+
+=======================================
+Có gì mới trong phiên bản này?
+=======================================
+
+Chúng tôi đã cập nhật thêm tính năng cho `__facebookSettings.py <https://github.com/MinhHuyDev/fbchat-v2/blob/main/src/__facebookSettings.py>`_, Bây giờ bạn có thể tải lên bài bán hàng của mình, và cũng có thể xem thông tin về bài bán hàng của những người khác.
+
+**Hàm tính năng:** 
+
+``createItemMarketplace()``
+``getInformationProductItemMarketPlace()``
+
 
 =======================================
 Tutorial (Hướng dẫn)
