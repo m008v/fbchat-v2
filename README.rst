@@ -14,7 +14,7 @@ Thông tin cơ bản
 =======================================
 
 - **Được làm lại từ:** `𝘧𝘣𝘤𝘩𝘢𝘵 (𝘗𝘺𝘵𝘩𝘰𝘯) <https://fbchat.readthedocs.io/en/stable/>`_
-- **Người đóng góp**: *hakuOwO*
+- **Người đóng góp**: *hakuOwO*, *tranngocminh230791*
 - **Ngôn ngữ lập trình:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *1.0.3.2*
