@@ -174,30 +174,7 @@ class loginFB:
                     pass# return dataJson
 
 
-""" Hướng dẫn sử dụng (Tutorial)
-
- * Dữ liệu yêu cầu (args):
- 
-     - userFB: username/phone/gmail Facebook
-     - passFB: Mật khẩu Facebook
-     - authenticationGG: mã 2fa (nếu có)
-
-* Code mẫu:
-     
-     loginFacebook = loginFB("<userFB>", "<passFB>", "<authenticationGG>")
-     print(loginFacebook.main())
-     
-* Kết quả trả về:
-     
-     Không có dữ liệu.
-     
-     - Ghi chú: nếu không hiểu gì hãy ib tui nhé hehe.
-
-* Thông tin tác giả:
-     Facebook:  m.me/Booking.MinhHuyDev
-     Telegram: t.me/minhhuydev
-     Github: MinhHuyDev
-
+"""
 ✓Remake by Nguyễn Minh Huy
 ✓Sửa đổi mới nhất vào thứ vào lúc 7:56 05/08/2023
 ✓Tôn trọng tác giả ❤️
