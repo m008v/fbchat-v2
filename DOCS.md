@@ -1,11 +1,26 @@
 # Documentation & Question
 
+* [`Set up import all module`](#SetupModule)
 * [`How to login?`](#loginFB)
-  
+* [`How to check Live/Die cookie?`](#checkCookie)
+* [`How to receive message Thread?`](#receiveThread)
 ---------------------------------------
+
+<a name="SetupModule"></a>
+### Set up import all module
+
+Please create a file and *install all the modules* present in here (main.py, mainBot.py, ...). **Example code:**
+```python
+import __facebookLoginV2
+import __facebookToolsV2
+import __messageListen
+```
+**NOTE**: Please create a file inside `fbchat-v2/src` :DD
 
 <a name="loginFB"></a>
 ### How to login?
+
+⚠️***WARNING***: **Facebook's Cookie & AccessToken** are very *crucial*. Malicious actors can peek at them on your screen when displayed, or even hackers attacking your computer (*botnet*) might steal them, and the risk to your Facebook account is very high! You can learn more about this [here](https://www.facebook.com/privacy/policies/cookies/?_rdr).
 
 #### 1.Login with Account
 
@@ -22,8 +37,6 @@
 Below is the sample code:
 
 ```python
-import __facebookLoginV2
-#or import src.__facebookLoginV2 if you place the calling file outside of src
 user = "minhhuydev@icloud.com"
 passw = "30102007"
 twofa = None
@@ -46,9 +59,31 @@ If error, you can view the login error details through the `error` key and call 
 ```python
 if resultLogin.get('success') is None:
      raise SystemExit(f"Error login: {resultLogin['error']['description']} | Error code: {resultLogin['error']['error_code']}")
-else:
-     setCookies = resultLogin['success']['setCookies']
-     print("Login successful IDFB: {setCookies.split('c_user=')[1].split(';')[0]}")
-     print("My cookie account: {setCookies}")
+setCookies = resultLogin['success']['setCookies']
+print("Login successful IDFB: {setCookies.split('c_user=')[1].split(';')[0]}")
+print("My cookie account: {setCookies}")
 ```
-⚠️***WARNING***: **Facebook's Cookie & AccessToken** are very *crucial*. Malicious actors can peek at them on your screen when displayed, or even hackers attacking your computer (*botnet*) might steal them, and the risk to your Facebook account is very high! You can learn more about this [here](https://www.facebook.com/privacy/policies/cookies/?_rdr).
+
+#### 2.Login with CookieFacebook
+
+This is extremely simple, you just need to *pre-login with your Facebook account* in any browser (Chrome, Firefox, ...). Next, press `F12` to open **DevTools**, and `F5` to refresh the page. A series of Facebook requests will appear, you just need to select any request => Choose the `headers` section of that request. Scroll to find the **Cookie**, then copy them and create them as a variable in **your code**:
+```python
+setCookies = "c_user=61551671683861; xs=8:51DRVMpDOm...[...]"
+```
+
+<a name="checkCookie"></a>
+### How to check Live/Die cookie?
+
+This is very simple. Facebook always has data (**fb_dtsg**, **jazoest**, ...) sent to *graphql*. If you can obtain. obtain this data => Your Cookie is *working*, and versa vice. Below is the **example code**:
+```python
+getData = __facebookToolsV2.dataGetHome(setCookies)
+try:
+     print(f"{getData['FacebookID']} => Cookies is working!")
+except:
+     raise SystemExit("Cookies is DIE")
+```
+
+<a name="receiveThread"></a>
+### How to receive message Thread?
+
+Waiting for answers!
