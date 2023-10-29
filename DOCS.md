@@ -86,4 +86,9 @@ except:
 <a name="receiveThread"></a>
 ### How to receive message Thread?
 
-Waiting for answers!
+Do you want to receive messages from a Thread? You need to have the *ID* of that Thread. Click [here](https://github.com/MinhHuyDev/fbchat-v2/tree/main#c%C3%A1c-c%C3%A2u-h%E1%BB%8Fi-th%C6%B0%E1%BB%9Dng-g%E1%BA%B7p) if you want to know how to get the ThreadID. Below is a **example code** on how to receive messages from the thread:
+```python
+threadID = 4805171782880318
+getMessage = __messageListen.Listen(getData, threadID)
+print(getMessage)
+```
