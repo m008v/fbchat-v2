@@ -1,4 +1,4 @@
-import attr, re 
+import attr, re, json, random, string
 
 def Headers(setCookies, dataForm=None, Host=None):
      if (Host == None): Host = "www.facebook.com"
@@ -93,3 +93,22 @@ def mainRequests(urlRequests, dataForm, setCookies):
           "cookies": parse_cookie_string(setCookies),
           "verify": True
      }
+     
+def generate_session_id():
+
+     """Generate a random session ID between 1 and 9007199254740991."""
+     return random.randint(1, 2 ** 53)  
+
+def generate_client_id():
+     
+     def gen(length):
+          return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
+     return gen(8) + '-' + gen(4) + '-' + gen(4) + '-' + gen(4) + '-' + gen(12)
+     
+def json_minimal(data):
+
+     """Get JSON data in minimal form."""
+     return json.dumps(data, separators=(",", ":"))
+
+def _set_chat_on(value):
+     return json_minimal(value)
