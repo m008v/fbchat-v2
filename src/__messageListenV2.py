@@ -210,10 +210,10 @@ class listeningEvent:
           )
           self.mqtt.loop_forever()
 j = {'syncToken': None, 'lastSeqID': None}   
-i = __facebookToolsV2.dataGetHome('sb=KZ_qZKoCk615m4WVWODqb6Kx; m_pixel_ratio=2.549999952316284; vpd=v1%3B799x424x2.549999952316284; usida=eyJ2ZXIiOjEsImlkIjoiQXMzZWZnYzFocm96OHMiLCJ0aW1lIjoxNjk4NzY1MzA0fQ%3D%3D; datr=ujVCZYousqql7P-FacCn9_yU; c_user=9209278; xs=8%3AJHdv2j1OqX5TPg%3A2%3A1701091467%3A-1%3A6298; m_page_voice=9209278; fbl_cs=AhDL18WU8jwTBhdeY8RYUqf7GFBhdC9IRGwwanh4RG0ySjdCeVZ0N3BFUw; fbl_ci=261269316085396; fbl_st=100438531%3BT%3A28352927; wl_cbv=v2%3Bclient_version%3A2369%3Btimestamp%3A1701175678; presence=C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1701175690955%2C%22v%22%3A1%7D; x-referer=eyJyIjoiL2hvbWUucGhwIiwiaCI6Ii9ob21lLnBocCIsInMiOiJtIn0%3D; fr=1QOENbcrfPD5yZJP9.AWWQl2BoBqQ-W3NgSq9D7XZH88w.BlX1WE.gS.AAA.0.0.Blcd5m.AWXxuTnCngk; dpr=2.549999952316284')
+i = __facebookToolsV2.dataGetHome('this is cookie Facebook')
 fbt = __facebookToolsV2.fbTools(i, 0)
 _ = listeningEvent(fbt, i)
 _.get_last_seq_id()
 _.connect_mqtt()
 
-# last updated: 00:06 Monday, 11/12/2023
+# last updated: 00:23 Monday, 11/12/2023
