@@ -209,11 +209,12 @@ class listeningEvent:
                keepalive=options["keepalive"],
           )
           self.mqtt.loop_forever()
-j = {'syncToken': None, 'lastSeqID': None}   
+          
+# j = {'syncToken': None, 'lastSeqID': None}   
 i = __facebookToolsV2.dataGetHome('this is cookie Facebook')
 fbt = __facebookToolsV2.fbTools(i, 0)
 _ = listeningEvent(fbt, i)
 _.get_last_seq_id()
 _.connect_mqtt()
 
-# last updated: 00:23 Monday, 11/12/2023
+# last updated: 00:24 Monday, 11/12/2023
