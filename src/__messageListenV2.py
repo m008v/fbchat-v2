@@ -27,6 +27,7 @@ class listeningEvent:
                "timestamp": 0, # Thời gian tin nhắn được gửi - The time the message was sent
                "userID": 0, # Người gửi tin nhắn - Author sent message
                "messageID": None, # ID tin nhắn - MessageID
+               "replyToID": 0 # Nơi gửi và nơi nhận lại tin nhắn cần phản hồi - Where to send and receive the message that needs response
                "type": None, # user/thread
                "attachments": { # Tệp đính kèm được gửi - Attachment sent
                     "id": 0, # id attachment
@@ -124,6 +125,7 @@ class listeningEvent:
                               self.bodyResults["timestamp"] = _["messageMetadata"]["timestamp"]
                               self.bodyResults["userID"] = _["messageMetadata"]["actorFbId"]
                               self.bodyResults["messageID"] = _["messageMetadata"]["messageId"]
+                              self.bodyResults["replyToID"] = _["messageMetadata"]["threadKey"].get("otherUserFbId") if _["messageMetadata"]["threadKey"].get("otherUserFbId") is not None else _["messageMetadata"]["threadKey"].get("threadFbId")
                               self.bodyResults["type"] = "user" if _["messageMetadata"]["threadKey"].get("otherUserFbId") is not None else "thread"
                               if len(_["attachments"]) > 0:
                                    try:
@@ -210,11 +212,12 @@ class listeningEvent:
           )
           self.mqtt.loop_forever()
           
-# j = {'syncToken': None, 'lastSeqID': None}   
-i = __facebookToolsV2.dataGetHome('this is cookie Facebook')
+"""
+# This is example code:
+i = __facebookToolsV2.dataGetHome('cookie Facebook')
 fbt = __facebookToolsV2.fbTools(i, 0)
 _ = listeningEvent(fbt, i)
 _.get_last_seq_id()
 _.connect_mqtt()
-
-# last updated: 00:24 Monday, 11/12/2023
+"""
+# last updated: 21:18 Monday, 11/12/2023
