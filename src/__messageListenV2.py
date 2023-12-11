@@ -27,7 +27,7 @@ class listeningEvent:
                "timestamp": 0, # Thời gian tin nhắn được gửi - The time the message was sent
                "userID": 0, # Người gửi tin nhắn - Author sent message
                "messageID": None, # ID tin nhắn - MessageID
-               "replyToID": 0 # Nơi gửi và nơi nhận lại tin nhắn cần phản hồi - Where to send and receive the message that needs response
+               "replyToID": 0, # Nơi gửi và nơi nhận lại tin nhắn cần phản hồi - Where to send and receive the message that needs response
                "type": None, # user/thread
                "attachments": { # Tệp đính kèm được gửi - Attachment sent
                     "id": 0, # id attachment
@@ -170,17 +170,8 @@ class listeningEvent:
                     print("ERR Failed parsing MQTT data on /t_ms as JSON")
                
           def on_disconnect(client, userdata, rc):
-                 print("Disconnected with result code " + str(rc))
+                 print("Disconnected?")
      
-          def on_subscribe(client, userdata, mid, granted_qos):
-                 print("Subscribed: " + str(mid) + " " + str(granted_qos))
-     
-          def on_unsubscribe(client, userdata, mid):
-                 print("Unsubscribed: " + str(mid))
-     
-          def on_log(client, userdata, level, buf):
-                 print("Log: " + str(buf))
-            
           self.mqtt = mqtt.Client(
                client_id=options["client_id"],
                clean_session=options["clean"],
@@ -193,8 +184,6 @@ class listeningEvent:
           self.mqtt.on_connect = _messenger_queue_publish
           self.mqtt.on_message = on_message
           self.mqtt.on_disconnect = on_disconnect
-          self.mqtt.on_subscribe = on_subscribe
-          self.mqtt.on_unsubscribe = on_unsubscribe
           
           self.mqtt.username_pw_set(username=options["username"])
           parsed_host = urlparse(host)

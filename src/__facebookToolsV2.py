@@ -54,11 +54,12 @@ class fbTools:
           randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
           dataForm = formAll(self.dataFB, requireGraphql=0)
           # dataForm["av"] = self.dataFB["cookieFacebook"].split("c_user=")[1].split(";")[0]
+
           dataForm["queries"] = json.dumps({
                "o0": {
                     "doc_id": "3336396659757871",
                     "query_params": {
-                         "limit": 150,
+                         "limit": 1,
                          "before": None,
                          "tags": ["INBOX"], # INBOX, PENDING, ARCHIVED
                          "includeDeliveryReceipts": False,
@@ -71,6 +72,8 @@ class fbTools:
           # return sendRequests.text.split("{\"successful_results\"")[0]
           self.dataGet = sendRequests.text.split('{"successful_results"')[0]
           self.ProcessingTime = sendRequests.elapsed.total_seconds()
+          open("xxxxxxxx.json", "w").write(json.dumps(json.loads(self.dataGet), indent=5))
+          self.last_seq_id = json.loads(self.dataGet)["o0"]["data"]["viewer"]["message_threads"]["sync_sequence_id"]
           return True
      
      def typeCommand(self, commandUsed): # Tổng hợp các lệnh có thể làm
