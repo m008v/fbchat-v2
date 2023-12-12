@@ -1,4 +1,4 @@
-import attr, re, json, random, string
+import attr, re, json, random, string, time
 
 def Headers(setCookies, dataForm=None, Host=None):
      if (Host == None): Host = "www.facebook.com"
@@ -111,4 +111,14 @@ def json_minimal(data):
      return json.dumps(data, separators=(",", ":"))
 
 def _set_chat_on(value):
+
      return json_minimal(value)
+
+def gen_threading_id():
+
+     return str(
+          int(format(int(time.time() * 1000), "b") + 
+          ("0000000000000000000000" + 
+          format(int(random.random() * 4294967295), "b"))
+          [-22:], 2)
+     )
