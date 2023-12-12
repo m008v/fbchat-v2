@@ -17,8 +17,8 @@ Thông tin cơ bản
 - **Người đóng góp**: *hakuOwO*, *tranngocminh230791*
 - **Ngôn ngữ lập trình:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Phát triển bởi:** *Nguyễn Minh Huy*
-- **Phiên bản hiện tại:** *1.0.4.2*
-- **Cập nhật lần cuối:** *22:09 11/12/2023*
+- **Phiên bản hiện tại:** *1.0.4.3*
+- **Cập nhật lần cuối:** *22:05 11/12/2023*
 - **Vùng thời gian**: *GMT + 07*
 
 =======================================
@@ -27,9 +27,13 @@ Có gì mới trong phiên bản này?
 
 **BIG UPDATE**: Tôi đã cập nhật việc nhận tin nhắn bằng *websocket* thay vì *requests* như trước. Bạn có thể xem chúng tại đây: `__messageListenV2.py <https://github.com/MinhHuyDev/fbchat-v2/blob/main/src/__messageListenV2.py>`_, Bây giờ bạn có thể nhận được tin nhắn với **tốc độ nhanh hơn**, và có thể **nhận tin nhắn nhiều nguồn khác nhau cùng lúc**. 
 
+**BIG UPDATE 2**: Tôi đã cập nhật thêm tính năng cho `__sendMessage.py <https://github.com/MinhHuyDev/fbchat-v2/blob/main/src/__sendMessage.py>`_, bây giờ bạn có thể gửi tin nhắn cho cả nhóm và người dùng
+
 **Hàm tính năng:** 
 
 ``listeningEvent()``
+
+``updateDataAndSend()``
 
 
 =======================================
