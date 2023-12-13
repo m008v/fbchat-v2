@@ -18,7 +18,7 @@ Thông tin cơ bản
 - **Ngôn ngữ lập trình:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Phát triển bởi:** *Nguyễn Minh Huy*
 - **Phiên bản hiện tại:** *1.0.4.4*
-- **Cập nhật lần cuối:** *19:03 13/12/2023*
+- **Cập nhật lần cuối:** *19:27 13/12/2023*
 - **Vùng thời gian**: *GMT + 07*
 
 =======================================
