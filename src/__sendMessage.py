@@ -45,13 +45,25 @@ class api:
           
           if (self.typeAttachment != None and self.attachmentID != None):
                self.dataForm["has_attachment"] = True
-               dictItemAttachment = dictAttachment[self.typeAttachment]
+               self.dictItemAttachment = self.dictAttachment[self.typeAttachment]
                if (isinstance(self.attachmentID, list)):
                     for j, idAttach in enumerate(self.attachmentID):
-                         self.dataForm[f"{dictItemAttachment}[{j}]"] = idAttach
+                         self.dataForm[f"{self.dictItemAttachment}[{j}]"] = idAttach
                else:
                     if (isinstance(self.attachmentID, str) or isinstance(self.attachmentID, int)):
-                         self.dataForm[f"{dictItemAttachment}[0]"] = self.attachmentID
+                         self.dataForm[f"{self.dictItemAttachment}[0]"] = self.attachmentID
+     
+     def removeDataAttachmentCheck(self):
+     
+          if self.dataForm.get('has_attachment'):
+               if (isinstance(self.attachmentID, list)):
+                    for ij, idAttach in enumerate(self.attachmentID):
+                         del self.dataForm[f"{self.dictItemAttachment}[{ij}]"]
+                    del self.dataForm["has_attachment"]
+                    return
+               del self.dataForm[f"{self.dictItemAttachment}[0]"], self.dataForm["has_attachment"]
+               return
+               
      
      def replyCheck(self):
           
@@ -92,9 +104,11 @@ class api:
           self.dataForm["ephemeral_ttl_mode"] = "0"
           self.dataForm["manual_retry_cnt"] = "0"
           self.dataForm["ui_push_phase"] = "V3"
+          
           self.replyCheck()
           self.attachmentCheck()
           self.sendRequests()
+          self.removeDataAttachmentCheck()
 
      def sendRequests(self):
      
@@ -125,9 +139,10 @@ class api:
 
 # _ = api()
 # dataFB = __facebookToolsV2.dataGetHome('this is Cookie Facebook')
-# test1 = _.updateDataAndSend(dataFB, "contents message", "userID", typeChat="user", replyMessage=1)
-# test2 = _.updateDataAndSend(dataFB, "test lan 2", "100034261636200", typeChat="user", replyMessage=1)
-# print(test1)
-# print(test2)
+# _.updateDataAndSend(dataFB, "<contents message>", "<userID/threadID>", ...[args])
+# test1_sendImage = _.updateDataAndSend(dataFB, "test send image", "100034261636200", typeAttachment="image", attachmentID=757191223105185, typeChat="user", replyMessage=1)
+# test2_sendMessage = _.updateDataAndSend(dataFB, "test send msg", "100034261636200", typeChat="user", replyMessage=1)
+# print(test1_sendImage)
+# print(test2_sendMessage)
 
-#Last updated: 22:01 Tuedays, 12/12/2023
+#Last updated: 19:02 Wednesday, 13/12/2023
