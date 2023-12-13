@@ -1,4 +1,6 @@
 import attr, re, json, random, string, time
+from os.path import basename
+from mimetypes import guess_type 
 
 def Headers(setCookies, dataForm=None, Host=None):
      if (Host == None): Host = "www.facebook.com"
@@ -122,3 +124,24 @@ def gen_threading_id():
           format(int(random.random() * 4294967295), "b"))
           [-22:], 2)
      )
+
+def mimetype_to_key(mimetype):
+     if not mimetype:
+         return "file_id"
+     if mimetype == "image/gif":
+         return "gif_id"
+     checkData = mimetype.split("/")
+     if checkData[0] in ["video", "image", "audio"]:
+          return "%s_id" % checkData[0]
+     return "file_id"
+     
+def require_list(list_):
+     if isinstance(list_, list):
+          return set(list_)
+     else:
+          return set([list_])
+def get_files_from_paths(filenames):
+     
+     files = [filenames, open(filenames, "rb"), guess_type(filenames)[0]]
+     yield files
+     
