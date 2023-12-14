@@ -13,10 +13,10 @@
 Please create a file and *install all the modules* present in here (main.py, mainBot.py, ...). **Example code:**
 
 ```python
-from src import (__facebookLoginV2, __facebookToolsV2, __messageListenV2)
+import __facebookLoginV2, __facebookToolsV2, __messageListenV2
 ```
 
-**🌟NOTE**: Please create a file outside `fbchat-v2/src` :DD
+**🌟NOTE**: Please create a file beside `fbchat-v2/src` :DD
 
 **YOU MIGHT NOT KNOW**: If you want to create files and **run them outside the fbchat-v2 directory**, you can follow the code snippet below:
 
