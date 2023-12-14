@@ -3,19 +3,50 @@
 * [`Set up import all module`](#SetupModule)
 * [`How to login?`](#loginFB)
 * [`How to check Live/Die cookie?`](#checkCookie)
-* [`How to receive message Thread?`](#receiveThread)
+* [`How to receive message from Thread/User`](#receiveMessages)
+* [`How to send message and unsend one`](#sendMessageAndUnsend)
 ---------------------------------------
 
 <a name="SetupModule"></a>
 ### Set up import all module
 
 Please create a file and *install all the modules* present in here (main.py, mainBot.py, ...). **Example code:**
+
 ```python
-import __facebookLoginV2
-import __facebookToolsV2
-import __messageListen
+from src import (__facebookLoginV2, __facebookToolsV2, __messageListenV2)
 ```
-**NOTE**: Please create a file inside `fbchat-v2/src` :DD
+
+**🌟NOTE**: Please create a file outside `fbchat-v2/src` :DD
+
+**YOU MIGHT NOT KNOW**: If you want to create files and **run them outside the fbchat-v2 directory**, you can follow the code snippet below:
+
+```python
+from fbchat_v2.src import (args...[...])
+```
+
+**First**, please rename the directory name **fbchat-v2**. Replace them from ``fbchat-v2`` *to* ``fbchat_v2`` before executing the above code.
+
+**Secondly**, You *must* change all import modules in the files of the plugins under ``fbchat-v2/src``. Specifically, in the plugins files, there exists a code snippet:
+
+```python
+from utils import args...[..]
+```
+
+You need to change them from the above to the following:
+
+```python
+from fbchat_v2.src.utils import args...[..]
+```
+
+**Here** is a specific *example* of the changes:
+
+```python
+from utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll, mainRequests
+```
+**change to:**
+```python
+from fbchat_v2.src.utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll, mainRequests
+```
 
 <a name="loginFB"></a>
 ### How to login?
@@ -76,19 +107,49 @@ setCookies = "c_user=61551671683861; xs=8:51DRVMpDOm...[...]"
 
 This is very simple. Facebook always has data (**fb_dtsg**, **jazoest**, ...) sent to *graphql*. If you can obtain. obtain this data => Your Cookie is *working*, and versa vice. Below is the **example code**:
 ```python
-getData = __facebookToolsV2.dataGetHome(setCookies)
+dataFB = __facebookToolsV2.dataGetHome(setCookies)
 try:
-     print(f"{getData['FacebookID']} => Cookies is working!")
+     print(f"{dataFB['FacebookID']} => Cookies is working!")
 except:
      raise SystemExit("Cookies is DIE")
 ```
 
-<a name="receiveThread"></a>
-### How to receive message Thread?
+<a name="receiveMessages"></a>
+### How to receive message from Thread/User?
 
-Do you want to receive messages from a Thread? You need to have the *ID* of that Thread. Click [here](https://github.com/MinhHuyDev/fbchat-v2/tree/main#c%C3%A1c-c%C3%A2u-h%E1%BB%8Fi-th%C6%B0%E1%BB%9Dng-g%E1%BA%B7p) if you want to know how to get the ThreadID. Below is a **example code** on how to receive messages from the thread:
+It seems like a fundamental part is done. Now, let's move on to receiving messages from users and chat groups (thread) on Facebook. First, you need to connect to *Facebook's MQTT through* the module:
+
+**__Arguments__**:
+
+* `fbt`: To retrieve the **last_seq_id** data, we need to *__facebookToolsV2.fbTools()*
+* `dataFB`: The Facebook homepage data is retrieved using *__facebookToolsV2.dataGetHome()*
+
 ```python
-threadID = 4805171782880318
-getMessage = __messageListen.Listen(getData, threadID)
-print(getMessage)
+# dataFB: This value has been obtained when checking the LIVE or DIE Cookie. You can find it above
+fbt = __facebookToolsV2(dataFB, 0) # default: 0 or None
+mainReceiveMsg = __messageListenV2.listeningEvent(fbt, dataFB)
+mainReceiveMsg.get_last_seq_id() # Get seq_id
+mainReceiveMsg.connect_mqtt() # Start receive message.
 ```
+
+All received message data will be exported to the *.mqttMessage* file in ``JSON`` format. Below is the successfully received message data:
+
+```json
+{
+     "body": "b g\u1eedi l\u00e0 n\u00f3 \u0111em \u0111i spam kh\u1eafp group l\u00e0 ch\u1ebft t\u00f4i",
+     "timestamp": "1702314310077",
+     "userID": "1619995045",
+     "messageID": "mid.$gABESRz00DD6SixxBvWMWdb3w_KEg",
+     "replyToID": "4805171782880318",
+     "type": "thread",
+     "attachments": {
+          "id": "This is image_url!?",
+          "url": "https://scontent.xx.fbcdn.net/v/t1.15752-9/409533780_915397450177903_2930757942430749596_n.png?stp=dst-png_p280x280&_nc_cat=110&ccb=1-7&_nc_sid=8cd0a2&_nc_ohc=3aV5AdDJOsYAX80qeEz&_nc_ad=z-m&_nc_cid=0&_nc_ht=scontent.xx&oh=03_AdSeQesqM3GV7eYtwZrPjsdiqk3j_B9hKqiqEB-NsqBC_g&oe=659E9DE1"
+     }
+}
+```
+
+<a name="sendMessageAndUnsend"></a>
+### How to send message and unsend one
+
+Coming soon ❤️‍🔥
