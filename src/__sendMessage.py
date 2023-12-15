@@ -21,7 +21,7 @@ class api:
           }
           
           
-     def updateDataAndSend(self, dataFB, contentSend, threadID, typeAttachment=None, attachmentID=None, typeChat=None, replyMessage=None, messageID=None):
+     def send(self, dataFB, contentSend, threadID, typeAttachment=None, attachmentID=None, typeChat=None, replyMessage=None, messageID=None):
           
           self.dataFB = dataFB # --> data from home Facebook
           self.content = str(contentSend) # --> contents message
@@ -139,9 +139,9 @@ class api:
 
 # _ = api()
 # dataFB = __facebookToolsV2.dataGetHome('this is Cookie Facebook')
-# _.updateDataAndSend(dataFB, "<contents message>", "<userID/threadID>", ...[args])
-# test1_sendImage = _.updateDataAndSend(dataFB, "test send image", "100034261636200", typeAttachment="image", attachmentID=757191223105185, typeChat="user", replyMessage=1)
-# test2_sendMessage = _.updateDataAndSend(dataFB, "test send msg", "100034261636200", typeChat="user", replyMessage=1)
+# _.send(dataFB, "<contents message>", "<userID/threadID>", ...[args])
+# test1_sendImage = _.send(dataFB, "test send image", "100034261636200", typeAttachment="image", attachmentID=757191223105185, typeChat="user", replyMessage=1)
+# test2_sendMessage = _.send(dataFB, "test send msg", "100034261636200", typeChat="user", replyMessage=1)
 # print(test1_sendImage)
 # print(test2_sendMessage)
 
