@@ -152,4 +152,17 @@ All received message data will be exported to the *.mqttMessage* file in ``JSON`
 <a name="sendMessageAndUnsend"></a>
 ### How to send message and unsend one
 
-Coming soon...
+To reply or send a message to a thread or user, you need to use the ``__sendMessage.py`` plugin. Below are the arguments and a sample code:
+
+**__Arguments__**:
+
+* `dataFB`: The Facebook homepage data is retrieved using *__facebookToolsV2.dataGetHome()*
+* `contentSend`: Content message to send
+* `threadID`: ID of **thread/user**
+* `typeAttachment`: Type attachment send with message
+* `attachmentID`: ID of attachment uploaded.
+* `typeChat`: type chat with user/thread
+* `replyMessage`:You want to send a message/reply to someone
+* `messageID`: ID of message that you need to reply
+
+**WARNING**: 
