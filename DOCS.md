@@ -152,4 +152,4 @@ All received message data will be exported to the *.mqttMessage* file in ``JSON`
 <a name="sendMessageAndUnsend"></a>
 ### How to send message and unsend one
 
-Coming soon ❤️‍🔥
+Coming soon...
