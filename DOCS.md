@@ -5,6 +5,7 @@
 * [`How to check Live/Die cookie?`](#checkCookie)
 * [`How to receive message from Thread/User`](#receiveMessages)
 * [`How to send message and unsend one`](#sendMessageAndUnsend)
+* [`How to upload attachment files and send them`](#uploadAttachmentAndSend)
 ---------------------------------------
 
 <a name="SetupModule"></a>
@@ -13,7 +14,7 @@
 Please create a file and *install all the modules* present in here (main.py, mainBot.py, ...). **Example code:**
 
 ```python
-import __facebookLoginV2, __facebookToolsV2, __messageListenV2
+import __facebookLoginV2, __facebookToolsV2, __messageListenV2, __sendMessage, __unsendMessage
 ```
 
 **🌟NOTE**: Please create a file inside `fbchat-v2/src` :DD
@@ -165,4 +166,47 @@ To reply or send a message to a thread or user, you need to use the ``__sendMess
 * `replyMessage`:You want to send a message/reply to someone
 * `messageID`: ID of message that you need to reply
 
-**WARNING**: 
+**YOU SHOULD KNOW**: For the ``replyMessage`` parameter, if you want to *reply* to someone's message, you must include the ``messageID``. If you just want to *send a message* to a thread/user, you can assign any value to replyMessage (other than None)
+
+```python
+sendMessageCalled = __sendMessage.api()
+
+# The necessary values - Các giá trị cần thiết
+contentSend = "test send!"
+threadID = 4805171782880318
+typeAttachment = None # Values: gif, image, video, file, audio
+attachmentID = None # This value is obtained from __uploadAttachments.py
+typeChat = None # "user" = User / Other value = Thread
+replyMessage = 1 # None = reply / Other value = only send
+messageID = None # messageID value e.g: mid.$gABESRz00DD6SixxBvWMWdb3w_KEg
+
+resultSendMessage = sendMessageCalled.send(dataFB, contentSend, threadID, typeAttachment, attachmentID, typeChat, replyMessage, messageID)
+print(resultSentMessage)
+```
+
+**NOTE**: Some values already have the default value of **None**, including: ``typeAttachment``, ``attachmentID``, ``typeChat``, ``replyMessage``, and ``messageID``. If you don't want to change their values, please skip them.
+
+Below is the result when the message is sent **successfully**:
+
+```python
+{'success': 1, 'payload': {'messageID': 'mid.$cAABa-wot0daSn4Obo2Mbj5L5njhO', 'timestamp': 1702656627619}}
+```
+
+But if you want to cancel this message, you can retract it by taking the ``messageID`` from the data sent successfully and calling ``__unsendMessage`` to send a retraction request. Below is a sample code:
+
+```python
+messageID = resultSendMessage["payload"]["messageID"]
+resultUnsendMessage = __unsendMessage._unsend(messageID, dataFB)
+print(resultUnsendMessage)
+```
+
+Below is the *successful* unsend result:
+
+```python
+{'success': 1, 'messages': 'Thu hồi tin nhắn thành công.'}
+```
+
+<a name="uploadAttachmentAndSend"></a>
+### How to upload attachment files and send them
+
+Coming soon..?
