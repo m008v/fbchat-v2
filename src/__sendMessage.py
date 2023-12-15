@@ -143,11 +143,11 @@ class api:
      
 
 _ = api()
-dataFB = __facebookToolsV2.dataGetHome('sb=KZ_qZKoCk615m4WVWODqb6Kx; m_pixel_ratio=2.549999952316284; vpd=v1%3B799x424x2.549999952316284; usida=eyJ2ZXIiOjEsImlkIjoiQXMzZWZnYzFocm96OHMiLCJ0aW1lIjoxNjk4NzY1MzA0fQ%3D%3D; datr=ujVCZYousqql7P-FacCn9_yU; x-referer=eyJyIjoiL2Jvb2ttYXJrcy8%2FcGFpcHY9MCZlYXY9QWZaSHY4MzlLd0F6UVlaZ0c4Qzd4T0NJX1VuWkhDTE90YUlzVEZ0WjRVbWJyLVN5Wll6T0FHQ2pjWGdSOXZNT0ZadyIsImgiOiIvYm9va21hcmtzLz9wYWlwdj0wJmVhdj1BZlpIdjgzOUt3QXpRWVpnRzhDN3hPQ0lfVW5aSENMT3RhSXNURnRaNFVtYnItU3laWXpPQUdDamNYZ1I5dk1PRlp3IiwicyI6Im0ifQ%3D%3D; dpr=2.549999952316284; wd=424x799; fr=1QOENbcrfPD5yZJP9.AWUjCoOjk0ZhzXXhLZbrLcKXw54.BlX1WE.gS.AAA.0.0.BlfHgR.AWWdNIou-vo; c_user=9209278; xs=13%3Ad_Q03QUHMnS8EA%3A2%3A1702656017%3A-1%3A6298; locale=en_GB; fbl_st=101628975%3BT%3A28377600; fbl_cs=AhDL18WU8jwTBhdeY8RYUqf7GFpKanZVVm5pK2FTZXN6RjNvc20zNjRGMw; fbl_ci=261269316085396; wl_cbv=v2%3Bclient_version%3A2379%3Btimestamp%3A1702656020')
+# dataFB = __facebookToolsV2.dataGetHome('this is cookie Facebook')
 # _.send(dataFB, "<contents message>", "<userID/threadID>", ...[args])
 # test1_sendImage = _.send(dataFB, "test send image", "100034261636200", typeAttachment="image", attachmentID=757191223105185, typeChat="user", replyMessage=1)
-test2_sendMessage = _.send(dataFB, "test send msg", "100034261636200", typeChat="user", replyMessage=1)
+# test2_sendMessage = _.send(dataFB, "test send msg", "100034261636200", typeChat="user", replyMessage=1)
 # print(test1_sendImage)
 # print(test2_sendMessage)
 
-#Last updated: 19:02 Wednesday, 13/12/2023
+#Last updated: 23:07 Friday, 13/12/2023
