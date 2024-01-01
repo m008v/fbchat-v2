@@ -16,7 +16,7 @@ def dataGetHome(setCookies):
      
      sendRequests = requests.get(**mainRequests).text
      
-     fb_dtsg = dataSplit("token\":\"", "\"", 2, 0, sendRequests)
+     fb_dtsg = dataSplit("[\"DTSGInitData\",[],{\"token\":\"", "\"", 1, 0, sendRequests)
      fb_dtsg_ag = dataSplit("async_get_token\":\"", "\"", 1, 0, sendRequests)
      jazoest = dataSplit("jazoest=", "\"", 1, 0, sendRequests)
      LSD = dataSplit("LSD\",[],{\"token\":\"", "\"", 1, 0, sendRequests)
