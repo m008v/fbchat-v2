@@ -17,7 +17,7 @@ Thông tin cơ bản
 - **Người đóng góp**: *hakuOwO*, *tranngocminh230791*
 - **Ngôn ngữ lập trình:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Phát triển bởi:** *Nguyễn Minh Huy*
-- **Phiên bản hiện tại:** *1.0.4.5*
+- **Phiên bản hiện tại:** *1.0.4.6*
 - **Cập nhật lần cuối:** *23:33 15/12/2023*
 - **Vùng thời gian**: *GMT + 07*
 
