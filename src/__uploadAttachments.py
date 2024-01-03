@@ -33,22 +33,25 @@ def _uploadAttachment(filenames, dataFB):
           resultRequests = json.loads(resultRequests.replace("for (;;);", ""))["payload"]
      except: 
           return print("ERROR-UPLOADED: " + str(resultRequests))
-     
-     resultData = [
-                 (data[mimetype_to_key(data["filetype"])], data["filetype"])
-                 for data in resultRequests["metadata"]
-     ]
+     dataList = []
+     try:
+          for data in resultRequests["metadata"][0].values():
+               dataList.append(data)
+     except:
+          for data in resultRequests["metadata"]['0'].values():
+               dataList.append(data)
      
      return {
-          "attachmentID": resultData[0][0],
-          "attachmentUrl": resultRequests["metadata"][0]["src"],
-          "attachmentType": resultData[0][1],
-          "attachmentDataSend": resultData
+          "attachmentID": dataList[0],
+          "attachmentUrl": dataList[3],
+          "attachmentType": dataList[2],
+          "attachmentDataSend": None# resultData
      }
 
 
-# _uploadAttachment("<name file to need upload>", dataFB)
-# print(_uploadAttachment("FB_IMG_1662921262503.jpg", __facebookToolsV2.dataGetHome("this is Cookie Facebook")))
-# output: {'attachmentID': 676421537934928, 'attachmentUrl': 'https://scontent.fsgn5-8.fna.fbcdn.net/v/t1.15752-9/328999258_555852780015611_2452318447980968642_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=b65b05&_nc_ohc=ngkZ0e3NqzYAX8ZdVYx&_nc_ht=scontent.fsgn5-8.fna&oh=03_AdTrTWSDqWiSrYcTG8c_WKn1ksUdttUbcK3hmvTu2WEmRQ&oe=65A10D97', 'attachmentType': 'image/jpeg', 'attachmentDataSend': [(676421537934928, 'image/jpeg')]}
+# _uploadAttachment("file-name.jpg", dataFB)
+# print(_uploadAttachment("Name file to need uploads", __facebookToolsV2.dataGetHome("this is cookie Facebook")))
+# output-image: {'attachmentID': 676421537934928, 'attachmentUrl': 'https://scontent.fsgn5-8.fna.fbcdn.net/v/t1.15752-9/328999258_555852780015611_2452318447980968642_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=b65b05&_nc_ohc=ngkZ0e3NqzYAX8ZdVYx&_nc_ht=scontent.fsgn5-8.fna&oh=03_AdTrTWSDqWiSrYcTG8c_WKn1ksUdttUbcK3hmvTu2WEmRQ&oe=65A10D97', 'attachmentType': 'image/jpeg', 'attachmentDataSend': [(676421537934928, 'image/jpeg')]}
+# ouput-video: {'attachmentID': 848156417052481, 'attachmentUrl': 'https://scontent.fsgn5-10.fna.fbcdn.net/v/t15.3394-10/416827059_6699338906842547_1263326403482126710_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=407108&_nc_eui2=AeGD75e6KV6vQfPcP4aCq9Yua-QBDRBkDOJr5AENEGQM4oV21IQSIev2_QwXWrdXFSg&_nc_ohc=aFezV-zIf3EAX_UjIAF&_nc_ht=scontent.fsgn5-10.fna&oh=03_AdQESAAFJ9GODQx-H36DmwWZ_ENQvbqnWz5Mm6lcZmoc8Q&oe=6599A974', 'attachmentType': 'video/mp4', 'attachmentDataSend': None}
 
 # completed at 14:03 19/06/2023 | last updated at 19:23 13/12/2023
