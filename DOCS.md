@@ -211,6 +211,9 @@ Below is the *successful* unsend result:
 
 Coming soon..?
 
-Lời nhắn của tác giả: Tôi đang khá lười biến để tiếp tục phát triển, nếu bạn muốn làm người đóng góp. Hãy nhắn tin cho tôi😝
-Author's note: I'm in a serious relationship with laziness, but if you're feeling adventurous and want to be a contributor, shoot me a message! 😝
-22:05 05/01/2024
+**Lời nhắn của tác giả**: Tôi đang khá lười biến để tiếp tục phát triển, nếu bạn muốn làm người đóng góp. Hãy nhắn tin cho tôi😝
+
+**Author's note**: I'm in a serious 
+relationship with laziness, but if you're feeling adventurous and want to be a contributor, shoot me a message! 😝
+
+22:07 05/01/2024
