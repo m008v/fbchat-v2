@@ -150,7 +150,6 @@ class fbTools:
                     "ERR": str(errLog)
                }
 
-print(dataGetHome('sb=KZ_qZKoCk615m4WVWODqb6Kx; m_pixel_ratio=2.549999952316284; vpd=v1%3B799x424x2.549999952316284; usida=eyJ2ZXIiOjEsImlkIjoiQXMzZWZnYzFocm96OHMiLCJ0aW1lIjoxNjk4NzY1MzA0fQ%3D%3D; datr=ujVCZYousqql7P-FacCn9_yU; x-referer=eyJyIjoiL2Jvb2ttYXJrcy8%2FcGFpcHY9MCZlYXY9QWZaSHY4MzlLd0F6UVlaZ0c4Qzd4T0NJX1VuWkhDTE90YUlzVEZ0WjRVbWJyLVN5Wll6T0FHQ2pjWGdSOXZNT0ZadyIsImgiOiIvYm9va21hcmtzLz9wYWlwdj0wJmVhdj1BZlpIdjgzOUt3QXpRWVpnRzhDN3hPQ0lfVW5aSENMT3RhSXNURnRaNFVtYnItU3laWXpPQUdDamNYZ1I5dk1PRlp3IiwicyI6Im0ifQ%3D%3D; wl_cbv=v2%3Bclient_version%3A2387%3Btimestamp%3A1703870224; dpr=2.549999952316284; c_user=9209278; xs=45%3Abc-UPrnfBdVzbw%3A2%3A1704379001%3A-1%3A6298%3A%3AAcVti-pgJfiIRt1RXS9MrnOPLc5YKOvu2dU4kWARKQ; fr=1kcaaBR1iDTP10FFL.AWW1D91nEZaX2KGK_nrcxvDa7YM.BlmssJ.gS.AAA.0.0.BlmtEs.AWWEFA0G5t0; wd=980x1846; presence=C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1704644911753%2C%22v%22%3A1%7D'))
 """ Hướng dẫn sử dụng (Tutorial)
 
  * Dữ liệu yêu cầu (args):
