@@ -1,5 +1,5 @@
 import requests, attr, json, time, random
-from utils import digitToChar, Headers, str_base, parse_cookie_string, dataSplit, formAll, mainRequests
+from utils import parse_cookie_string, dataSplit, formAll, mainRequests
  
 def dataGetHome(setCookies):
      
@@ -14,31 +14,30 @@ def dataGetHome(setCookies):
                "verify": True
      }
      
+     dictValueSaved = {}
+     splitDataList = [
+          # FORMAT: nameValue, stringData_1, stringData_2
+          ["fb_dtsg", "[\"DTSGInitData\",[],{\"token\":\"", "\""],
+          ["fb_dtsg_ag", "async_get_token\":\"", "\""],
+          ["jazoest", "jazoest=", "\""],
+          ["hash", "hash\":\"", "\""],
+          ["sessionID", "sessionId\":\"", "\""],
+          ["FacebookID", "\"actorID\":\"", "\""],
+          ["clientRevision", "client_revision\":", ","]
+     ]
+     
      sendRequests = requests.get(**mainRequests).text
      
-     fb_dtsg = dataSplit("[\"DTSGInitData\",[],{\"token\":\"", "\"", 1, 0, sendRequests)
-     fb_dtsg_ag = dataSplit("async_get_token\":\"", "\"", 1, 0, sendRequests)
-     jazoest = dataSplit("jazoest=", "\"", 1, 0, sendRequests)
-     LSD = dataSplit("LSD\",[],{\"token\":\"", "\"", 1, 0, sendRequests)
-     hash = dataSplit("hash\":\"", "\"", 1, 0, sendRequests)
-     sessionID = dataSplit("sessionId\":\"", "\"", 1, 0, sendRequests)
-     clientID = dataSplit("clientID\":\"", "\"", 1, 0, sendRequests)
-     appID = dataSplit("\"appId\":", ",", 1, 0, sendRequests)
-     clientRevision = dataSplit("client_revision\":", ",", 1, 0, sendRequests)
+     for i in splitDataList:
+          nameValue = i[0]
+          try:
+               exportValue = dataSplit(i[1], i[2], HTML=sendRequests, defaultValue=True)
+          except:
+               exportValue = "Unable to retrieve data for %s. It's possible that they have been deleted or modified." % nameValue
+          dictValueSaved[nameValue] = exportValue
+     dictValueSaved["cookieFacebook"] = setCookies
      
-     return {
-          "fb_dtsg": fb_dtsg,
-          "fb_dtsg_ag": fb_dtsg_ag,
-          "jazoest": jazoest,
-          "lsd": LSD,
-          "hash": hash,
-          "sessionID": sessionID,
-          "clientID": clientID,
-          "appID": appID,
-          "client_revision": clientRevision,
-          "FacebookID": setCookies.split("c_user=")[1].split(";")[0],
-          "cookieFacebook": setCookies
-     }
+     return dictValueSaved
 
 class fbTools:
 
@@ -72,7 +71,6 @@ class fbTools:
           # return sendRequests.text.split("{\"successful_results\"")[0]
           self.dataGet = sendRequests.text.split('{"successful_results"')[0]
           self.ProcessingTime = sendRequests.elapsed.total_seconds()
-          open("xxxxxxxx.json", "w").write(json.dumps(json.loads(self.dataGet), indent=5))
           self.last_seq_id = json.loads(self.dataGet)["o0"]["data"]["viewer"]["message_threads"]["sync_sequence_id"]
           return True
      
@@ -151,7 +149,8 @@ class fbTools:
                return {
                     "ERR": str(errLog)
                }
-     
+
+print(dataGetHome('sb=KZ_qZKoCk615m4WVWODqb6Kx; m_pixel_ratio=2.549999952316284; vpd=v1%3B799x424x2.549999952316284; usida=eyJ2ZXIiOjEsImlkIjoiQXMzZWZnYzFocm96OHMiLCJ0aW1lIjoxNjk4NzY1MzA0fQ%3D%3D; datr=ujVCZYousqql7P-FacCn9_yU; x-referer=eyJyIjoiL2Jvb2ttYXJrcy8%2FcGFpcHY9MCZlYXY9QWZaSHY4MzlLd0F6UVlaZ0c4Qzd4T0NJX1VuWkhDTE90YUlzVEZ0WjRVbWJyLVN5Wll6T0FHQ2pjWGdSOXZNT0ZadyIsImgiOiIvYm9va21hcmtzLz9wYWlwdj0wJmVhdj1BZlpIdjgzOUt3QXpRWVpnRzhDN3hPQ0lfVW5aSENMT3RhSXNURnRaNFVtYnItU3laWXpPQUdDamNYZ1I5dk1PRlp3IiwicyI6Im0ifQ%3D%3D; wl_cbv=v2%3Bclient_version%3A2387%3Btimestamp%3A1703870224; dpr=2.549999952316284; c_user=9209278; xs=45%3Abc-UPrnfBdVzbw%3A2%3A1704379001%3A-1%3A6298%3A%3AAcVti-pgJfiIRt1RXS9MrnOPLc5YKOvu2dU4kWARKQ; fr=1kcaaBR1iDTP10FFL.AWW1D91nEZaX2KGK_nrcxvDa7YM.BlmssJ.gS.AAA.0.0.BlmtEs.AWWEFA0G5t0; wd=980x1846; presence=C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1704644911753%2C%22v%22%3A1%7D'))
 """ Hướng dẫn sử dụng (Tutorial)
 
  * Dữ liệu yêu cầu (args):
@@ -182,6 +181,6 @@ class fbTools:
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 03:06 19/08/2023
+✓Hoàn thành vào lúc 22:15 ngày 20/6/2023 • Cập nhật mới nhất: 23:47 07/01/2024
 ✓Tôn trọng tác giả ❤️
 """

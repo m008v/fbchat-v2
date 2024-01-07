@@ -47,7 +47,8 @@ def parse_cookie_string(cookie_string):
 
      return cookie_dict
 
-def dataSplit(string1, string2, numberSplit1, numberSplit2, HTML, amount=None, string3=None, numberSplit3=None):
+def dataSplit(string1, string2, numberSplit1=None, numberSplit2=None, HTML=None, amount=None, string3=None, numberSplit3=None, defaultValue=None):
+     if (defaultValue): numberSplit1, numberSplit2 = 1, 0
      if (amount == None):
           return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2]
      elif (amount == 3):
@@ -125,16 +126,6 @@ def gen_threading_id():
           [-22:], 2)
      )
 
-def mimetype_to_key(mimetype):
-     if not mimetype:
-         return "file_id"
-     if mimetype == "image/gif":
-         return "gif_id"
-     checkData = mimetype.split("/")
-     if checkData[0] in ["video", "image", "audio"]:
-          return "%s_id" % checkData[0]
-     return "file_id"
-     
 def require_list(list_):
      if isinstance(list_, list):
           return set(list_)
