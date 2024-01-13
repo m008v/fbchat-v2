@@ -1,5 +1,6 @@
 # Documentation & Question
 
+* [`Introduction`](#Introduction)
 * [`Set up import all module`](#SetupModule)
 * [`How to login?`](#loginFB)
 * [`How to check Live/Die cookie?`](#checkCookie)
@@ -8,6 +9,17 @@
 * [`How to upload attachment files and send them`](#uploadAttachmentAndSend)
 ---------------------------------------
 
+<a name="Introduction"></a>
+### Introduction: FBCHAT-V2
+
+**Hey Friends**,
+
+The **fbchat-v2** project is a predecessor of [fbchat](https://github.com/fbchat-dev/fbchat). If you feel unsatisfied, please provide constructive feedback! Note that this **project is not endorsed by Facebook**, and it may have implications for your Facebook account. We disclaim any responsibility if you violate Facebook's policies or those related to politics, religion, or any specific region or country.
+
+Please read my instructions carefully if you don't have basic knowledge of coding or Facebook Chatbot development. If you have any questions, feel free to contact me on my Telegram: [here](https://t.me/mhuydev)
+
+*Author's signature*: **NGUYEN MINH HUY**<br>23:02, 13/01/2024
+
 <a name="SetupModule"></a>
 ### Set up import all module
 
@@ -15,6 +27,7 @@ Please create a file and *install all the modules* present in here (main.py, mai
 
 ```python
 import __facebookLoginV2, __facebookToolsV2, __messageListenV2, __sendMessage, __unsendMessage
+from __uploadAttachments import _uploadAttachment
 ```
 
 **🌟NOTE**: Please create a file inside `fbchat-v2/src` :DD
@@ -192,6 +205,38 @@ Below is the result when the message is sent **successfully**:
 {'success': 1, 'payload': {'messageID': 'mid.$cAABa-wot0daSn4Obo2Mbj5L5njhO', 'timestamp': 1702656627619}}
 ```
 
+#### *HOW TO SEND ATTACHMENTS*
+
+* `typeAttachment`: The value of this variable must not be ``None`` and should be replaced with the corresponding values in the format of the attachment file to be sent (e.g: *gif*, *image*, *video*, *file*, *audio*)
+* `attachmentID`: A sequence of numbers called ``attachmentID`` is obtained from the data when **successfully uploading** an attachment file.
+
+To send a file attachment with a message, you need to upload it. (See how to upload them [here](https://github.com/MinhHuyDev/fbchat-v2/blob/main/DOCS.md#uploadAttachmentAndSend).) The following values are required and must be changed:
+
+For example, I have a picture named: **mhuydev_profile_avatar.jpg**. Now, I will upload and send it using the following source code:
+
+```python
+nameAttachment = "mhuydev_profile_avatar.jpg"
+_uploadAttachment = _uploadAttachment(nameAttachment, dataFB) # args=("<nameFile>, dataFB)
+attachmentID = _uploadAttachment.get('attachmentID')
+typeAttachment = None
+if (attachmentID is not None):
+     typeAttachment = "image" # Change this value to match the attachment.
+resultSendMessage = sendMessageCalled.send(dataFB, contentSend, threadID, typeAttachment, attachmentID, typeChat, replyMessage, messageID)
+print(resultSentMessage)
+# Chỉ cần thay đổi giá trị của `typeAttachment` và `attachmentID`, bạn có thể giữ nguyên tất cả giá trị còn lại như ở phía trên!
+# Simply change the values of `typeAttachment` and `attachmentID`, and you can keep all other values the same as above!
+```
+
+⚠️**IMPORTANT NOTE:** Please double-check the values between the typeAttachment variable and the format of the attachment file. Here are some basic formats:
+
+* `image`: *.jpg*, *.png*, *.jpeg*
+* `video`: *.mp4*, *.avi*, *.mkv*
+* `gif`: *.gif*
+* `audio`: *.mp3*, *.wav*, *.flac*
+* `file`: *.txt*, *.docx*, *.zip*, *.rar*, *....*
+
+---------------------------------------
+
 But if you want to cancel this message, you can retract it by taking the ``messageID`` from the data sent successfully and calling ``__unsendMessage`` to send a retraction request. Below is a sample code:
 
 ```python
@@ -211,9 +256,6 @@ Below is the *successful* unsend result:
 
 Coming soon..?
 
-**Lời nhắn của tác giả**: Tôi đang khá lười biếng để tiếp tục phát triển, nếu bạn muốn làm người đóng góp. Hãy nhắn tin cho tôi😝
-
-**Author's note**: I'm in a serious 
-relationship with laziness, but if you're feeling adventurous and want to be a contributor, shoot me a message! 😝
-
-22:08 05/01/2024
+Lời nhắn của tác giả: Tôi đang khá lười biến để tiếp tục phát triển, nếu bạn muốn làm người đóng góp. Hãy nhắn tin cho tôi😝
+Author's note: I'm in a serious relationship with laziness, but if you're feeling adventurous and want to be a contributor, shoot me a message! 😝
+22:05 05/01/2024
