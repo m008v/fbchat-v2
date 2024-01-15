@@ -134,6 +134,7 @@ class listeningEvent:
                                    except:   
                                         self.bodyResults["attachments"]["id"] = "This is image_url!?"
                               print(self.bodyResults)
+                              open(".mqttMessage", "w", encoding="utf-8").write(json.dumps(self.bodyResults, indent=5))
                               # Bạn có thể dùng các tệp tin hoặc socket để truyền dữ liệu qua các file plugins khác / main của bot
                               # You can use files or socket to transfer data to other plugins files / main of the bot
                               """Example:
