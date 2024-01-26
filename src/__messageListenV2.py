@@ -127,13 +127,17 @@ class listeningEvent:
                               self.bodyResults["messageID"] = _["messageMetadata"]["messageId"]
                               self.bodyResults["replyToID"] = _["messageMetadata"]["threadKey"].get("otherUserFbId") if _["messageMetadata"]["threadKey"].get("otherUserFbId") is not None else _["messageMetadata"]["threadKey"].get("threadFbId")
                               self.bodyResults["type"] = "user" if _["messageMetadata"]["threadKey"].get("otherUserFbId") is not None else "thread"
-                              if len(_["attachments"]) > 0:
-                                   try:
-                                        self.bodyResults["attachments"]["id"] = _["attachments"][0]["fbid"]
-                                        self.bodyResults["attachments"]["url"] = _["attachments"][0]["mercury"]["blob_attachment"]["preview"]["uri"]
-                                   except:   
-                                        self.bodyResults["attachments"]["id"] = "This is image_url!?"
-                              print(self.bodyResults)
+                              try:
+                                   if len(_["attachments"]) > 0:
+                                        try:
+                                             self.bodyResults["attachments"]["id"] = _["attachments"][0]["fbid"]
+                                             self.bodyResults["attachments"]["url"] = _["attachments"][0]["mercury"]["blob_attachment"]["preview"]["uri"]
+                                        except:   
+                                             self.bodyResults["attachments"]["id"] = "This is image_url!?"
+                              except:
+                                   self.bodyResults["attachments"]["id"] = None
+                                   self.bodyResults["attachments"]["url"] = None
+                                             
                               open(".mqttMessage", "w", encoding="utf-8").write(json.dumps(self.bodyResults, indent=5))
                               # Bạn có thể dùng các tệp tin hoặc socket để truyền dữ liệu qua các file plugins khác / main của bot
                               # You can use files or socket to transfer data to other plugins files / main of the bot

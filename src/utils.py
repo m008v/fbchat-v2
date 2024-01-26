@@ -66,7 +66,7 @@ def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None):
           dataForm["__a"] = 1
           dataForm["__user"] =str(dataFB["FacebookID"])
           dataForm["__req"] = str_base(__reg, 36) 
-          dataForm["__rev"] = dataFB["client_revision"]
+          dataForm["__rev"] = dataFB["clientRevision"]
           dataForm["av"] = dataFB["FacebookID"]
           dataForm["fb_api_caller_class"] = "RelayModern"
           dataForm["fb_api_req_friendly_name"] = FBApiReqFriendlyName
@@ -78,7 +78,7 @@ def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None):
           dataForm["__a"] = 1
           dataForm["__user"] =str(dataFB["FacebookID"])
           dataForm["__req"] = str_base(__reg, 36) 
-          dataForm["__rev"] = dataFB["client_revision"]
+          dataForm["__rev"] = dataFB["clientRevision"]
           dataForm["av"] = dataFB["FacebookID"]
 
      return dataForm
