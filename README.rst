@@ -5,7 +5,7 @@ Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu ti
 
 .. image:: https://i.ibb.co/3TWntY6/Picsart-23-08-12-15-11-30-693.jpg
 
-**👽Bạn không phải hiểu được tiếng Việt?**, bạn có thể đọc **README** (*ENGLISH*):  `tại đây <https://github.com/MinhHuyDev/fbchat-v2/blob/main/README_EN.rst>`_
+**👽Bạn không thể hiểu được tiếng Việt?**, bạn có thể đọc **README** (*ENGLISH*):  `tại đây <https://github.com/MinhHuyDev/fbchat-v2/blob/main/README_EN.rst>`_
 
 **📢Dành cho người mới**: *Lướt xuống cuối trang bạn sẽ thấy* **TUTORIAL (Hướng dẫn)** *nhận tin nhắn và gửi tin nhắn nhé!*
 
@@ -14,30 +14,17 @@ Thông tin cơ bản
 =======================================
 
 - **Được làm lại từ:** `𝘧𝘣𝘤𝘩𝘢𝘵 (𝘗𝘺𝘵𝘩𝘰𝘯) <https://fbchat.readthedocs.io/en/stable/>`_
-- **Người đóng góp**: *hakuOwO*, *tranngocminh230791*
 - **Ngôn ngữ lập trình:** `𝘗𝘺𝘵𝘩𝘰𝘯 <https://www.python.org/>`_
 - **Phát triển bởi:** *Nguyễn Minh Huy*
-- **Phiên bản hiện tại:** *1.0.4.9*
-- **Cập nhật lần cuối:** *22:56 15/01/2024*
-- **Vùng thời gian**: *GMT + 07*
 
 =======================================
 Có gì mới trong phiên bản này?
 =======================================
 
-**BIG UPDATE**: Tôi đã cập nhật việc nhận tin nhắn bằng *websocket* thay vì *requests* như trước. Bạn có thể xem chúng tại đây: `__messageListenV2.py <https://github.com/MinhHuyDev/fbchat-v2/blob/main/src/__messageListenV2.py>`_, Bây giờ bạn có thể nhận được tin nhắn với **tốc độ nhanh hơn**, và có thể **nhận tin nhắn nhiều nguồn khác nhau cùng lúc**. 
-
-**BIG UPDATE 2**: Tôi đã cập nhật thêm tính năng cho `__sendMessage.py <https://github.com/MinhHuyDev/fbchat-v2/blob/main/src/__sendMessage.py>`_, bây giờ bạn có thể gửi tin nhắn cho cả nhóm và người dùng
-
-**Hàm tính năng:** 
-
-``listeningEvent()``
-
-``updateDataAndSend()``
-
+**NEW**: Sửa lỗi một vài thứ và CLEAR CODE gọn hơn
 
 =======================================
-Tutorial (Hướng dẫn)
+Tutorial (Hướng dẫn cơ bản)
 =======================================
 
 **Đầu tiên**: Người dùng cần phải cài đặt *tất cả* các gói tài nguyên cần thiết để có thể sử dụng. Nếu bạn chưa cài đặt, hãy dùng lệnh sau:
@@ -64,9 +51,82 @@ Tutorial (Hướng dẫn)
 
 .. code-block:: python
 
-     # Waiting for update.
-     # with websocket 😎
-
+     from __facebookToolsV2 import dataGetHome, fbTools
+     from __messageListenV2 import listeningEvent  # Import the specific class or module you need
+     from __sendMessage import api
+     import datetime, threading, os, json
+     
+     class fbClient:
+         def __init__(self, cookies, dataFB):
+             self.cookies = cookies
+             self.dataFB = dataFB
+             self.messageID = None
+             self.prefix = "/" # This is the command prompt; when you enter this symbol, the corresponding command will be invoked. Additionally, you can customize it as per your preference (e.g., , . * ! ? etc)
+             self.pathFile = ".mqttMessage"
+             self.recentReceivedMessages = []
+     
+         def setDefaultValue(self):
+             self.userID, self.bodyMessage, self.replyToID, self.bodySend, self.commandPlugins = [None] * 5
+     
+         def receiveCommandAndSend(self):
+             if (self.dataFB["FacebookID"] != self.userID):
+                  match self.commandPlugins.lower():
+                      case "uptime":
+                          self.bodySend = "datetime: " + str(datetime.datetime.now())
+                      case "hola" | "hello" | "hi":
+                          self.bodySend = "Hey,", self.userID
+                      case "ping":
+                          self.bodySend = "Pong!"
+                      case __:
+                          self.bodySend = self.bodyMessage
+                  mainSend = api()  # Use the specific class or module you imported
+                  threading.Thread(target=mainSend.send, args=(self.dataFB, self.bodySend, self.replyToID)).start()
+                  self.setDefaultValue()
+     
+         def prefixCheck(self):
+             if self.bodyMessage[0] == self.prefix:
+                 self.commandPlugins = self.bodyMessage.split(',')[1]
+             else:
+                 self.commandPlugins = self.bodyMessage
+               
+     
+         def receiveMessage(self):
+             self.fbt = fbTools(self.dataFB, 0)
+             mainReceiveMessage = listeningEvent(self.fbt, self.dataFB)  # Use the specific class or module you imported
+             mainReceiveMessage.get_last_seq_id()
+             threading.Thread(target=mainReceiveMessage.connect_mqtt, args=()).start()
+             """
+             Why am I using Threading here? 
+             Because when calling connect_mqtt(), the programs after it won't be able to run 
+             as it continuously connects to the Facebook server. To overcome this, I've used threading 
+             to make it run concurrently with other functions!
+             """
+             while 1:
+                if os.path.isfile(self.pathFile):
+                    try:
+                        self.bodyMain = json.loads(open(self.pathFile, "r", encoding="utf-8").read())
+                        # print(f"{self.bodyMain['messageID']} != {self.messageID} {self.bodyMain['messageID'] != self.messageID}")
+                        if self.bodyMain['messageID'] != self.messageID:
+                            self.userID = self.bodyMain['userID']
+                            self.messageID = self.bodyMain['messageID']
+                            self.bodyMessage = self.bodyMain['body']
+                            self.replyToID = self.bodyMain['replyToID']
+                            print(f"> userID: {self.userID}\n> messageID: {self.messageID}\n> messageContents: {self.bodyMessage}\n> From {self.bodyMain['type']}ID: {self.replyToID}\n- - - - -")
+                            self.prefixCheck()
+                            self.receiveCommandAndSend()
+                            self.setDefaultValue()
+                    except:
+                        pass
+     
+     cookies = "this is set Cookie Facebook"
+     dataFB = dataGetHome(cookies)
+     _ = fbClient(cookies, dataFB)
+     _.setDefaultValue()
+     _.receiveMessage()
+     print("done!")
+     
+**🖇️LƯU Ý:** Đây chỉ là một bản code mẫu về nhận tin nhắn và gửi tin nhắn, Nếu xảy ra lỗi. Hãy đóng góp bằng cách sửa nó và gửi thông tin lỗi vào *issue* hoặc hãy liên hệ trực tiếp với tôi qua **Telegram**
+     
 Sau đó, quay lại **Terminal/CMD** và chạy file này bằng lệnh sau:
 
 .. code-block:: bash
@@ -89,6 +149,10 @@ hoặc
 
 **🏅Dưới đây là ví dụ khi chạy được bot thành công**:
 
+.. image:: https://i.ibb.co/5G4WCK8/Screenshot-2024-01-26-20-59-56-905-com-offsec-nethunter-kex-edit.jpg
+
+====================
+
 .. image:: https://i.ibb.co/fvJq87Z/Screenshot-2023-08-18-20-25-51-435-com-offsec-nethunter-kex.png
 
 🫶🏻Cảm ơn bạn đã đọc đến đây! Nếu bạn vẫn còn **nhiều câu hỏi thắc mắc**. Hãy lướt xuống dưới để tìm **câu trả lời** cho riêng mình nhé :3 Yêuuuuuu
@@ -97,15 +161,7 @@ hoặc
 Các câu hỏi thường gặp
 =======================================
 
-**1**. *Làm thế nào để lấy threadID?*
-
-Rất đơn giản, đầu tiên bạn truy vào **www.facebook.com** và mở cuộc trò chuyện Messenger lên. Sau đó nhấp vào nút **Xem tất cả trong Messenger**, hình ảnh minh hoạ:
-
-.. image:: https://i.ibb.co/GMx4Vsv/Screenshot-2023-08-20-13-36-43-263-com-offsec-nethunter-kex.png
-
-**Bước tiếp theo**, bạn click vào *nhóm chat* cần lấy **ThreadID**. Lúc này trên thanh url của **website** sẽ hiện ra 1 dãy số, Việc cuối cùng bạn cần làm là **copy** dãy số đó. Hình ảnh minh hoạ:
-
-.. image:: https://i.ibb.co/C1HvCyD/Screenshot-2023-08-18-19-54-43-383-com-offsec-nethunter-kex.png
+Bạn có thể xem các vấn đề thường gặp hoặc Tutorial tại đây: `DOCS.md <https://github.com/MinhHuyDev/fbchat-v2/blob/main/DOCS.md>`_
 
 =======================================
 Thông báo về phiên bản mới
