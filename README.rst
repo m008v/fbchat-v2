@@ -147,9 +147,9 @@ hoặc
 
 💔Nếu vẫn xảy ra lỗi. Vui lòng kiểm tra xem đã tải Python về thiết bị hay chưa. Nếu chưa tải, hãy nhấp `vào đây <https://www.python.org/downloads/>`_ để được chuyển đến trang tải Python chính thức.
 
-**🏅Dưới đây là ví dụ khi chạy được bot thành công**:
+**🏅Dưới đây là hình ảnh khi chạy được bot thành công**:
 
-.. image:: https://i.ibb.co/5G4WCK8/Screenshot-2024-01-26-20-59-56-905-com-offsec-nethunter-kex-edit.jpg
+.. image:: https://i.ibb.co/pdbBTWz/nh-ch-p-m-n-h-nh-2024-01-30-130047.png
 
 ====================
 
