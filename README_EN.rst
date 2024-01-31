@@ -3,6 +3,8 @@ FBChat-Remake: Open Source
 
 Hello, I am **MinhHuyDev**. Firstly, this is my first time remaking such a large source, so there may be *mistakes* in the coding process. I hope users will report any **bugs** in the GitHub issues section here:3
 
+***** *This is not the official API*; Facebook has an API for chatbots available `here <https://developers.facebook.com/docs/messenger-platform/>`_. This library is different in that it uses regular Facebook accounts/cookies as substitutes.
+
 .. image:: https://i.ibb.co/3TWntY6/Picsart-23-08-12-15-11-30-693.jpg
 
 **👽Can't understand English?** You can read the **README** (*VIETNAMESE*): `here <https://github.com/MinhHuyDev/fbchat-v2/blob/main/README.rst>`_
