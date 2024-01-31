@@ -3,6 +3,8 @@ FBChat-Remake: Open Source
 
 Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu tiên mà mình làm lại một source lớn như vậy nên sẽ không tránh được những *sai sót* trong quá trình code, rất mong sẽ được người dùng báo cáo lại **Lỗi** tại issues của GitHub này nhé:3
 
+***** *Đây không phải là API chính thức;* Facebook có sẵn API dành cho chatbot `tại đây <https://developers.facebook.com/docs/messenger-platform/>`_. Thư viện này khác ở chỗ nó sử dụng tài khoản/cookie Facebook thông thường để thay thế.
+
 .. image:: https://i.ibb.co/3TWntY6/Picsart-23-08-12-15-11-30-693.jpg
 
 **👽Bạn không thể hiểu được tiếng Việt?**, bạn có thể đọc **README** (*ENGLISH*):  `tại đây <https://github.com/MinhHuyDev/fbchat-v2/blob/main/README_EN.rst>`_
