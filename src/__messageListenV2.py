@@ -1,15 +1,10 @@
-from requests import Response
 import json
 import ssl
-import time
-import string
 import attr
-import random
 import paho.mqtt.client as mqtt
-import __facebookToolsV2
+# import __facebookToolsV2
 from urllib.parse import urlparse
-from utils import generate_session_id, generate_client_id, json_minimal, _set_chat_on
-
+from utils import generate_session_id, generate_client_id, json_minimal
 """
 Lời đầu tiên, xin cảm ơn tất cả user của fbchat-v2 vừa qua đã đóng góp cho dự án
 Và bây giờ bạn có thể dùng wss (websocket) nhận tin nhắn thay vì requests
