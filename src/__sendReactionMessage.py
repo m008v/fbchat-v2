@@ -1,6 +1,6 @@
-import requests, attr, json, time, random
-import __facebookToolsV2
-from utils import Headers, digitToChar, str_base, parse_cookie_string, formAll
+import requests, json
+# import __facebookToolsV2
+from utils import Headers, parse_cookie_string, formAll
      
 def Main(dataFB, typeAdded, messageID, emojiChoice):
 
