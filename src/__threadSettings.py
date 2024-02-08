@@ -1,7 +1,6 @@
 import json, requests, time, json, random
-import datetime 
-import __facebookToolsV2
-from utils import digitToChar, str_base, parse_cookie_string, Headers, formAll, mainRequests
+# import __facebookToolsV2
+from utils import formAll, mainRequests
 
 def formatResults(type, text):
      if (type == "error"):
