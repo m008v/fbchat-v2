@@ -1,8 +1,6 @@
-from datetime import datetime
-import json, random, requests, attr, time
-from threading import Thread 
-import __facebookToolsV2
-from utils import Headers, digitToChar, str_base, parse_cookie_string, gen_threading_id, mainRequests, formAll
+import json, random, requests, time
+# import __facebookToolsV2
+from utils import gen_threading_id, mainRequests, formAll
      
 class api:
      
