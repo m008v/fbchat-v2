@@ -180,7 +180,10 @@ class facebookTools:
                except:
                     pass
           self.dictExportData['total_count'] = self.total
-          return json.dumps(self.dictExportData, indent=5)
+          return {
+               "success": 1,
+               "messageRequests": json.dumps(self.dictExportData, indent=5)
+          }
 
      def onBusinessOnFacebookProfile(self, statusBusiness=None): # Bật chế độ chuyên nghiệp Trang cá nhân
           
