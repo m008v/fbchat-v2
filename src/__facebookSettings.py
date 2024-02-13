@@ -462,6 +462,7 @@ class facebookTools:
           
           # Được lấy dữ liệu và viết vào lúc: 22:25 Thứ 3, ngày 10/10/2023. Tác giả: MinhHuyDev
           # Thank you @syrex1013 (Github) very much for your idea
+          # Thank you @tranngocminh230791 (Github) very much for categoryDict
           
           """Args:
                nameItem: Name of item for sale (eg. Gucci Flora) | typeInput: str
@@ -477,13 +478,45 @@ class facebookTools:
           #Note: You can upload images & get ID images from plugins: __uploadImages.py
           
           categoryDict = {
-               "Home&Garden": {
+               "Home & Garden": {
                     "Tools": 2171028376552553,
                     "Furniture": 1583634935226685,
                     "Household": 1569171756675761,
                     "Garden": 800089866739547,
                     "Appliances": 678754142233400
-               }
+               },
+               "Entertainment": {
+                    "Video Games": 686977074745292,
+                    "Books Movies&Music": 613858625416355
+               },
+               "Clothing&Accessories": {
+                    "Bags & Luggage": 1567543000236608,
+                    "Women's clothing & shoes": 1266429133383966,
+                    "Men's clothing & shoes": 931157863635831,
+                    "Jewelry & Accessories": 214968118845643
+               },
+               "Family": {
+                    "Health & beauty": 1555452698044988,
+                    "Pet Supplies": 1550246318620997,
+                    "Baby & kids": 624859874282116,
+                    "Toys & Games": 606456512821491
+               },
+               "Electronics": {
+                    "Electronics & computers": 1792291877663080,
+                    "Mobile phones": 1557869527812749,
+               },
+               "Hobbies": {
+                    "Bicycles": 1658310421102081,
+                    "Arts & Crafts": 1534799543476160,
+                    "Sports & Outdoors": 1383948661922113,
+                    "Auto parts": 757715671026531,
+                    "Musical Instruments": 676772489112490,
+                    "Antiques & Collectibles": 393860164117441,
+               },
+               "Classifieds": {
+                    "Garage Sale": 1834536343472201,
+                    "Miscellaneous": 895487550471874
+               },
                # There are more options than that... Please continue to develop it for me ¯⁠\⁠_⁠(⁠ツ⁠)⁠_⁠/⁠¯
           }
           
