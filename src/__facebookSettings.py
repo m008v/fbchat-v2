@@ -149,41 +149,39 @@ class facebookTools:
      def getMessageRequests(self): # Lấy danh sách tin nhắn chờ
           
           # Được lấy dữ liệu và viết vào lúc: 21:43 Thứ 4, ngày 05/07/2023. Tác giả: MinhHuyDev
-          # Lưu Ý: Này chỉ lấy từ m.facebook.com nên giới hạn (limit) tin nhắn là 5 thôi :v
-          
-          sendRequests = requests.get(**mainRequests("https://m.facebook.com/messages/?folder=pending", None, self.dataFB["cookieFacebook"])).text
-          listMessage = []
-          try:
-               lengthMessageRequests = sendRequests.count("<a href=\"/messages/read/") 
-               if (lengthMessageRequests == 0):
-                    return {
-                         "notfound": 1,
-                         "message": "Không tìm thấy dữ liệu này về tin nhắn chờ."
-                    }
-               else:
-                    for messageAmountAdded in range(2, lengthMessageRequests):
-                         try:
-                              getAllDataMessage = dataSplit("<a href=\"/messages/read/", "<a href=\"", messageAmountAdded, 0, sendRequests)
-                              idUser = clearHTML(dataSplit("%3A", "&", 1, 0, str(re.search(f"tid=cid.c.{dataFB['FacebookID']}%3A(.*?)&amp;", getAllDataMessage))))
-                              nameUser = clearHTML(dataSplit("\">", "</a></h3><h3", 1, 0, getAllDataMessage))
-                              textContents = dataSplit("\">", "</span></h3><h3><span", 3, 0, getAllDataMessage)
-                              DateTimeSendMessage = clearHTML(dataSplit("<abbr>", "</", 1, 0, getAllDataMessage))
-                              try: contentMessage = textContents.split("</span></h3><h3")[0]
-                              except: contentMessage = clearHTML(textContents)
-                              listMessage.append(f"≈ ≈ ≈ ≈ ≈ ≈\n🏷️Tên người dùng: {nameUser}\n🪂ID người dùng: {idUser}\n🖨️Nội dung tin nhắn: {contentMessage}\n🗓️Thời gian gửi: {DateTimeSendMessage}")
-                         except:
-                              pass
+          # DATETIME - UPDATE: 13/02/2024 13:21
                     
-                    return {
-                         "success": 1,
-                         "messageRequests": "\n".join(listMessage)
+          dataForm = formAll(self.dataFB, requireGraphql=0)
+          dataForm["queries"] = json.dumps({
+               "o0": {
+                    "doc_id": "3336396659757871",
+                    "query_params": {
+                         "limit": 10000,
+                         "before": None,
+                         "tags": ["PENDING"], # INBOX, PENDING, ARCHIVED
+                         "includeDeliveryReceipts": False,
+                         "includeSeqID": True,
                     }
-          except Exception as errLog:
-               return {
-                    "error": 1,
-                    "message": "ERR: " + str(errLog)
                }
+          })
           
+          sendRequests = requests.post(**mainRequests("https://www.facebook.com/api/graphqlbatch/", dataForm, self.dataFB["cookieFacebook"]))
+          # return sendRequests.text.split("{\"successful_results\"")[0]
+          self.dataGet = json.loads(sendRequests.text.split('{"successful_results"')[0])
+          self.PendingList = self.dataGet['o0']['data']['viewer']['message_threads']['nodes']
+          self.dictExportData = {"data":{}}
+          self.total = 0
+          for i in self.PendingList:
+               over = i['last_message']['nodes']
+               try:
+                    contentMessage, senderID, timestamp_precise = over[0]['snippet'], over[0]['message_sender']['messaging_actor']['id'], over[0]['timestamp_precise']
+                    self.dictExportData[self.total] = {'senderID': senderID, 'snippet': contentMessage, 'timestamp_precise': timestamp_precise}
+                    self.total += 1
+               except:
+                    pass
+          self.dictExportData['total_count'] = self.total
+          return json.dumps(self.dictExportData, indent=5)
+
      def onBusinessOnFacebookProfile(self, statusBusiness=None): # Bật chế độ chuyên nghiệp Trang cá nhân
           
           # Được lấy dữ liệu và viết vào lúc: 01:03 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
