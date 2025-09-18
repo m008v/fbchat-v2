@@ -1,8 +1,6 @@
 FBChat-Remake: Open Source
 =======================================
- Chào người dùng thân mến! Tôi viết cái này để thông báo rằng: Dự án hiện tại tạm thời *ngưng hoạt động*. 
- **FBChat-v2** sẽ không được cập nhật thêm tính năng mới và ngưng bảo trì tạm thời. Nếu bạn muốn trở thành người đóng góp cho dự án, hãy liên hệ tôi `tại đây <https://m.me/Booking.MinhHuyDev>`_. (Tôi sẽ quay trở lại sớm thôi, có lẽ là vào tháng 06/2024)
-
+ Chào người dùng thân mến, tôi đã quay trở lại sau khoảng thời gian dài vắng bóng. Hiện tại dự án sẽ dần được sửa chữa các lỗi do người dùng và cập nhật thêm các tính năng dần. Xin cảm ơn tất cả vì thời gian qua đã gửi báo cáo đén tôi. (Lúc 19/08/2025)
 
 Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu tiên mà mình làm lại một source lớn như vậy nên sẽ không tránh được những *sai sót* trong quá trình code, rất mong sẽ được người dùng báo cáo lại **Lỗi** tại issues của GitHub này nhé:3
 
