@@ -1,8 +1,6 @@
 FBChat-Remake: Open Source
 =======================================
- Dear users! I am writing this to inform you that: The current project is temporarily *suspended*.
- **FBChat-v2** will not receive further feature updates and is temporarily suspended for maintenance. If you wish to contribute to the project, please contact me `here <https://m.me/Booking.MinhHuyDev>`_. (I will be back soon, probably in June 2024)
-
+ Dear users, I'm back after a long absence. The project will gradually fix user-reported errors and add new features. Thank you all for sending your reports to me over the past time. (As of August 19, 2025)
 
 Hello, I am **MinhHuyDev**. Firstly, this is my first time remaking such a large source, so there may be *mistakes* in the coding process. I hope users will report any **bugs** in the GitHub issues section here:3
 
