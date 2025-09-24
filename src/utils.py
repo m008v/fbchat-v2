@@ -2,7 +2,7 @@ import attr, re, json, random, string, time
 from os.path import basename
 from mimetypes import guess_type 
 
-def Headers(setCookies, dataForm=None, Host=None):
+def Headers(dataForm=None, Host=None):
      if (Host == None): Host = "www.facebook.com"
      headers = {}
      headers["Host"] = Host
@@ -89,7 +89,7 @@ def clearHTML(text):
      
 def mainRequests(urlRequests, dataForm, setCookies):
      return {
-          "headers": Headers(setCookies, dataForm),
+          "headers": Headers(dataForm),
           "timeout": 5,
           "url": urlRequests, # "https://www.facebook.com/api/graphql/",
           "data": dataForm,
