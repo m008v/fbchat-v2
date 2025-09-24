@@ -1,7 +1,7 @@
 import json, requests, time, json, attr, random, re, string
 import datetime 
 import __facebookToolsV2
-from utils import Headers, digitToChar, str_base, dataSplit, parse_cookie_string, formAll, mainRequests
+from utils import formAll, mainRequests
 
 def randStr(length):
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
@@ -325,11 +325,10 @@ class facebookTools:
           listResultSearch = []
          
           sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/api/graphql/", dataForm, self.dataFB["cookieFacebook"])).text)
-          
           try:
                getDataResultSearch = sendRequests["data"]["serpResponse"]["results"]["edges"][0]["relay_rendering_strategy"]["result_rendering_strategies"]
                for dataResults in getDataResultSearch:
-                    listResultSearch.append("🔮Tên người dùng: " + dataResults["view_model"]["profile"]["name"] + "\n⚗️ID người dùng: " + dataResults["view_model"]["profile"]["id"] + "\n🏷️Liên kết trang cá nhân: " + dataResults["view_model"]["profile"]["profile_url"] + "\n≈ ≈ ≈ ≈ ≈ ≈ ≈ ≈")
+                    listResultSearch.append("🔮Tên người dùng: " + dataResults["view_model"]["profile"]["name"] + "\n⚗️ID người dùng: " + dataResults["view_model"]["profile"]["id"] + "\n🏷️Liên kết trang cá nhân: " + dataResults["view_model"]["profile"]["url"] + "\n≈ ≈ ≈ ≈ ≈ ≈ ≈ ≈")
                return {
                     "success": 1,
                     "searchResults": "≈ ≈ ≈ Tìm Kiếm Facebook ≈ ≈ ≈\n\n" + "\n".join(listResultSearch) + "\n🔎Từ khoá tìm kiếm: " + str(keywordSearch) + "\n📊Số lượng kết quả: 5"
@@ -661,5 +660,6 @@ class facebookTools:
                }
                
           return a
-               
-#Author: MinhHuyDev (Nguyen Minh Huy)
+
+# Author: MinhHuyDev (Nguyen Minh Huy)
+# Restructuring and bug fixes, phase 1 - 24/09/2025 - Author: MinhHuyDev
