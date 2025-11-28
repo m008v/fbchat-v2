@@ -1,6 +1,9 @@
 FBChat-Remake: Open Source
 =======================================
  Chào người dùng thân mến, tôi đã quay trở lại sau khoảng thời gian dài vắng bóng. Hiện tại dự án sẽ dần được sửa chữa các lỗi do người dùng và cập nhật thêm các tính năng dần. Xin cảm ơn tất cả vì thời gian qua đã gửi báo cáo đén tôi. (Lúc 19/08/2025)
+**📢THÔNG BÁO QUAN TRỌNG:** Kể từ 11/2024, Facebook đã chính thức mã hóa tin nhắn đàu cuối giữa người dùng với nhau (*End-to-End Encryption (E2EE)*). Chính vì thế, bây giờ thư viện chỉ lấy được tin nhắn trong nhóm, **không thể** lấy được tin nhắn giữa các người dùng với nhau.
+
+- - - - - - - - -
 
 Xin chào, tôi là **MinhHuyDev**. Lời nói đầu, đây là lần đầu tiên mà mình làm lại một source lớn như vậy nên sẽ không tránh được những *sai sót* trong quá trình code, rất mong sẽ được người dùng báo cáo lại **Lỗi** tại issues của GitHub này nhé:3
 
