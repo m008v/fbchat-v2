@@ -23,7 +23,7 @@ class api:
           
           self.dataFB = dataFB # --> data from home Facebook
           self.content = str(contentSend) # --> contents message
-          self.ID = str(threadID) # --> ID of thread or user
+          self.ID = threadID # --> ID of thread or user
           self.typeAttachment = typeAttachment # --> type attachment send with message (see <key> at self.dictAttachment)
           self.attachmentID = attachmentID # --> ID of attachment uploaded.
           self.typeChat = typeChat # --> type chat with user/thread (If you want to send to user, let its value be "user". If you want to send to a thread, keep the same value (None))
