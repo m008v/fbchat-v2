@@ -80,7 +80,7 @@ class fbTools:
                "o0": {
                     "doc_id": "3336396659757871",
                     "query_params": {
-                         "limit": 1,
+                         "limit": 50,
                          "before": None,
                          "tags": ["INBOX"], # INBOX, PENDING, ARCHIVED
                          "includeDeliveryReceipts": False,
