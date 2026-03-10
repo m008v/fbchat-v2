@@ -1,10 +1,15 @@
+from requests import Response
 import json
 import ssl
+import time
+import string
 import attr
+import random
 import paho.mqtt.client as mqtt
-# import __facebookToolsV2
 from urllib.parse import urlparse
-from utils import generate_session_id, generate_client_id, json_minimal
+import _facebookToolsV2
+from utils import generate_session_id, generate_client_id, json_minimal, _set_chat_on
+
 """
 Lời đầu tiên, xin cảm ơn tất cả user của fbchat-v2 vừa qua đã đóng góp cho dự án
 Và bây giờ bạn có thể dùng wss (websocket) nhận tin nhắn thay vì requests
@@ -42,6 +47,9 @@ class listeningEvent:
           return 
                
      def connect_mqtt(self):
+          # Thêm retry counter
+          self.retry_count = 0
+          self.max_retries = 3
           
           chat_on: bool = json_minimal(True)
           session_id = generate_session_id()
@@ -83,24 +91,30 @@ class listeningEvent:
           
                     
           def _messenger_queue_publish(client: mqtt.Client, userdata, flags, rc):
+               # Gọi get_last_seq_id trước mỗi publish để fresh ID
+               self.get_last_seq_id()
+               
                topics = None
-                
                queue = {
                     "sync_api_version": 10,
                     "max_deltas_able_to_process": 1000,
                     "delta_batch_size": 500,
                     "encoding": "JSON",
-                    "entity_fbid": self.dataFB['FacebookID']
+                    "entity_fbid": self.dataFB['FacebookID'],
+                    # Thêm orca agent version mới (fix từ 2025 issues, bump lên 1.2.0+)
+                    "orca_version": "1.2.0"  # Thử version mới hơn nếu cần (từ Bitlbee fix)
                }
                
-               if (self.syncToken == None):
+               if self.syncToken is None:
                     topics = "/messenger_sync_create_queue"
                     queue["initial_titan_sequence_id"] = self.lastSeqID
                     queue["device_params"] = None
                else:
                     topics = "/messenger_sync_get_diffs"
                     queue["last_seq_id"] = self.lastSeqID
-                    queue["sync_token"] = "1"
+                    queue["sync_token"] = self.syncToken  # Sửa: dùng self.syncToken thay vì "1"
+               
+               print(f"Publishing to {topics} with seq_id: {self.lastSeqID}")  # Debug
                
                client.publish(
                     topics,
@@ -122,18 +136,14 @@ class listeningEvent:
                               self.bodyResults["messageID"] = _["messageMetadata"]["messageId"]
                               self.bodyResults["replyToID"] = _["messageMetadata"]["threadKey"].get("otherUserFbId") if _["messageMetadata"]["threadKey"].get("otherUserFbId") is not None else _["messageMetadata"]["threadKey"].get("threadFbId")
                               self.bodyResults["type"] = "user" if _["messageMetadata"]["threadKey"].get("otherUserFbId") is not None else "thread"
-                              try:
-                                   if len(_["attachments"]) > 0:
-                                        try:
-                                             self.bodyResults["attachments"]["id"] = _["attachments"][0]["fbid"]
-                                             self.bodyResults["attachments"]["url"] = _["attachments"][0]["mercury"]["blob_attachment"]["preview"]["uri"]
-                                        except:   
-                                             self.bodyResults["attachments"]["id"] = "This is image_url!?"
-                              except:
-                                   self.bodyResults["attachments"]["id"] = None
-                                   self.bodyResults["attachments"]["url"] = None
-                                             
-                              open(".mqttMessage", "w", encoding="utf-8").write(json.dumps(self.bodyResults, indent=5))
+                              if len(_["attachments"]) > 0:
+                                   try:
+                                        self.bodyResults["attachments"]["id"] = _["attachments"][0]["fbid"]
+                                        self.bodyResults["attachments"]["url"] = _["attachments"][0]["mercury"]["blob_attachment"]["preview"]["uri"]
+                                   except:   
+                                        self.bodyResults["attachments"]["id"] = "This is image_url!?"
+                              open(".mqttMessage", "w").write(json.dumps(self.bodyResults, indent=5))
+                              # print(self.bodyResults)
                               # Bạn có thể dùng các tệp tin hoặc socket để truyền dữ liệu qua các file plugins khác / main của bot
                               # You can use files or socket to transfer data to other plugins files / main of the bot
                               """Example:
@@ -158,20 +168,48 @@ class listeningEvent:
                          self.lastSeqID = j["lastIssuedSeqId"]
                     if "errorCode" in j:
                          error = j["errorCode"]
-                         print(f"ERR {err}")
-                         # ERROR_QUEUE_NOT_FOUND means that the queue was deleted, since too
-                         # much time passed, or that it was simply missing
-                         # ERROR_QUEUE_OVERFLOW means that the sequence id was too small, so
-                         # the desired events could not be retrieved
-                         self.syncToken = None
-                         self.get_last_seq_id() # update self.lastSeqID
-                         self._messenger_queue_publish()
+                         print(f"ERR {error}")
+                         
+                         if error == 100:  # ERROR_QUEUE_OVERFLOW
+                              print("Queue overflow - resetting and retrying...")
+                              self.syncToken = None
+                              self.retry_count += 1
+                              
+                              if self.retry_count <= self.max_retries:
+                                   # Delay exponential backoff (5s, 10s, 20s)
+                                   delay = 5 * (2 ** (self.retry_count - 1))
+                                   print(f"Retrying in {delay}s (attempt {self.retry_count}/{self.max_retries})")
+                                   time.sleep(delay)
+                                   self.get_last_seq_id()  # Fresh seq ID
+                                   _messenger_queue_publish(client, userdata, flags, rc)
+                              else:
+                                   print("Max retries reached - full reconnect")
+                                   self.retry_count = 0
+                                   self.mqtt.disconnect()
+                                   time.sleep(10)  # Delay trước reconnect
+                                   self.connect_mqtt()  # Reconnect full (regenerate session)
+                          
+                         return  # Dừng xử lý error
+               
                except (UnicodeDecodeError):
                     print("ERR Failed parsing MQTT data on /t_ms as JSON")
                
           def on_disconnect(client, userdata, rc):
-                 print("Disconnected?")
+                 print("Disconnected with result code " + str(rc))
+                 if rc != 0:  # Không phải disconnect bình thường
+                      print("Unexpected disconnect - reconnecting in 10s...")
+                      time.sleep(10)
+                      self.connect_mqtt()  # Tự reconnect
      
+          def on_subscribe(client, userdata, mid, granted_qos):
+                 print("Subscribed: " + str(mid) + " " + str(granted_qos))
+     
+          def on_unsubscribe(client, userdata, mid):
+                 print("Unsubscribed: " + str(mid))
+     
+          def on_log(client, userdata, level, buf):
+                 print("Log: " + str(buf))
+            
           self.mqtt = mqtt.Client(
                client_id=options["client_id"],
                clean_session=options["clean"],
@@ -184,6 +222,8 @@ class listeningEvent:
           self.mqtt.on_connect = _messenger_queue_publish
           self.mqtt.on_message = on_message
           self.mqtt.on_disconnect = on_disconnect
+          self.mqtt.on_subscribe = on_subscribe
+          self.mqtt.on_unsubscribe = on_unsubscribe
           
           self.mqtt.username_pw_set(username=options["username"])
           parsed_host = urlparse(host)
@@ -209,4 +249,4 @@ _ = listeningEvent(fbt, i)
 _.get_last_seq_id()
 _.connect_mqtt()
 """
-# last updated: 21:18 Monday, 11/12/2023
+# last updated: 12:00 PM 03/10/2026
