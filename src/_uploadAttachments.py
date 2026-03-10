@@ -1,6 +1,6 @@
 import random, attr, requests, json
 # import __facebookToolsV2
-from Zekai.plugins.Facebook.utils import str_base,  get_files_from_paths
+from utils import str_base,  get_files_from_paths
 
 def _uploadAttachment(filenames, dataFB):
 
