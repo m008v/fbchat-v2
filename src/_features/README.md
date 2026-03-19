@@ -1,9 +1,3 @@
-
----
-
-### `src/_features/README.md`
-
-```md
 ## 👤 _features (`src/_features/`)
 
 `_features` chứa các feature liên quan user/_features và các thao tác mở rộng trên Facebook.  
