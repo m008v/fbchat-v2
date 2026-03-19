@@ -7,7 +7,7 @@ import attr
 import random
 import paho.mqtt.client as mqtt
 from urllib.parse import urlparse
-import _facebookToolsV2
+import __facebookToolsV2
 from utils import generate_session_id, generate_client_id, json_minimal, _set_chat_on
 
 """
