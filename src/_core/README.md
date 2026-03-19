@@ -1,12 +1,12 @@
-## ⚙️ Core (`src/core/`)
+## ⚙️ _core (`src/_core/`)
 
-`core` là tầng nền tảng dùng chung cho toàn bộ project.  
-Module trong `core` chỉ xử lý session/token, request chuẩn và helper kỹ thuật — **không chứa business logic**.
+`_core` là tầng nền tảng dùng chung cho toàn bộ project.  
+Module trong `_core` chỉ xử lý session/token, request chuẩn và helper kỹ thuật — **không chứa business logic**.
 
 ### Cấu trúc module
 
 ```text
-src/core/
+src/_core/
 ├── session.py
 ├── request.py
 ├── cookies.py
