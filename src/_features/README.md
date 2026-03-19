@@ -12,13 +12,13 @@ Thiết kế theo hướng tách nhỏ module để tránh monolith.
 ### Cấu trúc module
 
 ```text
-src/_features/
+src/_features/ 
 ├── user_info.py
-├── bio.py
-├── posts.py
-├── search.py
-├── notifications.py
-├── blocking.py
-├── marketplace.py
 ├── message_requests.py
-└── professional_mode.py
+├── _facebook/bio.py
+├── _facebook/posts.py
+├── _facebook/search.py
+├── _facebook/notifications.py
+├── _facebook/blocking.py
+├── _facebook/marketplace.py
+└── _facebook/professional_mode.py
