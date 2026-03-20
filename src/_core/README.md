@@ -31,7 +31,7 @@ src/_core/
 __all__ = ["_session", "_utils", "_facebookLogin"]
 ```
 
-Nghĩa là bạn chỉ cần gọi `_core` là có thể dùng được cái ***module*** bên trong nó.
+Nghĩa là bạn chỉ cần gọi `_core` là có thể dùng được các ***module*** bên trong nó.
 
 ---
 
