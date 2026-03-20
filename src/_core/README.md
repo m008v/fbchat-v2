@@ -1,7 +1,5 @@
 # _core (`src/_core`)
 
-Tài liệu này mô tả lớp `core` nội bộ của dự án.
-
 `_core` là nền tảng kỹ thuật dùng chung cho toàn bộ codebase. Thư mục này không chứa tính năng người dùng cuối, mà chịu trách nhiệm:
 
 - Khởi tạo phiên làm việc (session) từ cookie.

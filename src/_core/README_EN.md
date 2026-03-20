@@ -1,7 +1,5 @@
 # _core (`src/_core`)
 
-This document describes the project's internal `core` layer.
-
 `_core` is the shared technical foundation for the entire codebase. This folder does not implement end-user features directly. Instead, it is responsible for:
 
 - Initializing sessions from cookies.
