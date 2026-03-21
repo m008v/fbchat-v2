@@ -52,8 +52,9 @@ def func(dataFB, keywordSearch): # Tìm kiếm trên Facebook
     listResultSearch = []
     dictListResultSearch = []
     
-    sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/api/graphql/", dataForm, dataFB["cookieFacebook"])).text)
+    
     try:
+        sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/api/graphql/", dataForm, dataFB["cookieFacebook"])).text)
         getDataResultSearch = sendRequests["data"]["serpResponse"]["results"]["edges"][0]["relay_rendering_strategy"]["result_rendering_strategies"]
         for dataResults in getDataResultSearch:
             dictListResultSearch.append({
