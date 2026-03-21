@@ -35,8 +35,12 @@ Nghĩa là bạn chỉ cần gọi `_core` là có thể dùng được các ***
 
 ---
 
+<<<<<<< HEAD
 ## 2) Nhiệm vụ chính (***QUAN TRỌNG***): `_core`
 
+=======
+## 2) Phạm vi trách nhiệm
+>>>>>>> 770781a6930055c51056b28b4dac0b20892d2ce5
 
 ### `_core` được ứng dụng:
 
@@ -277,4 +281,8 @@ payload["message_id"] = "mid...."
 ### TH.2: trường parse ra giá trị fallback
 
 - Khả năng cao là HTML homepage đã đổi.
+<<<<<<< HEAD
 - Cập nhật marker split trong `_session.py`.s
+=======
+- Cập nhật marker split trong `_session.py`.s
+>>>>>>> 770781a6930055c51056b28b4dac0b20892d2ce5
