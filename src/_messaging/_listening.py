@@ -6,7 +6,7 @@ import attr
 import paho.mqtt.client as mqtt
 from urllib.parse import urlparse
 from _core._utils import generate_session_id, generate_client_id, json_minimal
-
+from _features._thread import *
 """
 Lời đầu tiên, xin cảm ơn tất cả user của fbchat-v2 vừa qua đã đóng góp cho dự án
 Và bây giờ bạn có thể dùng wss (websocket) nhận tin nhắn thay vì requests
@@ -18,7 +18,7 @@ Date: 23:28 Sunday, 10/12/2023
      
 class listeningEvent:
      _on_message = attr.ib()
-     def __init__(self, fbt, dataFB):
+     def __init__(self, dataFB):
           self.bodyResults = {
                "body": None, # Nội dung tin nhắn - content message
                "timestamp": 0, # Thời gian tin nhắn được gửi - The time the message was sent
@@ -34,12 +34,11 @@ class listeningEvent:
           self.syncToken = None
           self.lastSeqID = None
           self.dataFB = dataFB
-          self.fbt = fbt
+          self.fbt = _all_thread_data.func(dataFB)
      
      
      def get_last_seq_id(self):
-          self.fbt.getAllThreadList()
-          self.lastSeqID = self.fbt.last_seq_id
+          self.lastSeqID = self.fbt["last_seq_id"]
           print(f"[{datetime.datetime.now()}]last_seq_id: {self.lastSeqID}")
           return 
                
