@@ -1,7 +1,7 @@
 import requests, json
 from _core._utils import Headers, parse_cookie_string, formAll
      
-def Main(dataFB, typeAdded, messageID, emojiChoice):
+def func(dataFB, typeAdded, messageID, emojiChoice):
 
      dataForm = formAll(dataFB, docID=1491398900900362)
      dataForm["variables"] = json.dumps({"data": {
