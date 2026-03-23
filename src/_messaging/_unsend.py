@@ -1,7 +1,7 @@
 import requests, json
 from _core._utils import formAll, mainRequests
  
-def _unsend(messageID, dataFB):
+def func(messageID, dataFB):
 
      dataForm = formAll(dataFB, requireGraphql=False)
      dataForm["message_id"] = messageID
