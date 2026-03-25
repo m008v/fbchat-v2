@@ -1,11 +1,11 @@
 FBChat-Remake: Open Source
 =======================================
  
-**📢THÔNG BÁO QUAN TRỌNG:** Kể từ 11/2024, Facebook đã chính thức mã hóa tin nhắn đàu cuối giữa người dùng với nhau (*End-to-End Encryption (E2EE)*). Chính vì thế, bây giờ thư viện chỉ lấy được tin nhắn trong nhóm, **không thể** lấy được tin nhắn giữa các người dùng với nhau. Tuy nhiên, ngay tại thời điểm này (24/03/2026) mình đã giải mã được *E2EE* của Messenger, sẽ được cập nhật sớm nhất cho thể.
+**📢THÔNG BÁO QUAN TRỌNG:** Kể từ 11/2024, Facebook đã chính thức mã hóa tin nhắn đầu cuối giữa người dùng với nhau (*End-to-End Encryption (E2EE)*). Chính vì thế, bây giờ thư viện chỉ lấy được tin nhắn trong nhóm, **không thể** lấy được tin nhắn giữa các người dùng với nhau. Tuy nhiên, ngay tại thời điểm này (24/03/2026) mình đã giải mã được *E2EE* của Messenger, sẽ được cập nhật sớm nhất cho thể.
 
 - - - -
 
-Xin chào, tôi là **MinhHuyDev** / **raintee.dev**. Lời nói đầu, mình xin chân thành cảm ơn những đóng góp vừa qua của các người dùng trong và ngoài nước đã gửi những *ý tưởng* và *vấn đề* đang toàn đọng trong source code này. Trong bản **UPDATE LỚN** này (`v2.x`) đã xử lý hầu hết các lỗi nhỏ lặt vặt và *tái cấu trúc* hoàn toàn: `fbchat-v2`.
+Xin chào, tôi là **MinhHuyDev** / **raintee.dev**. Lời nói đầu, mình xin chân thành cảm ơn những đóng góp vừa qua của các người dùng trong và ngoài nước đã gửi những *ý tưởng* và *vấn đề* đang tồn đọng trong source code này. Trong bản **UPDATE LỚN** này (`v2.x`) đã xử lý hầu hết các lỗi nhỏ lặt vặt và *tái cấu trúc* hoàn toàn: `fbchat-v2`.
 
 Tuy nhiên, vẫn sẽ tồn đọng những lỗi lặt vặt khó tìm thấy, những đoạn code và cấu trúc chưa thật sự đồng bộ với nhau. Nếu bạn tìm thấy những ***vấn đề*** tồn đọng đó, bạn có thể gửi báo cáo tại [report issue](https://github.com/MinhHuyDev/fbchat-v2/issues) hoặc nhắn tin trực tiếp cho tôi qua: [Telegram](https://t.me/MinhHuyDev).
 
@@ -34,7 +34,7 @@ Facebook chat (hay *fbchat*) là dự án hoàn toàn đi theo hướng đi khá
  - Uptime theo thời gian thực, trả lời tin nhắn người dùng ngay lập tức theo lệnh được chỉ định.
   - `async`/`await` (COMMING)
 
-Tóm lại, `fbchat-v2` (`fbchat: Open source`) thường hưởng mọi tính năng mà đàn anh của nó có được, và có thêm nhiều tính năng mới nhất ngay lúc bấy giờ.
+Tóm lại, `fbchat-v2` (`fbchat: Open source`) thừa hưởng mọi tính năng mà đàn anh của nó có được, và có thêm nhiều tính năng mới nhất ngay lúc bấy giờ.
 
 (*): Mang rủi ro tiềm tàng có thể bị đánh cắp bởi Hacker
  
@@ -80,13 +80,13 @@ src/
 |   |-- _unsend.py
 |   |-- README.md
 |   `-- README_EN.md
-`-- README.md
+`-- main.py
 ```
 Nhìn một cách TỔNG THỂ, chỉ có 3 tầng chính:
 
 - `_core`: tầng nền tảng (session, token, request helpers, utils).
 - `_features`: tầng nghiệp vụ tính năng Facebook/thread.        
-- `_messaging`: nhận tin nhắnm gửi tin nhắn, và xử lý những gì liên quan đến việc nhắn tin
+- `_messaging`: nhận tin nhắn gửi tin nhắn, và xử lý những gì liên quan đến việc nhắn tin
 
 Trong từng tầng đã có hướng dẫn chi tiết cụ thể tại `_*/README.md` của từng *folder*. 
 
@@ -94,11 +94,13 @@ Trong từng tầng đã có hướng dẫn chi tiết cụ thể tại `_*/READ
 
 ***YÊU CẦU QUAN TRỌNG***: Người dùng cần phải sử dụng *Python* từ phiên bản 3.10.x trở lên để hoạt động ổn định nhất.
 
-Cài đặt môi trường:
-```
+Cài đặt môi trường ảo (*có thể bỏ qua*):
+```python
 python -m venv .venv
+```
+Sau khi *run* thành công, dùng lệnh sau để vào môi trường ảo:
+```bash
 .venv\Scripts\activate
-pip install requests paho-mqtt attrs
 ```
 
 Để import `_core`, `_features`, `_messaging` từ script chạy ở root project, bạn có thể đặt `PYTHONPATH=src` hoặc import *thủ công*.
