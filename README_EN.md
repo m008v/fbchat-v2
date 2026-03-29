@@ -85,7 +85,7 @@ src/
 ```
 ```mermaid
 mindmap
-  root((fbchat-v2-new_version))
+  root((fbchat: Open soucre))
     Root Files
       README.md
       README_EN.md
