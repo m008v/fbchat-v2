@@ -82,6 +82,68 @@ src/
 |   `-- README_EN.md
 `-- main.py
 ```
+```mermaid
+mindmap
+  root((fbchat-v2-new_version))
+    Root Files
+      README.md
+      README_EN.md
+      DOCS.md
+      CODE_OF_CONDUCT.md
+      LICENSE
+      requirements.txt
+      FLOWCHART.md
+    Source Code (src)
+      main.py
+      config.json
+      _core
+        __init__.py
+        _session.py
+        _utils.py
+        _facebookLogin.py
+        README.md
+        README_EN.md
+      _features
+        README.md
+        README_EN.md
+        _facebook
+          __init__.py
+          _blocking.py
+          _changeBio.py
+          _createPost.py
+          _get_user_info.py
+          _marketplace.py
+          _notification.py
+          _professional.py
+          _registerOnProfile.py
+          _search.py
+        _thread
+          __init__.py
+          _addAdmin.py
+          _all_thread_data.py
+          _changeEmoji.py
+          _changeNameThread.py
+          _changeNickname.py
+      _messaging
+        __init__.py
+        _attachments.py
+        _listening.py
+        _message_requests.py
+        _reactions.py
+        _send.py
+        _unsend.py
+        README.md
+        README_EN.md
+    Language
+      language/README.md
+      language/vi_VN.lang
+    Environment
+      .venv
+      .git
+```
+***flowchart của dự án**: [tại đây](https://github.com/MinhHuyDev/fbchat-v2/blob/main/FLOWCHART.md)
+
+
 Nhìn một cách TỔNG THỂ, chỉ có 3 tầng chính:
 
 - `_core`: tầng nền tảng (session, token, request helpers, utils).

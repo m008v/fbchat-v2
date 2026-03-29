@@ -1,17 +1,18 @@
 FBChat-Remake: Open Source
 =======================================
 
-**📢 IMPORTANT NOTICE:** Since 11/2024, Facebook has officially enabled *End-to-End Encryption (E2EE)* for user-to-user messages. Because of this, the library can currently read only group messages and **cannot** read direct messages between individual users. However, as of now (24/03/2026), I have successfully decrypted *Messenger E2EE*, and this update will be released as soon as possible.
+**📢 IMPORTANT NOTICE:** Since 11/2024, Facebook has officially enabled end-to-end encryption between users (*End-to-End Encryption (E2EE)*). Because of this, the library can currently fetch only group messages and **cannot** fetch direct messages between individual users. However, as of now (24/03/2026), I have successfully decrypted Messenger *E2EE*, and this update will be released as soon as possible.
 
 - - - -
 
-Hello, I am **MinhHuyDev** / **raintee.dev**. First of all, I sincerely thank all users in Vietnam and abroad who shared ideas and reported unresolved issues in this codebase. In this **MAJOR UPDATE** (`v2.x`), I fixed most minor issues and fully restructured the project: `fbchat-v2`.
+Hello, I am **MinhHuyDev** / **raintee.dev**. First of all, I sincerely thank all users in Vietnam and abroad who contributed ideas and reported unresolved issues in this source code. In this **MAJOR UPDATE** (`v2.x`), most minor bugs were fixed and the project was fully restructured into: `fbchat-v2`.
 
-That said, some small and hard-to-find issues may still remain, and parts of the code and structure are not yet fully consistent. If you find any remaining ***issues***, you can report them at [report issue](https://github.com/MinhHuyDev/fbchat-v2/issues) or message me directly on [Telegram](https://t.me/MinhHuyDev).
+That said, there may still be some hard-to-detect issues, and parts of the code and structure are not fully consistent yet. If you find any remaining ***issues***, you can submit a report at [report issue](https://github.com/MinhHuyDev/fbchat-v2/issues) or message me directly on [Telegram](https://t.me/MinhHuyDev).
+
 
 ---
 
-> *This is not an official API.* Facebook already provides an official chatbot API [here](https://developers.facebook.com/docs/messenger-platform/). This library is different because it uses regular Facebook accounts/cookies instead.
+> *This is not an official API.* Facebook already provides an official API for chatbots [here](https://developers.facebook.com/docs/messenger-platform/). This library is different because it uses regular Facebook accounts/cookies instead.
 
 ---
 
@@ -19,27 +20,26 @@ That said, some small and hard-to-find issues may still remain, and parts of the
 
 ---
 
-**👽Need the Vietnamese version?** You can read **README** (*VIETNAMESE*) [here](https://github.com/MinhHuyDev/fbchat-v2/blob/main/README.md).
+**👽Need the Vietnamese version?** You can read the **README** (*VIETNAMESE*) [here](https://github.com/MinhHuyDev/fbchat-v2/blob/main/README.md)
 
 
 ## `fbchat-v2: Open source` - Overview
 
-Facebook chat (or *fbchat*) follows a completely different direction from the library provided by **Facebook**. Instead of serving only *fanpages* and accepting only *access tokens*, `fbchat` supports:
+Facebook chat (or *fbchat*) follows a completely different direction from the library provided by **Facebook**. Instead of only serving *fanpages* and accepting only *access_token*, `fbchat` supports:
+ - Logging in with a personal Facebook account via **username/password** or **cookies** (*)
+ - Reading all messages from users and group chats (threads)
+ - Sending many types of messages, including files, stickers, user mentions, etc.
+ - Searching messages and conversation threads.
+ - Creating groups, setting group emojis, changing nicknames, creating polls, etc.
+ - Using tools from `_features._facebook` to create posts, search users, update bio, etc.
+ - Realtime uptime and instant replies to user messages based on specified commands.
+ - `async`/`await` (COMING)
 
-- Logging in with a personal Facebook account via **username/password** or **cookies** (*)
-- Reading all messages from users and group chats (threads)
-- Sending many message types, including files, stickers, user mentions, etc.
-- Searching messages and conversation threads.
-- Creating groups, setting group emojis, changing nicknames, creating polls, etc.
-- Using tools from `_features._facebook` to create posts, search users, update bios, etc.
-- Realtime uptime, with instant replies to user messages based on specified commands.
-- `async`/`await` (**COMING SOON**)
+In short, `fbchat-v2` (`fbchat: Open source`) inherits all capabilities of its predecessor and also includes many newer features available at that time.
 
-In short, `fbchat-v2` (`fbchat: Open source`) inherits all core features from its predecessor while also adding the newest features available at that time.
-
-(*): This approach carries potential security risks because credentials/cookies may be stolen by attackers.
-
-## Project architecture overview
+(*): This carries potential security risks and may be vulnerable to theft by hackers.
+ 
+ ## Project architecture overview
 
 ```text
 src/
@@ -83,17 +83,79 @@ src/
 |   `-- README_EN.md
 `-- main.py
 ```
-From a high-level perspective, there are only 3 main layers:
+```mermaid
+mindmap
+  root((fbchat-v2-new_version))
+    Root Files
+      README.md
+      README_EN.md
+      DOCS.md
+      CODE_OF_CONDUCT.md
+      LICENSE
+      requirements.txt
+      FLOWCHART.md
+    Source Code (src)
+      main.py
+      config.json
+      _core
+        __init__.py
+        _session.py
+        _utils.py
+        _facebookLogin.py
+        README.md
+        README_EN.md
+      _features
+        README.md
+        README_EN.md
+        _facebook
+          __init__.py
+          _blocking.py
+          _changeBio.py
+          _createPost.py
+          _get_user_info.py
+          _marketplace.py
+          _notification.py
+          _professional.py
+          _registerOnProfile.py
+          _search.py
+        _thread
+          __init__.py
+          _addAdmin.py
+          _all_thread_data.py
+          _changeEmoji.py
+          _changeNameThread.py
+          _changeNickname.py
+      _messaging
+        __init__.py
+        _attachments.py
+        _listening.py
+        _message_requests.py
+        _reactions.py
+        _send.py
+        _unsend.py
+        README.md
+        README_EN.md
+    Language
+      language/README.md
+      language/vi_VN.lang
+    Environment
+      .venv
+      .git
+```
+**Project flowchart**: [here](https://github.com/MinhHuyDev/fbchat-v2/blob/main/FLOWCHART.md)
 
-- `_core`: foundational layer (session, tokens, request helpers, utils).
+
+From an overall perspective, there are only 3 main layers:
+
+- `_core`: foundational layer (session, token, request helpers, utils).
 - `_features`: business-logic layer for Facebook/thread features.
-- `_messaging`: handles sending/receiving messages and everything related to messaging.
+- `_messaging`: receives and sends messages, and handles everything related to messaging.
 
-Each layer already has detailed documentation in `_*/README.md` inside each folder.
+Each layer already has detailed instructions in `_*/README.md` inside each folder.
 
-## Installation guide
+## Installation Guide
 
-***IMPORTANT REQUIREMENT***: Users should use *Python* version 3.10.x or later for the most stable operation.
+***IMPORTANT REQUIREMENT***: Users should use *Python* version 3.10.x or newer for the most stable operation.
 
 Set up a virtual environment (*optional*):
 ```python
@@ -114,9 +176,9 @@ After that, you can run `main.py` (**THIS IS A BASIC BOT FILE**). It includes on
 
 (*): Replace your ***cookies*** in `config.json` at key: `cookies`
 
-## Contributor recognition
+## Contributor Recognition
 
-Over ***4 years*** of *development* and *maintenance*, as the project owner, I sincerely thank everyone who contributed major ideas and minor issue reports to this project. Without you, this project likely would have ended long ago as a one-person effort. Below is the list of contributors:
+Over ***4 years*** of *development* and *maintenance*, as the project owner, I sincerely ***THANK*** everyone who contributed major ideas and small issue reports to this project. Without all of you, this project would likely have ended long ago as a one-person effort. Below is the list of people who contributed:
  - tomdev112 ([Github](https://github.com/tomdev211))
  - syrex1013 ([Github](https://github.com/syrex1013))
  - Kheir Eddine ([Facebook](https://www.facebook.com/61557637127396/))
