@@ -160,7 +160,7 @@ Module này xử lý đăng nhập Facebook bằng username/password.
 
 ### Thành phần công khai
 
-- `class loginFB`
+- `class loginFacebook`
   - `__init__(username, password, AuthenticationGoogleCode=None)`
   - `main()` trả về dict thành công/thất bại.
 - `GetToken2FA(key2Fa)`

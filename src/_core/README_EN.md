@@ -161,7 +161,7 @@ This module handles Facebook login using username/password.
 
 ### Public components
 
-- `class loginFB`
+- `class loginFacebook`
   - `__init__(username, password, AuthenticationGoogleCode=None)`
   - `main()` returns a success/failure dictionary.
 - `GetToken2FA(key2Fa)`
