@@ -89,7 +89,7 @@ def clearHTML(text):
      
 def mainRequests(urlRequests, dataForm, setCookies):
      return {
-          "headers": Headers(dataForm),
+          "headers": Headers(dataForm), 
           "timeout": 5,
           "url": urlRequests, # "https://www.facebook.com/api/graphql/",
           "data": dataForm,
