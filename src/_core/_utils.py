@@ -2,12 +2,11 @@ import attr, re, json, random, string, time
 from os.path import basename
 from mimetypes import guess_type 
 
-def Headers(dataForm=None, Host=None):
-     if (Host == None): Host = "www.facebook.com"
+def Headers(dataForm=None, Host='www.facebook.com'):
      headers = {}
      headers["Host"] = Host
      headers["Connection"] = "keep-alive"
-     if (dataForm != None):
+     if (dataForm is not None):
           headers["Content-Length"] = str(len(dataForm))
      headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
      headers["Accept"] = "*/*"
@@ -20,7 +19,6 @@ def Headers(dataForm=None, Host=None):
      headers["sec-ch-ua-mobile"] = "?0"
      headers["sec-ch-ua-platform"] = "\"Windows\""
      headers["Accept-Language"] = "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
-     
      return headers
      
 def digitToChar(digit):
@@ -92,7 +90,7 @@ def clearHTML(text):
      
 def mainRequests(urlRequests, dataForm, setCookies):
      return {
-          "headers": Headers(dataForm), 
+          "headers": Headers(dataForm, 'www.facebook.com'),
           "timeout": 5,
           "url": urlRequests, # "https://www.facebook.com/api/graphql/",
           "data": dataForm,
