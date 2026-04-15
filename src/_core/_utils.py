@@ -16,6 +16,9 @@ def Headers(dataForm=None, Host=None):
      headers["Sec-Fetch-Mode"] = "cors"
      headers["Sec-Fetch-Dest"] = "empty"
      headers["Referer"] = "https://" + Host
+     headers["sec-ch-ua"] = "\"Chromium\";v=\"134\", \"Not;A=Brand\";v=\"24\", \"Google Chrome\";v=\"134\""
+     headers["sec-ch-ua-mobile"] = "?0"
+     headers["sec-ch-ua-platform"] = "\"Windows\""
      headers["Accept-Language"] = "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
      
      return headers

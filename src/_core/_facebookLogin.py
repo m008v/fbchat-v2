@@ -70,7 +70,7 @@ def GetToken2FA(key2Fa):
      except (requests.RequestException, ValueError, TypeError):
           return str(random.randint(100000, 999999))
 
-class loginFB:
+class loginFacebook:
 
 
      def __init__(self, username, password, AuthenticationGoogleCode=None):
