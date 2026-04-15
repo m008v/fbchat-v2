@@ -10,8 +10,8 @@ REQUEST_TIMEOUT = 20
 """
 Written by Nguyen Minh Huy (RainTee)
 Facebook Login V2 - Fixed
-Dstetime: 28/12/2022
-Last Update: 04/08/2023 
+Datetime: 28/12/2022
+Last Update: 15/4/2026 
 """
 
 def jsonResults(dataJson, statusLogin, listExportCookies=None):
