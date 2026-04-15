@@ -1,7 +1,7 @@
 import requests
 import string
 import random
-import json
+import pyotp
 
 FB_AUTH_URL = "https://b-graph.facebook.com/auth/login"
 TWO_FA_URL = "https://2fa.live/tok/{}"
@@ -64,9 +64,8 @@ def GetToken2FA(key2Fa):
      try:
           if not key2Fa:
                return ""
-          url = TWO_FA_URL.format(key2Fa.replace(" ", ""))
-          twoFARequests = requests.get(url, timeout=REQUEST_TIMEOUT).json()
-          return str(twoFARequests.get("token", ""))
+          twoFARequests = pyotp.TOTP(key2Fa.replace(" ", "")).now()
+          return str(twoFARequests)
      except (requests.RequestException, ValueError, TypeError):
           return str(random.randint(100000, 999999))
 
@@ -164,8 +163,9 @@ class loginFacebook:
 
           return jsonResults(pass2Fa, 1, _build_cookie_export(pass2Fa.get("session_cookies")))
 
+
+
 """
 ✓Remake by Nguyễn Minh Huy
-✓Sửa đổi mới nhất vào thứ vào lúc 10:36 AM 15/4/2026
 ✓Tôn trọng tác giả ❤️
 """
