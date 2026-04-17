@@ -53,7 +53,7 @@ def dataGetHome(setCookies):
           nameValue = i[0]
           try:
                exportValue = dataSplit(i[1], i[2], HTML=sendRequests, defaultValue=True)
-          except:
+          except (IndexError, AttributeError, TypeError):
                exportValue = "Unable to retrieve data for %s. It's possible that they have been deleted or modified." % nameValue
           dictValueSaved[nameValue] = exportValue
      dictValueSaved["cookieFacebook"] = setCookies

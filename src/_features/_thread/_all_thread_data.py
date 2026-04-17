@@ -54,8 +54,13 @@ def func(dataFB): # Lấy dữ liệu những thành phần tin nhắn ở INBOX
 def features(dataGet, threadID, commandUse):
     listData = []
           
-    try: getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
-    except: return json.loads(dataGet)["o0"]["errors"][0]["summary"]
+    try:
+        getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
+    except (KeyError, TypeError, json.JSONDecodeError):
+        try:
+            return json.loads(dataGet)["o0"]["errors"][0]["summary"]
+        except (KeyError, TypeError, json.JSONDecodeError):
+            return "Không thể xử lý dữ liệu ThreadList."
     for getNeedIDThread in getData:
         if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(threadID)):
             dataThread = getNeedIDThread

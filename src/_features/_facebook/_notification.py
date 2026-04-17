@@ -23,7 +23,7 @@ def func(dataFB): # Lấy thông báo Facebook
         for dataResults, sttCount in zip(getDataResultNotificationFacebook, range(1, len(getDataResultNotificationFacebook) + 1)):
             try:
                     listNotificationResults.append(str(sttCount) + "." + dataResults["node"]["notif"]["body"]["text"])
-            except:
+            except (KeyError, TypeError):   
                     pass
     except Exception as errLog:
         return {

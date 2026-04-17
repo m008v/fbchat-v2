@@ -78,7 +78,7 @@ def createItem(dataFB, nameItem, brandItem, priceItem, currencyItem, decriptionI
                     "data": {
                         "common": {
                             "attribute_data_json": '{\"vt_attributes_free_form\":{\"372885700169792\":\"' + brandItem + '\"},\"vt_attributes_normalized\":{},\"condition\":\"new\",\"brand\":\"' + brandItem + '\"}',
-                            "category_id": categoryDict["Home&Garden"][typeItem], # id Type of item
+                            "category_id": categoryDict["Home & Garden"][typeItem], # id Type of item
                             "commerce_shipping_carrier": None,
                             "commerce_shipping_carriers": [],
                             "comparable_price": "null",
@@ -141,7 +141,7 @@ def createItem(dataFB, nameItem, brandItem, priceItem, currencyItem, decriptionI
                     "id": idPost
             }
         }
-    except:
+    except (KeyError, TypeError):
         a = {
             "error": 1,
             "messages": "Đã xảy ra lỗi, tạo bài bán hàng thất bại: " + str(sendRequests)
@@ -197,7 +197,7 @@ def getInformationProductItemMarketPlace(dataFB, idProductItem):
                         "createdAt": str(datetime.datetime.fromtimestamp(mainData['target']['creation_time']))
                 }
             }
-        except:
+        except (KeyError, TypeError, IndexError):
             a = {
                 "error": 1,
                 "messages": "Đã xảy ra lỗi, lấy thông tin bài viết thất bại bại: " + str(sendRequests)

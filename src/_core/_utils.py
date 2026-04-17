@@ -1,5 +1,4 @@
 import attr, re, json, random, string, time
-from os.path import basename
 from mimetypes import guess_type 
 
 def Headers(dataForm=None, Host='www.facebook.com'):
@@ -41,10 +40,7 @@ def parse_cookie_string(cookie_string):
      for cookie in cookies:
           if "=" in cookie:
                key, value = cookie.split("=")
-          else:
-               pass
-          try: cookie_dict[key] = value
-          except: pass
+               cookie_dict[key] = value 
 
      return cookie_dict
 
@@ -55,32 +51,24 @@ def dataSplit(string1, string2, numberSplit1=None, numberSplit2=None, HTML=None,
      elif (amount == 3):
           return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2].split(string3)[numberSplit3]
      
-def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None):
+def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=True):
      __reg = attr.ib(0).counter
-     _revision = attr.ib()
      __reg += 1 
-     dataForm = {}
+     dataForm = {
+          "fb_dtsg": dataFB["fb_dtsg"],
+          "jazoest": dataFB["jazoest"],
+          "__a": 1,
+          "__user": str(dataFB["FacebookID"]),
+          "__req": str_base(__reg, 36),
+          "__rev": dataFB["clientRevision"],
+          "av": dataFB["FacebookID"],
+     }
      
-     if (requireGraphql == None):
-          dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
-          dataForm["jazoest"] = dataFB["jazoest"]
-          dataForm["__a"] = 1
-          dataForm["__user"] =str(dataFB["FacebookID"])
-          dataForm["__req"] = str_base(__reg, 36) 
-          dataForm["__rev"] = dataFB["clientRevision"]
-          dataForm["av"] = dataFB["FacebookID"]
+     if (requireGraphql != False):
           dataForm["fb_api_caller_class"] = "RelayModern"
           dataForm["fb_api_req_friendly_name"] = FBApiReqFriendlyName
           dataForm["server_timestamps"] = "true"
           dataForm["doc_id"] = str(docID)
-     else:
-          dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
-          dataForm["jazoest"] = dataFB["jazoest"]
-          dataForm["__a"] = 1
-          dataForm["__user"] =str(dataFB["FacebookID"])
-          dataForm["__req"] = str_base(__reg, 36) 
-          dataForm["__rev"] = dataFB["clientRevision"]
-          dataForm["av"] = dataFB["FacebookID"]
 
      return dataForm
      

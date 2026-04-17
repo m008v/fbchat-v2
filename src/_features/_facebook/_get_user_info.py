@@ -1,4 +1,4 @@
-import json, requests, json
+import json, requests
 from _core._utils import parse_cookie_string, Headers, formAll
 
 def func(dataFB, userID):
@@ -45,7 +45,7 @@ def func(dataFB, userID):
             "alternateName": alternateName,
             "chatWithUSerIsNonFriend": chatWithUSerIsNonFriend
         }
-     except:
+     except (IndexError, KeyError, TypeError, json.JSONDecodeError):
           return {
                "err": 0
           }
@@ -78,6 +78,6 @@ def func(dataFB, userID):
 
 ✓Remake by Nguyễn Minh Huy
 ✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 18:43 ngày 27/6/2023 • Cập nhật mới nhất: 7:16 20/7/2023
+✓Hoàn thành vào lúc 18:43 ngày 27/6/2023
 ✓Tôn trọng tác giả ❤️
 """

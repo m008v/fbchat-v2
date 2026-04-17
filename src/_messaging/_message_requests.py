@@ -32,7 +32,7 @@ def func(dataFB): # Lấy danh sách tin nhắn chờ
                     contentMessage, senderID, timestamp_precise = over[0]['snippet'], over[0]['message_sender']['messaging_actor']['id'], over[0]['timestamp_precise']
                     dictExportData[total] = {'senderID': senderID, 'snippet': contentMessage, 'timestamp_precise': timestamp_precise}
                     total += 1
-               except:
+               except (IndexError, KeyError, TypeError):
                     pass
           dictExportData['total_count'] = total
           return {
