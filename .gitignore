@@ -33,7 +33,7 @@ venv.bak/
 .project
 .pydevproject
 .settings/
-
+.docs/
 
 *.log
 logs/
