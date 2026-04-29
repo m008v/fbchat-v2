@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <script disable-devtool-auto="" src="https://cdn.jsdelivr.net/npm/disable-devtool"></script>  
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>fbchat-v2 · Editorial Docs · Tài liệu chính thức</title>
+  <meta name="description"
+    content="Tài liệu chính thức cho fbchat-v2 — thư viện mã nguồn mở thay thế Facebook Graph API, hỗ trợ xác thực, gửi tin nhắn, quản lý nhóm và lắng nghe realtime qua MQTT." />
+  <meta name="keywords"
+    content="fbchat, fbchat-v2, facebook chat api, facebook messenger bot, mqtt facebook, facebook automation, open source messenger, MinhHuyDev, chatbot facebook, facebook graph api alternative" />
+  <meta name="author" content="MinhHuyDev" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <meta name="googlebot" content="index, follow" />
+  <meta name="language" content="Vietnamese, English" />
+  <meta name="revisit-after" content="7 days" />
+  <meta name="rating" content="general" />
+  <link rel="canonical" href="https://minhhuydev.github.io/fbchat-v2/" />
+  <link rel="alternate" hreflang="vi" href="https://minhhuydev.github.io/fbchat-v2/?lang=vi" />
+  <link rel="alternate" hreflang="en" href="https://minhhuydev.github.io/fbchat-v2/?lang=en" />
+  <link rel="alternate" hreflang="x-default" href="https://minhhuydev.github.io/fbchat-v2/" />
+  <meta name="theme-color" content="#f5f1e8" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="application-name" content="fbchat-v2 Docs" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="fbchat-v2" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="msapplication-TileColor" content="#f5f1e8" />
+  <meta name="msapplication-config" content="none" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="fbchat-v2" />
+  <meta property="og:url" content="https://minhhuydev.github.io/fbchat-v2/" />
+  <meta property="og:title" content="fbchat-v2 · Editorial Docs · Ấn bản 2026" />
+  <meta property="og:description"
+    content="Thư viện mã nguồn mở mạnh mẽ để tự động hoá trò chuyện Facebook — xác thực, nhắn tin, quản lý nhóm, lắng nghe realtime qua MQTT." />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="fbchat-v2 — Editorial Documentation" />
+  <meta property="og:locale" content="vi_VN" />
+  <meta property="og:locale:alternate" content="en_US" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@MinhHuyDev" />
+  <meta name="twitter:creator" content="@MinhHuyDev" />
+  <meta name="twitter:title" content="fbchat-v2 · Editorial Docs" />
+  <meta name="twitter:description"
+    content="Thư viện mã nguồn mở thay thế Facebook Graph API. Tài liệu song ngữ VI/EN, ấn bản 2026." />
+  <meta name="twitter:image" content="https://avatars.githubusercontent.com/MinhHuyDev" />
+  <meta name="twitter:image:alt" content="fbchat-v2 — Editorial Documentation" />
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23f5f1e8'/%3E%3Ctext x='50%25' y='56%25' text-anchor='middle' font-family='Georgia,serif' font-size='34' font-style='italic' font-weight='600' fill='%23ff4d2e'%3E§%3C/text%3E%3C/svg%3E" />
+  <link rel="shortcut icon" type="image/x-icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23f5f1e8'/%3E%3Ctext x='50%25' y='56%25' text-anchor='middle' font-family='Georgia,serif' font-size='34' font-style='italic' font-weight='600' fill='%23ff4d2e'%3E§%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+  <link rel="preconnect" href="https://api.github.com" crossorigin />
+  <link rel="dns-prefetch" href="//avatars.githubusercontent.com" />
+  <!-- ============ STYLES (cache-bust theo ngày: YYYYMMDD + giờ) ============ -->
+  <script>
+    (function () {
+      var d = new Date();
+      var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+      // Đổi mỗi giờ: YYYYMMDDHH -> browser cache lại trong phạm vi 1 giờ.
+      // Nếu muốn cache theo ngày, bỏ pad(d.getHours()).
+      var v = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + pad(d.getHours());
+      document.write('<link rel="stylesheet" href="style.css?v=' + v + '" />');
+      window.__assetVersion = v;
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="header" id="header">
+    <button class="header__menu-btn" id="menuBtn" aria-label="Menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <div class="header__logo">
+      fbchat <span class="header__logo-mark">V2</span>
+    </div>
+
+    <div class="header__crumb">
+      <span class="vi">Tài liệu · Ấn bản 2026</span>
+      <span class="en">Docs · 2026 Edition</span>
+    </div>
+
+    <div class="header__actions">
+      <button id="langToggle" class="btn-mini" title="Switch language">
+        <i class="fa-solid fa-language"></i>
+        <span id="currentLang">VI</span>
+      </button>
+      <a href="https://github.com/MinhHuyDev/fbchat-v2" target="_blank" class="btn-mini btn-mini--accent">
+        <i class="fa-brands fa-github"></i>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="layout">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="search-bar">
+        <i class="fa-solid fa-search search-bar__icon"></i>
+        <input type="text" class="search-bar__input" placeholder="Tìm kiếm..." id="searchInput" autocomplete="off" />
+        <span class="search-bar__kbd">⌘K</span>
+      </div>
+
+      <div class="sidebar__section">
+        <div class="sidebar__title"><span class="vi">Khai mạc</span><span class="en">Prologue</span></div>
+        <a href="#" class="sidebar__link active" data-section="overview">
+          <i class="fa-regular fa-compass sidebar__link-icon"></i>
+          <span class="vi">Tổng quan</span><span class="en">Overview</span>
+        </a>
+        <a href="#" class="sidebar__link" data-section="getting-started">
+          <i class="fa-solid fa-rocket sidebar__link-icon"></i>
+          <span class="vi">Bắt đầu nhanh</span><span class="en">Getting Started</span>
+        </a>
+      </div>
+
+      <div class="sidebar__section">
+        <div class="sidebar__title"><span class="vi">Chương I · Kiến trúc</span><span class="en">Chapter I · Architecture</span></div>
+        <a href="#" class="sidebar__link" data-section="module-core">
+          <i class="fa-solid fa-layer-group sidebar__link-icon"></i> _core
+        </a>
+        <a href="#" class="sidebar__link" data-section="module-features">
+          <i class="fa-solid fa-wand-magic-sparkles sidebar__link-icon"></i> _features
+        </a>
+        <a href="#" class="sidebar__link" data-section="module-messaging">
+          <i class="fa-regular fa-message sidebar__link-icon"></i> _messaging
+        </a>
+      </div>
+
+      <div class="sidebar__section">
+        <div class="sidebar__title"><span class="vi">Chương II · Hướng dẫn</span><span class="en">Chapter II · Guides</span></div>
+        <a href="#" class="sidebar__link" data-section="guide-login">
+          <i class="fa-solid fa-right-to-bracket sidebar__link-icon"></i>
+          <span class="vi">Xác thực</span><span class="en">Authentication</span>
+        </a>
+        <a href="#" class="sidebar__link" data-section="guide-sending">
+          <i class="fa-regular fa-paper-plane sidebar__link-icon"></i>
+          <span class="vi">Gửi tin nhắn</span><span class="en">Sending Messages</span>
+        </a>
+        <a href="#" class="sidebar__link" data-section="guide-listening">
+          <i class="fa-solid fa-ear-listen sidebar__link-icon"></i>
+          <span class="vi">Lắng nghe</span><span class="en">Listening</span>
+        </a>
+      </div>
+
+      <div class="sidebar__section">
+        <div class="sidebar__title"><span class="vi">Phụ lục</span><span class="en">Appendix</span></div>
+        <a href="#" class="sidebar__link" data-section="community">
+          <i class="fa-solid fa-users sidebar__link-icon"></i>
+          <span class="vi">Cộng đồng</span><span class="en">Contributors</span>
+        </a>
+        <a href="#" class="sidebar__link" data-section="code-of-conduct">
+          <i class="fa-regular fa-handshake sidebar__link-icon"></i>
+          <span class="vi">Ứng xử</span><span class="en">Conduct</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="main" id="mainContent">
+      <div class="content">
+
+        <!-- ============ OVERVIEW ============ -->
+        <section id="overview" class="doc-section">
+          <div class="hero">
+            <div class="hero__meta">
+              <span class="hero__meta-item"><span class="hero__meta-dot"></span> ISSUE 02 · 2026</span>
+              <span class="hero__meta-sep"></span>
+              <span class="hero__meta-item">OPEN SOURCE</span>
+              <span class="hero__meta-sep"></span>
+              <span class="hero__meta-item">PYTHON ≥ 3.10</span>
+            </div>
+            <h1 class="hero__title">
+              <span class="vi">Một <em>thư viện chat</em><br/>cho Facebook, <span class="hero__title-mark">được viết lại</span>.</span>
+              <span class="en">A <em>chat library</em><br/>for Facebook, <span class="hero__title-mark">reimagined</span>.</span>
+            </h1>
+            <p class="hero__subtitle">
+              <span class="vi">fbchat-v2 là thư viện mã nguồn mở để tự động hóa tin nhắn, quản lý nhóm và lắng nghe sự kiện Messenger thời gian thực — không cần Graph API.</span>
+              <span class="en">fbchat-v2 is an open-source library for automating Messenger conversations, managing group threads, and listening to real-time events — no Graph API required.</span>
+            </p>
+
+            <div class="hero__actions">
+              <a href="#" class="btn btn--primary"
+                onclick="document.querySelector('[data-section=\'getting-started\']').click(); return false;">
+                <span class="vi">Bắt đầu →</span><span class="en">Start reading →</span>
+              </a>
+              <a href="https://github.com/MinhHuyDev/fbchat-v2" target="_blank" class="btn btn--secondary">
+                <i class="fa-brands fa-github"></i>
+                <span class="vi">Mã nguồn</span><span class="en">Source</span>
+              </a>
+            </div>
+
+            <div class="star-progress" id="starProgress">
+              <div class="star-progress__head">
+                <div class="star-progress__label">
+                  <i class="fa-solid fa-star"></i>
+                  <span class="vi">GitHub · Mục tiêu sao</span>
+                  <span class="en">GitHub · Star Goal</span>
+                </div>
+                <div class="star-progress__percent" id="starProgressPercent">0%</div>
+              </div>
+              <div class="star-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="0">
+                <div class="star-progress__fill" id="starProgressFill" style="width: 0%;"></div>
+              </div>
+              <div class="star-progress__meta">
+                <span><strong id="starCountCurrent">0</strong> / <strong id="starCountTarget">1000</strong> stars</span>
+                <span class="vi">Cập nhật thời gian thực</span>
+                <span class="en">Live counter</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert--danger">
+            <div class="alert__title"><i class="fa-solid fa-triangle-exclamation"></i> E2EE NOTICE</div>
+            <div class="alert__body">
+              <span class="vi">Từ 11/2024, Facebook bật Mã hoá đầu cuối mặc định. Hiện thư viện chỉ đọc được tin nhắn <strong>nhóm</strong>. Bypass giải mã đã hoàn tất 24/03/2026 và sắp phát hành.</span>
+              <span class="en">Since Nov 2024, Facebook enables E2EE by default. The library currently reads <strong>group messages</strong> only. Decryption bypass was completed on 24/03/2026 and will ship soon.</span>
+            </div>
+          </div>
+
+          <div class="alert alert--warning">
+            <div class="alert__title"><i class="fa-solid fa-shield-halved"></i> <span class="vi">API không chính thức</span><span class="en">Unofficial API</span></div>
+            <div class="alert__body">
+              <span class="vi">Đây không phải API chính thức. Đăng nhập bằng cookie/password vi phạm TOS Facebook và có nguy cơ checkpoint. Tự chịu rủi ro khi sử dụng.</span>
+              <span class="en">Not an official API. Logging in with cookies/passwords violates Facebook TOS and may trigger checkpoints. Use at your own risk.</span>
+            </div>
+          </div>
+
+          <h2 class="vi">Vì sao chọn fbchat-v2</h2>
+          <h2 class="en">Why fbchat-v2</h2>
+          <p class="vi">Không như Graph API chỉ hoạt động với Fanpage, <code>fbchat-v2</code> tích hợp sâu qua tài khoản cá nhân.</p>
+          <p class="en">Unlike the Graph API limited to fanpages, <code>fbchat-v2</code> integrates deeply via user accounts.</p>
+
+          <div class="features-grid">
+            <div class="feature-card">
+              <span class="feature-card__num">/ 01</span>
+              <div class="feature-card__icon"><i class="fa-solid fa-unlock-keyhole"></i></div>
+              <div class="feature-card__title"><span class="vi">Truy cập trực tiếp</span><span class="en">Direct Access</span></div>
+              <div class="feature-card__desc">
+                <span class="vi">Đăng nhập bằng tài khoản thật, không giới hạn như page.</span>
+                <span class="en">Login with real accounts — no page restrictions.</span>
+              </div>
+            </div>
+            <div class="feature-card">
+              <span class="feature-card__num">/ 02</span>
+              <div class="feature-card__icon"><i class="fa-solid fa-paper-plane"></i></div>
+              <div class="feature-card__title"><span class="vi">Nhắn tin nâng cao</span><span class="en">Advanced Messaging</span></div>
+              <div class="feature-card__desc">
+                <span class="vi">Gửi text, ảnh, video, sticker, thả react, thu hồi.</span>
+                <span class="en">Text, images, videos, stickers, reactions, retractions.</span>
+              </div>
+            </div>
+            <div class="feature-card">
+              <span class="feature-card__num">/ 03</span>
+              <div class="feature-card__icon"><i class="fa-solid fa-users-gear"></i></div>
+              <div class="feature-card__title"><span class="vi">Quản lý nhóm</span><span class="en">Group Management</span></div>
+              <div class="feature-card__desc">
+                <span class="vi">Đổi tên, emoji, biệt danh, quyền admin bằng script.</span>
+                <span class="en">Rename, emojis, nicknames, admin roles programmatically.</span>
+              </div>
+            </div>
+            <div class="feature-card">
+              <span class="feature-card__num">/ 04</span>
+              <div class="feature-card__icon"><i class="fa-solid fa-bolt"></i></div>
+              <div class="feature-card__title"><span class="vi">Thời gian thực</span><span class="en">Real-time</span></div>
+              <div class="feature-card__desc">
+                <span class="vi">MQTT qua WebSocket, nhận tin tức thì.</span>
+                <span class="en">MQTT over WebSocket, instant delivery.</span>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="vi">Kiến trúc ba tầng</h2>
+          <h2 class="en">Three-Layer Architecture</h2>
+          <p class="vi">Mã nguồn được phân chia thành 3 lớp rõ ràng để dễ bảo trì.</p>
+          <p class="en">The project is split into three clear layers for maintainability.</p>
+
+          <div class="arch-diagram">
+            <div class="arch-layer arch-layer--accent">
+              <div class="arch-layer__badge">Base</div>
+              <div class="arch-layer__icon"><i class="fa-solid fa-server"></i></div>
+              <div class="arch-layer__name">_core</div>
+              <div class="arch-layer__desc">
+                <span class="vi">Xác thực, quản lý session, tạo payload HTTP.</span>
+                <span class="en">Authentication, session, HTTP payload crafting.</span>
+              </div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer__badge">Business</div>
+              <div class="arch-layer__icon"><i class="fa-solid fa-gears"></i></div>
+              <div class="arch-layer__name">_features</div>
+              <div class="arch-layer__desc">
+                <span class="vi">Tác vụ profile, tìm kiếm, bạn bè, quản trị thread.</span>
+                <span class="en">Profile ops, search, friends, thread admin.</span>
+              </div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer__badge">Transport</div>
+              <div class="arch-layer__icon"><i class="fa-solid fa-paper-plane"></i></div>
+              <div class="arch-layer__name">_messaging</div>
+              <div class="arch-layer__desc">
+                <span class="vi">Gửi, upload, reaction và MQTT listener.</span>
+                <span class="en">Send, upload, reactions and MQTT listener.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ GETTING STARTED ============ -->
+        <section id="getting-started" class="doc-section" hidden>
+          <h1 class="vi">Bắt đầu nhanh</h1>
+          <h1 class="en">Getting Started</h1>
+          <p class="vi">Các bước tối thiểu để chạy <code>fbchat-v2</code> cục bộ.</p>
+          <p class="en">Minimum steps to run <code>fbchat-v2</code> locally.</p>
+
+          <div class="alert alert--info">
+            <div class="alert__title"><i class="fa-solid fa-circle-info"></i> <span class="vi">Yêu cầu</span><span class="en">Requirements</span></div>
+            <div class="alert__body">
+              <span class="vi">Python <strong>3.10</strong> trở lên.</span>
+              <span class="en">Python <strong>3.10</strong> or newer.</span>
+            </div>
+          </div>
+
+          <h2 class="vi">1 · Cài đặt</h2>
+          <h2 class="en">1 · Installation</h2>
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__dots"><div class="code-block__dot"></div><div class="code-block__dot"></div><div class="code-block__dot"></div></div>
+              <div class="code-block__lang">bash</div>
+              <button class="code-block__copy">Copy</button>
+            </div>
+            <div class="code-block__body">
+              <pre><code><span class="token-comment"># Clone the repository</span>
+git clone https://github.com/MinhHuyDev/fbchat-v2.git
+cd fbchat-v2
+
+<span class="token-comment"># Virtualenv</span>
+python -m venv .venv
+.venv\Scripts\activate
+
+<span class="token-comment"># Requirements</span>
+pip install -r requirements.txt</code></pre>
+            </div>
+          </div>
+
+          <h2 class="vi">2 · Khởi tạo bot</h2>
+          <h2 class="en">2 · Bootstrap your bot</h2>
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__lang">python</div>
+              <button class="code-block__copy">Copy</button>
+            </div>
+            <div class="code-block__body">
+              <pre><code><span class="token-comment"># File: src/my_bot.py</span>
+<span class="token-keyword">from</span> _core._session <span class="token-keyword">import</span> dataGetHome
+<span class="token-keyword">from</span> _messaging._send <span class="token-keyword">import</span> api
+
+setCookies = <span class="token-string">"c_user=...; xs=...; fr=...; datr=...;"</span>
+dataFB = dataGetHome(setCookies)
+<span class="token-builtin">print</span>(<span class="token-string">f"Logged in as: {dataFB['FacebookID']}"</span>)</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ _CORE ============ -->
+        <section id="module-core" class="doc-section" hidden>
+          <h1 class="vi">Tầng _core</h1>
+          <h1 class="en">_core Layer</h1>
+          <p class="vi">Xử lý session, payload, xác thực. Không chứa logic gửi tin người dùng.</p>
+          <p class="en">Handles session, payload, auth. No end-user messaging logic here.</p>
+
+          <div class="file-tree">src/_core/
+├── __init__.py
+├── <span class="file-py">_session.py</span>        <span class="file-tree-comment" data-vi="# Khởi tạo dataFB" data-en="# Initializes dataFB"># Khởi tạo dataFB</span>
+├── <span class="file-py">_utils.py</span>          <span class="file-tree-comment" data-vi="# Parser, header, payload chung" data-en="# Parsers, headers, shared payloads"># Parser, header, payload chung</span>
+└── <span class="file-py">_facebookLogin.py</span> <span class="file-tree-comment" data-vi="# Đăng nhập user/pass" data-en="# Username/password login"># Đăng nhập user/pass</span></div>
+
+          <h2 class="vi">Object <code>dataFB</code></h2>
+          <h2 class="en">The <code>dataFB</code> object</h2>
+          <p class="vi">Hầu hết API đều yêu cầu <code>dataFB</code> ở tham số đầu tiên.</p>
+          <p class="en">Most APIs require <code>dataFB</code> as the first parameter.</p>
+
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__lang">python</div>
+              <button class="code-block__copy">Copy</button>
+            </div>
+            <div class="code-block__body">
+              <pre><code><span class="token-keyword">from</span> _core._session <span class="token-keyword">import</span> dataGetHome
+
+setCookies = <span class="token-string">"c_user=615...; xs=...;"</span>
+dataFB = dataGetHome(setCookies)
+
+<span class="token-builtin">print</span>(dataFB[<span class="token-string">"fb_dtsg"</span>])</code></pre>
+            </div>
+          </div>
+
+          <h3 class="vi">Chức năng</h3>
+          <h3 class="en">Functions</h3>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_utils.formAll()</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Xương sống tạo GraphQL payload tự động.</p>
+            <p class="en">Backbone of payload generation.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _core._utils <span class="token-keyword">import</span> formAll
+
+payload = formAll(dataFB, requireGraphql=<span class="token-builtin">True</span>)
+<span class="token-builtin">print</span>(payload)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_session.dataGetHome()</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Lấy session từ cookie, khởi tạo <code>fb_dtsg</code>, <code>jazoest</code>.</p>
+            <p class="en">Extracts session from cookies, initializes tokens.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _core._session <span class="token-keyword">import</span> dataGetHome
+
+setCookies = <span class="token-string">"c_user=...; xs=...; fr=...; datr=...;"</span>
+dataFB = dataGetHome(setCookies)
+<span class="token-builtin">print</span>(dataFB[<span class="token-string">"FacebookID"</span>])</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_facebookLogin.loginFacebook()</div>
+              <div class="module-card__tag tag--class">Class</div>
+            </div>
+            <p class="vi">Đăng nhập bằng user/password (kèm 2FA code).</p>
+            <p class="en">Login with username/password (supports 2FA code).</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _core._facebookLogin <span class="token-keyword">import</span> loginFacebook
+
+auth = loginFacebook(username=<span class="token-string">"user@email.com"</span>, password=<span class="token-string">"mypass"</span>)
+result = auth.main()
+
+<span class="token-keyword">if</span> result.get(<span class="token-string">"success"</span>):
+    <span class="token-builtin">print</span>(result[<span class="token-string">"success"</span>].setCookies)
+<span class="token-keyword">else</span>:
+    <span class="token-builtin">print</span>(result[<span class="token-string">"error"</span>].description)</code></pre></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ _FEATURES ============ -->
+        <section id="module-features" class="doc-section" hidden>
+          <h1 class="vi">Tầng _features</h1>
+          <h1 class="en">_features Layer</h1>
+          <p class="vi">Nghiệp vụ profile và thread: đổi avatar, chặn, thiết lập nhóm…</p>
+          <p class="en">Profile & thread business ops: avatar, blocking, thread setup…</p>
+
+          <div class="file-tree">src/_features/
+├── <span class="dir">_facebook/</span>
+│ ├── <span class="file-py">_blocking.py</span>           <span class="file-tree-comment" data-vi="# Chặn / bỏ chặn" data-en="# Block / unblock"># Chặn / bỏ chặn</span>
+│ ├── <span class="file-py">_changeBio.py</span>          <span class="file-tree-comment" data-vi="# Cập nhật bio" data-en="# Update bio"># Cập nhật bio</span>
+│ ├── <span class="file-py">_createPost.py</span>         <span class="file-tree-comment" data-vi="# Tạo bài viết" data-en="# Create post"># Tạo bài viết</span>
+│ ├── <span class="file-py">_get_user_info.py</span>      <span class="file-tree-comment" data-vi="# Lấy info user" data-en="# Fetch user info"># Lấy info user</span>
+│ ├── <span class="file-py">_marketplace.py</span>        <span class="file-tree-comment" data-vi="# Marketplace" data-en="# Marketplace"># Marketplace</span>
+│ ├── <span class="file-py">_notification.py</span>       <span class="file-tree-comment" data-vi="# Thông báo" data-en="# Notifications"># Thông báo</span>
+│ ├── <span class="file-py">_professional.py</span>       <span class="file-tree-comment" data-vi="# Bật/tắt pro mode" data-en="# Toggle pro mode"># Bật/tắt pro mode</span>
+│ ├── <span class="file-py">_registerOnProfile.py</span>  <span class="file-tree-comment" data-vi="# Profile phụ" data-en="# Secondary profile"># Profile phụ</span>
+│ └── <span class="file-py">_search.py</span>             <span class="file-tree-comment" data-vi="# Tìm kiếm" data-en="# Search"># Tìm kiếm</span>
+└── <span class="dir">_thread/</span>
+  ├── <span class="file-py">_addAdmin.py</span>           <span class="file-tree-comment" data-vi="# Thêm/gỡ admin" data-en="# Add/remove admin"># Thêm/gỡ admin</span>
+  ├── <span class="file-py">_all_thread_data.py</span>    <span class="file-tree-comment" data-vi="# Metadata inbox" data-en="# Inbox metadata"># Metadata inbox</span>
+  ├── <span class="file-py">_changeEmoji.py</span>        <span class="file-tree-comment" data-vi="# Emoji nhóm" data-en="# Thread emoji"># Emoji nhóm</span>
+  ├── <span class="file-py">_changeNameThread.py</span>   <span class="file-tree-comment" data-vi="# Đổi tên nhóm" data-en="# Rename thread"># Đổi tên nhóm</span>
+  └── <span class="file-py">_changeNickname.py</span>     <span class="file-tree-comment" data-vi="# Đổi nickname" data-en="# Nickname"># Đổi nickname</span></div>
+
+          <h3 class="vi">Chức năng</h3>
+          <h3 class="en">Functions</h3>
+
+          <h4 class="vi">Nhóm `_facebook`</h4>
+          <h4 class="en">Group `_facebook`</h4>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_changeBio.func(dataFB, newContents)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Thay đổi bio qua GraphQL.</p>
+            <p class="en">Updates profile bio via GraphQL.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._facebook <span class="token-keyword">import</span> _changeBio
+
+result = _changeBio.func(dataFB, newContents=<span class="token-string">"New Bio Text!"</span>, uploadPost=<span class="token-builtin">False</span>)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_createPost.func(dataFB, newContents, attachmentID=None)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Tạo bài viết mới trên timeline.</p>
+            <p class="en">Creates a new post.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._facebook <span class="token-keyword">import</span> _createPost
+
+result = _createPost.func(dataFB, newContents=<span class="token-string">"Hello fbchat-v2!"</span>)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_professional.func(dataFB, statusBusiness=None)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Bật/tắt Professional Mode.</p>
+            <p class="en">Toggles Professional Mode.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._facebook <span class="token-keyword">import</span> _professional
+
+result = _professional.func(dataFB, statusBusiness=<span class="token-builtin">True</span>)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_search.func(dataFB, keywordSearch)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Tìm kiếm người dùng theo từ khóa.</p>
+            <p class="en">Searches users by keyword.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._facebook <span class="token-keyword">import</span> _search
+
+result = _search.func(dataFB, keywordSearch=<span class="token-string">"Mark Zuckerberg"</span>)
+<span class="token-builtin">print</span>(result[<span class="token-string">"searchResults"</span>])</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_blocking.func(dataFB, idUser, choiceInteract)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Chặn hoặc bỏ chặn một user.</p>
+            <p class="en">Blocks or unblocks a user.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._facebook <span class="token-keyword">import</span> _blocking
+
+result = _blocking.func(dataFB, idUser=<span class="token-string">"1000..."</span>, choiceInteract=<span class="token-string">"block"</span>)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_notification.func(dataFB)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Lấy thông báo gần nhất.</p>
+            <p class="en">Fetches recent notifications.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._facebook <span class="token-keyword">import</span> _notification
+
+result = _notification.func(dataFB)
+<span class="token-builtin">print</span>(result[<span class="token-string">"NotificationResults"</span>])</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_get_user_info.func(dataFB, userID)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Lấy thông tin user theo ID.</p>
+            <p class="en">Gets user info by ID.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._facebook <span class="token-keyword">import</span> _get_user_info
+
+result = _get_user_info.func(dataFB, userID=<span class="token-string">"1000..."</span>)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <h4 class="vi">Nhóm `_thread`</h4>
+          <h4 class="en">Group `_thread`</h4>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_changeEmoji.func(dataFB, threadID, newEmoji)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Đổi emoji mặc định trong nhóm chat.</p>
+            <p class="en">Updates default thread emoji.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._thread <span class="token-keyword">import</span> _changeEmoji
+
+result = _changeEmoji.func(dataFB, threadID=<span class="token-string">"123456789"</span>, newEmoji=<span class="token-string">"💖"</span>)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_changeNickname.func(dataFB, threadID, idUser, NewNickname)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Đổi nickname của thành viên trong nhóm.</p>
+            <p class="en">Sets a member's nickname in a thread.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._thread <span class="token-keyword">import</span> _changeNickname
+
+result = _changeNickname.func(dataFB, threadID=<span class="token-string">"123456789"</span>,
+                              idUser=<span class="token-string">"1000..."</span>, NewNickname=<span class="token-string">"Best Friend"</span>)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_changeNameThread.func(dataFB, threadID, newNameThread)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Đổi tên nhóm chat.</p>
+            <p class="en">Renames a group chat.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._thread <span class="token-keyword">import</span> _changeNameThread
+
+result = _changeNameThread.func(dataFB, threadID=<span class="token-string">"123456789"</span>, newNameThread=<span class="token-string">"New Group Name"</span>)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_addAdmin.func(dataFB, threadID, idUser, statusChoice=True)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Cấp hoặc gỡ quyền admin.</p>
+            <p class="en">Grants or revokes admin role.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._thread <span class="token-keyword">import</span> _addAdmin
+
+result = _addAdmin.func(dataFB, threadID=<span class="token-string">"123456789"</span>, idUser=<span class="token-string">"1000..."</span>, statusChoice=<span class="token-builtin">True</span>)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_all_thread_data.func(dataFB)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Lấy metadata của các thread gần nhất.</p>
+            <p class="en">Fetches metadata from recent threads.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _features._thread <span class="token-keyword">import</span> _all_thread_data
+
+result = _all_thread_data.func(dataFB)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ _MESSAGING ============ -->
+        <section id="module-messaging" class="doc-section" hidden>
+          <h1 class="vi">Tầng _messaging</h1>
+          <h1 class="en">_messaging Layer</h1>
+          <p class="vi">Xử lý truyền nhận tin nhắn, MQTT, attachment.</p>
+          <p class="en">Handles message transport, MQTT, attachments.</p>
+
+          <div class="file-tree">src/_messaging/
+├── <span class="file-py">_send.py</span>        <span class="file-tree-comment" data-vi="# Gửi text và attachment" data-en="# Send text and attachments"># Gửi text và attachment</span>
+├── <span class="file-py">_listening.py</span>   <span class="file-tree-comment" data-vi="# MQTT realtime" data-en="# Realtime MQTT"># MQTT realtime</span>
+├── <span class="file-py">_attachments.py</span> <span class="file-tree-comment" data-vi="# Upload attachment" data-en="# Upload attachment"># Upload attachment</span>
+├── <span class="file-py">_reactions.py</span>   <span class="file-tree-comment" data-vi="# Emoji reactions" data-en="# Emoji reactions"># Emoji reactions</span>
+└── <span class="file-py">_unsend.py</span>      <span class="file-tree-comment" data-vi="# Thu hồi tin nhắn" data-en="# Retract messages"># Thu hồi tin nhắn</span></div>
+
+          <h3 class="vi">Chức năng</h3>
+          <h3 class="en">Functions</h3>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">api.send(dataFB, contentSend, threadID, **kwargs)</div>
+              <div class="module-card__tag tag--class">Class Method</div>
+            </div>
+            <p class="vi">Gửi text, hỗ trợ attachment.</p>
+            <p class="en">Sends text, supports attachments.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _messaging._send <span class="token-keyword">import</span> api
+
+sendMessageCalled = api()
+result = sendMessageCalled.send(
+    dataFB,
+    contentSend=<span class="token-string">"Hello from fbchat-v2!"</span>,
+    threadID=<span class="token-string">"4805171782880318"</span>,
+    messageID=<span class="token-string">"mid.$cAABa9..."</span>
+)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_reactions.func(dataFB, typeAdded, messageID, emojiChoice)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Thả reaction lên tin nhắn.</p>
+            <p class="en">Drops a reaction on a message.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _messaging <span class="token-keyword">import</span> _reactions
+
+response = _reactions.func(
+    dataFB, typeAdded=<span class="token-string">"add"</span>,
+    messageID=<span class="token-string">"mid.$cAABa9..."</span>,
+    emojiChoice=<span class="token-string">"👍"</span>
+)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_unsend.func(messageID, dataFB)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Thu hồi tin nhắn (chỉ của mình).</p>
+            <p class="en">Unsends a message (self only).</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _messaging <span class="token-keyword">import</span> _unsend
+
+response = _unsend.func(messageID=<span class="token-string">"mid.$cAABa9..."</span>, dataFB=dataFB)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_listening.listeningEvent(dataFB)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">MQTT WebSocket realtime.</p>
+            <p class="en">Realtime MQTT over WebSocket.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _messaging._listening <span class="token-keyword">import</span> listeningEvent
+
+listener = listeningEvent(dataFB)
+listener.get_last_seq_id()
+listener.connect_mqtt()</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_attachments.func(filenames, dataFB)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Upload file để lấy attachment ID.</p>
+            <p class="en">Uploads a file and returns attachment ID.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _messaging <span class="token-keyword">import</span> _attachments
+
+result = _attachments.func([<span class="token-string">"avatar.jpg"</span>], dataFB)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+
+          <div class="module-card">
+            <div class="module-card__header">
+              <div class="module-card__name">_message_requests.func(dataFB)</div>
+              <div class="module-card__tag tag--func">Function</div>
+            </div>
+            <p class="vi">Danh sách Message Request đang chờ.</p>
+            <p class="en">Lists pending message requests.</p>
+            <div class="module-card__code" hidden>
+              <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _messaging <span class="token-keyword">import</span> _message_requests
+
+result = _message_requests.func(dataFB)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ GUIDE LOGIN ============ -->
+        <section id="guide-login" class="doc-section" hidden>
+          <h1 class="vi">Xác thực</h1>
+          <h1 class="en">Authentication</h1>
+          <p class="vi">Có thể dùng cookie hoặc user/pass (dễ checkpoint hơn).</p>
+          <p class="en">Use cookies or username/password (latter is checkpoint-prone).</p>
+
+          <h2 class="vi">Cookie (khuyến nghị)</h2>
+          <h2 class="en">Cookie (recommended)</h2>
+          <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _core._session <span class="token-keyword">import</span> dataGetHome
+
+setCookies = <span class="token-string">"c_user=...; xs=...; fr=...; datr=...;"</span>
+dataFB = dataGetHome(setCookies)
+<span class="token-builtin">print</span>(dataFB[<span class="token-string">"FacebookID"</span>])</code></pre></div></div>
+
+          <h2 class="vi">User / Password</h2>
+          <h2 class="en">Username / Password</h2>
+          <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _core._facebookLogin <span class="token-keyword">import</span> loginFacebook
+
+auth = loginFacebook(username=<span class="token-string">"user@email.com"</span>, password=<span class="token-string">"your_password"</span>)
+result = auth.main()
+
+<span class="token-keyword">if</span> result.get(<span class="token-string">"success"</span>):
+    <span class="token-builtin">print</span>(result[<span class="token-string">"success"</span>].setCookies)
+<span class="token-keyword">else</span>:
+    <span class="token-builtin">print</span>(result[<span class="token-string">"error"</span>].description)</code></pre></div></div>
+
+          <div class="alert alert--info">
+            <div class="alert__title"><i class="fa-solid fa-circle-info"></i> <span class="vi">Mẹo bảo mật</span><span class="en">Security Tip</span></div>
+            <div class="alert__body">
+              <span class="vi">Lưu cookie vào biến môi trường, không hardcode trong source.</span>
+              <span class="en">Store cookies in env vars, never hardcode them.</span>
+            </div>
+          </div>
+
+          <div class="alert alert--danger">
+            <div class="alert__title"><i class="fa-solid fa-lock"></i> <span class="vi">Cảnh báo</span><span class="en">Warning</span></div>
+            <div class="alert__body">
+              <span class="vi">Không chia sẻ cookie. Dùng <code>.env</code>.</span>
+              <span class="en">Never share cookies. Use <code>.env</code>.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ GUIDE SENDING ============ -->
+        <section id="guide-sending" class="doc-section" hidden>
+          <h1 class="vi">Gửi tin nhắn</h1>
+          <h1 class="en">Sending Messages</h1>
+
+          <h2 class="vi">Tin text cơ bản</h2>
+          <h2 class="en">Simple text</h2>
+          <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _messaging._send <span class="token-keyword">import</span> api
+
+sendMessageCalled = api()
+result = sendMessageCalled.send(
+    dataFB,
+    contentSend=<span class="token-string">"Hello from fbchat-v2!"</span>,
+    threadID=<span class="token-number">4805171782880318</span>
+)
+<span class="token-builtin">print</span>(result)</code></pre></div></div>
+
+          <h2 class="vi">Gửi ảnh</h2>
+          <h2 class="en">Send an image</h2>
+          <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">from</span> _messaging._attachments <span class="token-keyword">import</span> _uploadAttachment
+
+uploadRes = _uploadAttachment(<span class="token-string">"avatar.jpg"</span>, dataFB)
+result = sendMessageCalled.send(
+    dataFB,
+    contentSend=<span class="token-string">"Check out this picture!"</span>,
+    threadID=<span class="token-number">12345</span>,
+    typeAttachment=<span class="token-string">"image"</span>,
+    attachmentID=uploadRes.get(<span class="token-string">'attachmentID'</span>)
+)</code></pre></div></div>
+        </section>
+
+        <!-- ============ GUIDE LISTENING ============ -->
+        <section id="guide-listening" class="doc-section" hidden>
+          <h1 class="vi">Lắng nghe MQTT</h1>
+          <h1 class="en">Listening MQTT</h1>
+          <p class="vi">Chạy MQTT trong thread riêng với <code>paho-mqtt</code>.</p>
+          <p class="en">Run MQTT in a dedicated thread with <code>paho-mqtt</code>.</p>
+
+          <div class="code-block"><div class="code-block__body"><pre><code><span class="token-keyword">import</span> threading
+<span class="token-keyword">from</span> _messaging._listening <span class="token-keyword">import</span> listeningEvent
+
+listener = listeningEvent(fbt_tools, dataFB)
+listener.get_last_seq_id()
+
+t = threading.Thread(target=listener.connect_mqtt)
+t.daemon = <span class="token-builtin">True</span>
+t.start()</code></pre></div></div>
+        </section>
+
+        <!-- ============ COMMUNITY ============ -->
+        <section id="community" class="doc-section" hidden>
+          <h1 class="vi">Cộng đồng & Ghi nhận</h1>
+          <h1 class="en">Community & Credits</h1>
+          <p class="vi">Suốt 4 năm phát triển, MinhHuyDev ghi nhận những người đóng góp:</p>
+          <p class="en">Over 4 years of development, MinhHuyDev thanks these contributors:</p>
+
+          <div class="contributors-grid">
+            <div class="contributor"><div class="contributor__avatar">T</div><div><div class="contributor__name">tomdev112</div><a href="https://github.com/tomdev211" target="_blank" class="contributor__link">@tomdev211</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">S</div><div><div class="contributor__name">syrex1013</div><a href="https://github.com/syrex1013" target="_blank" class="contributor__link">@syrex1013</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">K</div><div><div class="contributor__name">Kheir Eddine</div><a href="https://www.facebook.com/61557637127396/" target="_blank" class="contributor__link">Facebook</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">陶</div><div><div class="contributor__name">陶世玉</div><div class="contributor__link">Community</div></div></div>
+            <div class="contributor"><div class="contributor__avatar">J</div><div><div class="contributor__name">Jihadi John</div><div class="contributor__link">Community</div></div></div>
+            <div class="contributor"><div class="contributor__avatar">B</div><div><div class="contributor__name">Bắc Trịnh</div><a href="https://www.facebook.com/1228855777/" target="_blank" class="contributor__link">Facebook</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">Q</div><div><div class="contributor__name">Quang Trần</div><a href="https://www.facebook.com/100005048402622/" target="_blank" class="contributor__link">Facebook</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">M</div><div><div class="contributor__name">Minh Trần Ngọc</div><a href="https://www.facebook.com/100000277273223/" target="_blank" class="contributor__link">Facebook</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">V</div><div><div class="contributor__name">Victor Knutsenberger</div><div class="contributor__link">Community</div></div></div>
+            <div class="contributor"><div class="contributor__avatar">H</div><div><div class="contributor__name">Hoàng Lân</div><a href="https://www.facebook.com/100026754347158/" target="_blank" class="contributor__link">Facebook</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">K</div><div><div class="contributor__name">Kareem Adel Abomandor</div><div class="contributor__link">Community</div></div></div>
+            <div class="contributor"><div class="contributor__avatar">L</div><div><div class="contributor__name">@lluevy</div><a href="https://github.com/lluevy" target="_blank" class="contributor__link">GitHub</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">P</div><div><div class="contributor__name">@phuncnheo</div><a href="https://github.com/phuncnheo" target="_blank" class="contributor__link">GitHub</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">M</div><div><div class="contributor__name">@minhphatnw</div><a href="https://github.com/minhphatnw" target="_blank" class="contributor__link">GitHub</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">K</div><div><div class="contributor__name">@khanh235a</div><a href="https://github.com/khanh235a" target="_blank" class="contributor__link">GitHub</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">C</div><div><div class="contributor__name">@chapesh1</div><a href="https://github.com/chapesh1" target="_blank" class="contributor__link">GitHub</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">K</div><div><div class="contributor__name">@klongg13</div><a href="https://github.com/klongg13" target="_blank" class="contributor__link">GitHub</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">S</div><div><div class="contributor__name">@seafibrahem</div><a href="https://github.com/seafibrahem" target="_blank" class="contributor__link">GitHub</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">A</div><div><div class="contributor__name">@agent1047</div><a href="https://github.com/agent1047" target="_blank" class="contributor__link">GitHub</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">S</div><div><div class="contributor__name">@stefekdziura</div><a href="https://github.com/stefekdziura" target="_blank" class="contributor__link">GitHub</a></div></div>
+            <div class="contributor"><div class="contributor__avatar">M</div><div><div class="contributor__name">MinhHuyDev</div><a href="https://github.com/MinhHuyDev" target="_blank" class="contributor__link">Owner</a></div></div>
+          </div>
+        </section>
+
+        <!-- ============ CODE OF CONDUCT ============ -->
+        <section id="code-of-conduct" class="doc-section" hidden>
+          <h1 class="vi">Quy tắc ứng xử</h1>
+          <h1 class="en">Code of Conduct</h1>
+
+          <p class="vi">
+            Dự án <code>fbchat-v2</code> cam kết xây dựng một cộng đồng mã nguồn mở
+            <strong>cởi mở, hoà nhã và chuyên nghiệp</strong> cho tất cả người đóng góp,
+            người dùng và thành viên cộng đồng &mdash; bất kể kinh nghiệm, giới tính,
+            tuổi tác, sắc tộc, tôn giáo hay định hướng cá nhân.
+          </p>
+          <p class="en">
+            The <code>fbchat-v2</code> project is committed to fostering an
+            <strong>open, welcoming and professional</strong> open-source community
+            for all contributors, users and members &mdash; regardless of experience,
+            gender, age, ethnicity, religion or personal orientation.
+          </p>
+
+          <div class="alert alert--info">
+            <div class="alert__title">
+              <i class="fa-solid fa-scroll"></i>
+              <span class="vi">Phiên bản 1.0 &middot; Cập nhật 2026</span>
+              <span class="en">Version 1.0 &middot; Updated 2026</span>
+            </div>
+            <div class="alert__body">
+              <span class="vi">Bằng việc tham gia dự án, bạn đồng ý tuân thủ toàn bộ quy tắc dưới đây.</span>
+              <span class="en">By participating in this project, you agree to abide by all the rules below.</span>
+            </div>
+          </div>
+
+          <h2 class="vi">Bốn nguyên tắc cốt lõi</h2>
+          <h2 class="en">Four Core Principles</h2>
+
+          <div class="features-grid">
+            <div class="feature-card">
+              <span class="feature-card__num">/ 01</span>
+              <div class="feature-card__icon"><i class="fa-regular fa-heart"></i></div>
+              <div class="feature-card__title"><span class="vi">Tôn trọng</span><span class="en">Respect</span></div>
+              <div class="feature-card__desc">
+                <span class="vi">Đối xử với người khác bằng sự tử tế, thấu cảm và cân nhắc. Mỗi người đều đang học hỏi và đóng góp ở mức của họ.</span>
+                <span class="en">Treat others with kindness, empathy and consideration. Everyone is here to learn and contribute at their own level.</span>
+              </div>
+            </div>
+            <div class="feature-card">
+              <span class="feature-card__num">/ 02</span>
+              <div class="feature-card__icon"><i class="fa-solid fa-people-group"></i></div>
+              <div class="feature-card__title"><span class="vi">Hoà nhập</span><span class="en">Inclusivity</span></div>
+              <div class="feature-card__desc">
+                <span class="vi">Chào đón mọi xuất thân và góc nhìn. Sự đa dạng khiến cộng đồng trở nên mạnh mẽ hơn.</span>
+                <span class="en">Welcome all backgrounds and perspectives. Diversity makes the community stronger.</span>
+              </div>
+            </div>
+            <div class="feature-card">
+              <span class="feature-card__num">/ 03</span>
+              <div class="feature-card__icon"><i class="fa-solid fa-handshake"></i></div>
+              <div class="feature-card__title"><span class="vi">Hợp tác</span><span class="en">Collaboration</span></div>
+              <div class="feature-card__desc">
+                <span class="vi">Chia sẻ kiến thức, hỗ trợ lẫn nhau và cùng hướng tới mục tiêu chung thay vì cạnh tranh cá nhân.</span>
+                <span class="en">Share knowledge, support each other and work toward common goals, not personal competition.</span>
+              </div>
+            </div>
+            <div class="feature-card">
+              <span class="feature-card__num">/ 04</span>
+              <div class="feature-card__icon"><i class="fa-solid fa-user-tie"></i></div>
+              <div class="feature-card__title"><span class="vi">Chuyên nghiệp</span><span class="en">Professionalism</span></div>
+              <div class="feature-card__desc">
+                <span class="vi">Hành xử chỉn chu trong mọi tương tác. Không công kích cá nhân, không ngôn từ thô tục hay hành vi gây rối.</span>
+                <span class="en">Behave professionally in every interaction. No personal attacks, no offensive language or disruptive behavior.</span>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="vi">Hành vi được khuyến khích</h2>
+          <h2 class="en">Expected Behavior</h2>
+
+          <div class="alert alert--success">
+            <div class="alert__title">
+              <i class="fa-solid fa-check-double"></i>
+              <span class="vi">Nên làm</span><span class="en">Do</span>
+            </div>
+            <div class="alert__body">
+              <ul class="vi" style="margin:6px 0 0 18px; padding:0;">
+                <li>Sử dụng ngôn ngữ thân thiện, hoà nhã và tôn trọng người khác.</li>
+                <li>Phản hồi một cách xây dựng &mdash; tập trung vào <em>nội dung</em>, không phải cá nhân.</li>
+                <li>Đón nhận góp ý với tinh thần cầu thị; chấp nhận rằng mình có thể sai.</li>
+                <li>Ưu tiên lợi ích của cộng đồng hơn lợi ích cá nhân.</li>
+                <li>Thể hiện sự cảm thông với các thành viên mới.</li>
+              </ul>
+              <ul class="en" style="margin:6px 0 0 18px; padding:0;">
+                <li>Use friendly, inclusive and respectful language.</li>
+                <li>Give constructive feedback &mdash; focus on the <em>content</em>, not the person.</li>
+                <li>Accept criticism gracefully; acknowledge that you might be wrong.</li>
+                <li>Prioritize the community's well-being over individual gain.</li>
+                <li>Show empathy toward newcomers.</li>
+              </ul>
+            </div>
+          </div>
+
+          <h2 class="vi">Hành vi không được chấp nhận</h2>
+          <h2 class="en">Unacceptable Behavior</h2>
+
+          <div class="alert alert--danger">
+            <div class="alert__title">
+              <i class="fa-solid fa-ban"></i>
+              <span class="vi">Không dung thứ</span><span class="en">Not tolerated</span>
+            </div>
+            <div class="alert__body">
+              <ul class="vi" style="margin:6px 0 0 18px; padding:0;">
+                <li>Ngôn từ hoặc hình ảnh mang tính phân biệt, kỳ thị, khiêu dâm hoặc bạo lực.</li>
+                <li>Quấy rối dưới mọi hình thức, công khai hoặc riêng tư.</li>
+                <li>Công kích cá nhân, xúc phạm danh dự, lan truyền thông tin sai lệch.</li>
+                <li>Đăng tải thông tin riêng tư của người khác khi chưa có sự cho phép (doxxing).</li>
+                <li>Spam, quảng cáo trá hình hoặc cố tình phá hoại các cuộc thảo luận.</li>
+                <li>Sử dụng <code>fbchat-v2</code> cho mục đích bất hợp pháp, lừa đảo hay gây hại cho người khác.</li>
+              </ul>
+              <ul class="en" style="margin:6px 0 0 18px; padding:0;">
+                <li>Discriminatory, sexist, sexualized or violent language or imagery.</li>
+                <li>Harassment of any kind, public or private.</li>
+                <li>Personal attacks, insults, or spreading misinformation.</li>
+                <li>Publishing others' private information without consent (doxxing).</li>
+                <li>Spam, disguised promotion, or deliberately derailing discussions.</li>
+                <li>Using <code>fbchat-v2</code> for illegal, fraudulent or harmful purposes.</li>
+              </ul>
+            </div>
+          </div>
+
+          <h2 class="vi">Phạm vi áp dụng</h2>
+          <h2 class="en">Scope</h2>
+          <p class="vi">
+            Quy tắc này áp dụng cho <strong>mọi không gian của dự án</strong>: kho mã trên GitHub,
+            issues, pull requests, discussions, bình luận, Telegram, email, cũng như khi bạn
+            đại diện cho dự án ở không gian công cộng (mạng xã hội, sự kiện, hội thảo…).
+          </p>
+          <p class="en">
+            This Code of Conduct applies to <strong>all project spaces</strong>: the GitHub repo,
+            issues, pull requests, discussions, comments, Telegram, email, as well as when you
+            represent the project in public spaces (social media, events, meetups…).
+          </p>
+
+          <h2 class="vi">Thực thi &amp; báo cáo vi phạm</h2>
+          <h2 class="en">Enforcement &amp; Reporting</h2>
+          <p class="vi">
+            Nếu bạn chứng kiến hoặc là nạn nhân của hành vi vi phạm, hãy liên hệ với đội ngũ
+            duy trì dự án qua một trong các kênh sau. Mọi khiếu nại sẽ được xem xét, điều tra
+            và phản hồi một cách nhanh chóng, công bằng. Chúng tôi cam kết <strong>bảo mật danh tính</strong>
+            người báo cáo.
+          </p>
+          <p class="en">
+            If you witness or experience a violation, please contact the maintainers via one
+            of the channels below. All reports will be reviewed and investigated promptly and
+            fairly. We are committed to <strong>protecting the identity</strong> of the reporter.
+          </p>
+
+          <div class="features-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+            <div class="feature-card">
+              <span class="feature-card__num">/ EMAIL</span>
+              <div class="feature-card__icon"><i class="fa-regular fa-envelope"></i></div>
+              <div class="feature-card__title">minhhuydev@icloud.com</div>
+              <div class="feature-card__desc">
+                <a href="mailto:minhhuydev@icloud.com" style="color:var(--coral); font-weight:600;">
+                  <span class="vi">Gửi báo cáo riêng tư &rarr;</span>
+                  <span class="en">Send private report &rarr;</span>
+                </a>
+              </div>
+            </div>
+            <div class="feature-card">
+              <span class="feature-card__num">/ TELEGRAM</span>
+              <div class="feature-card__icon"><i class="fa-brands fa-telegram"></i></div>
+              <div class="feature-card__title">@mhuydev</div>
+              <div class="feature-card__desc">
+                <a href="https://t.me/mhuydev" target="_blank" rel="noopener" style="color:var(--coral); font-weight:600;">
+                  <span class="vi">Nhắn trực tiếp &rarr;</span>
+                  <span class="en">Direct message &rarr;</span>
+                </a>
+              </div>
+            </div>
+            <div class="feature-card">
+              <span class="feature-card__num">/ GITHUB</span>
+              <div class="feature-card__icon"><i class="fa-brands fa-github"></i></div>
+              <div class="feature-card__title">Private Issue</div>
+              <div class="feature-card__desc">
+                <a href="https://github.com/MinhHuyDev/fbchat-v2/issues" target="_blank" rel="noopener" style="color:var(--coral); font-weight:600;">
+                  <span class="vi">Mở issue riêng tư &rarr;</span>
+                  <span class="en">Open a private issue &rarr;</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="vi">Các mức xử lý</h2>
+          <h2 class="en">Enforcement Ladder</h2>
+
+          <div class="arch-diagram">
+            <div class="arch-layer">
+              <div class="arch-layer__badge">01</div>
+              <div class="arch-layer__icon"><i class="fa-solid fa-comment-dots"></i></div>
+              <div class="arch-layer__name"><span class="vi">Nhắc nhở</span><span class="en">Warning</span></div>
+              <div class="arch-layer__desc">
+                <span class="vi">Vi phạm nhỏ sẽ nhận nhắc nhở riêng tư kèm giải thích lý do.</span>
+                <span class="en">Minor violations receive a private warning with an explanation.</span>
+              </div>
+            </div>
+            <div class="arch-layer arch-layer--accent">
+              <div class="arch-layer__badge">02</div>
+              <div class="arch-layer__icon"><i class="fa-solid fa-user-clock"></i></div>
+              <div class="arch-layer__name"><span class="vi">Tạm đình chỉ</span><span class="en">Temporary Ban</span></div>
+              <div class="arch-layer__desc">
+                <span class="vi">Vi phạm lặp lại hoặc nghiêm trọng sẽ bị cấm tương tác trong một khoảng thời gian.</span>
+                <span class="en">Repeated or serious violations result in a temporary interaction ban.</span>
+              </div>
+            </div>
+            <div class="arch-layer">
+              <div class="arch-layer__badge">03</div>
+              <div class="arch-layer__icon"><i class="fa-solid fa-user-slash"></i></div>
+              <div class="arch-layer__name"><span class="vi">Cấm vĩnh viễn</span><span class="en">Permanent Ban</span></div>
+              <div class="arch-layer__desc">
+                <span class="vi">Hành vi quấy rối nghiêm trọng hoặc tái phạm nhiều lần sẽ bị loại khỏi cộng đồng vĩnh viễn.</span>
+                <span class="en">Severe harassment or repeated offenses will result in permanent removal from the community.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert--warning">
+            <div class="alert__title">
+              <i class="fa-solid fa-scale-balanced"></i>
+              <span class="vi">Ghi chú pháp lý</span><span class="en">Legal Notice</span>
+            </div>
+            <div class="alert__body">
+              <span class="vi">
+                Quy tắc này được xây dựng dựa trên tinh thần của
+                <a href="https://www.contributor-covenant.org/" target="_blank" rel="noopener" style="color:var(--coral); font-weight:600;">Contributor Covenant v2.1</a>
+                và được điều chỉnh cho phù hợp với bối cảnh của <code>fbchat-v2</code>.
+              </span>
+              <span class="en">
+                This document is inspired by the
+                <a href="https://www.contributor-covenant.org/" target="_blank" rel="noopener" style="color:var(--coral); font-weight:600;">Contributor Covenant v2.1</a>
+                and adapted for the <code>fbchat-v2</code> context.
+              </span>
+            </div>
+          </div>
+
+          <p class="vi" style="margin-top:28px; font-style:italic; color:var(--ink-muted);">
+            &mdash; Cảm ơn bạn đã giúp cộng đồng <code>fbchat-v2</code> trở thành một nơi an toàn và truyền cảm hứng.
+          </p>
+          <p class="en" style="margin-top:28px; font-style:italic; color:var(--ink-muted);">
+            &mdash; Thank you for helping make the <code>fbchat-v2</code> community a safe and inspiring place.
+          </p>
+        </section>
+
+      </div>
+
+      <footer class="footer">
+        <div class="footer__mark">fbchat-v2</div>
+        <div>
+          &copy; <span id="year">2026</span> ·
+          <span class="vi">MÃ NGUỒN MỞ · KHÔNG LIÊN KẾT META</span>
+          <span class="en">OPEN SOURCE · NOT AFFILIATED WITH META</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <button class="back-to-top" id="backToTop" aria-label="Back to top">
+    <i class="fa-solid fa-arrow-up"></i>
+  </button>
+
+  <script>
+    document.write('<script src="script.js?v=' + (window.__assetVersion || Date.now()) + '"><\/script>');
+  </script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+
+</html>

@@ -1,90 +1,96 @@
-# _messaging (`src/_messaging`)
+# `_messaging` — Messaging Layer
 
-`_messaging` is the layer that implements messaging capabilities.
-This folder focuses on direct Messenger operations and does not manage
-session/token infrastructure like `_core`.
+> Every direct Messenger operation: send, realtime listen, upload, react, unsend, message requests.
 
-- Send text messages to a user or a thread.
-- Upload attachments to send through Messenger.
-- Listen to realtime message events through MQTT over WebSocket.
-- Add or remove message reactions.
-- Unsend messages.
-- Retrieve pending messages (Message Requests).
+[![Layer](https://img.shields.io/badge/layer-messaging-EC4899)](.)
+[![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
+[![Vietnamese](https://img.shields.io/badge/docs-Ti%E1%BA%BFng%20Vi%E1%BB%87t-blue)](README.md)
 
 ---
 
-## 1) Folder structure
+## 📑 Table of Contents
+
+- [Responsibilities](#-responsibilities)
+- [Folder Structure](#-folder-structure)
+- [Public API](#-public-api)
+- [The `dataFB` Contract](#-the-datafb-contract)
+- [Module Reference](#-module-reference)
+  - [`_send.py`](#sendpy)
+  - [`_listening.py`](#listeningpy)
+  - [`_attachments.py`](#attachmentspy)
+  - [`_reactions.py`](#reactionspy)
+  - [`_unsend.py`](#unsendpy)
+  - [`_message_requests.py`](#message_requestspy)
+- [Dependency Map](#-dependency-map)
+- [Examples](#-examples)
+- [Troubleshooting](#-troubleshooting)
+
+---
+
+## 🎯 Responsibilities
+
+`_messaging` wraps Messenger endpoints into ergonomic Python functions/classes. It does **not** manage session/token concerns (that's `_core`):
+
+- 📤 Send text messages to a user or a thread.
+- 📎 Upload attachments for Messenger sending.
+- 📡 Listen to realtime events through **MQTT over WebSocket**.
+- ❤️ Add / remove reactions.
+- ↩️ Unsend messages.
+- 📥 Fetch **Message Requests** (pending messages).
+
+---
+
+## 📂 Folder Structure
 
 ```text
 src/_messaging/
 ├── __init__.py
-├── _attachments.py
-├── _listening.py
-├── _message_requests.py
-├── _reactions.py
-├── _send.py
-├── _unsend.py
-└── README.md
+├── _attachments.py        # Upload file → attachmentID
+├── _listening.py          # MQTT realtime listener
+├── _message_requests.py   # Pending messages
+├── _reactions.py          # Add / remove reactions
+├── _send.py               # Send messages (HTTP)
+├── _unsend.py             # Unsend messages
+├── README.md
+└── README_EN.md           # ← you are here
 ```
 
-### Main exports
+---
 
-`src/_messaging/__init__.py` currently exports:
+## 📦 Public API
 
 ```python
+# src/_messaging/__init__.py
 __all__ = [
-    "_attachments",
-    "_listening",
-    "_reactions",
-    "_send",
-    "_unsend",
-    "_message_requests",
+    "_attachments", "_listening", "_reactions",
+    "_send", "_unsend", "_message_requests",
 ]
 ```
 
-This means you can import from `_messaging` and access the core messaging modules directly.
+Import via `_messaging._send`, `_messaging._listening`, … to use each module.
 
 ---
 
-## 2) Primary responsibility (**IMPORTANT**): `_messaging_`
+## 🧩 The `dataFB` Contract
 
-### `_messaging` is used to:
+Every `_messaging` API requires **`dataFB`** — produced by `_core._session.dataGetHome(setCookies)`.
 
-- Wrap Messenger endpoints into callable Python functions/classes.
-- Reuse `dataFB` from `_core._session` for request authentication.
-- Standardize send/listen/reaction/unsend operations by separate modules.
-- Support both synchronous (HTTP) and realtime (MQTT) bot/tool workflows.
+Frequently used keys: `fb_dtsg` · `jazoest` · `FacebookID` · `clientRevision` · `cookieFacebook`.
 
----
-
-## 3) Shared input data (**IMPORTANT**): `dataFB`
-
-Most APIs in `_messaging` accept `dataFB` as a required input.
-
-### Commonly used fields
-
-- `fb_dtsg`
-- `jazoest`
-- `FacebookID`
-- `clientRevision`
-- `cookieFacebook`
-
-`dataFB` is created by `_core._session.dataGetHome(setCookies)`.
+> 📖 Full schema: [`_core/README_EN.md`](../_core/README_EN.md#-the-datafb-contract).
 
 ---
 
-## 4) Detailed module reference
+## 📚 Module Reference
 
-## 4.1 `_send.py`
+### `_send.py`
 
-### Class: `api`
+#### `class api`
 
-This is the main message-sending module.
-
-### Key method: `send(...)`
+The main message-sending module.
 
 ```python
-send(
+api().send(
     dataFB,
     contentSend,
     threadID,
@@ -96,80 +102,59 @@ send(
 )
 ```
 
-### Input
+| Param | Description |
+|---|---|
+| `contentSend` | Message body. |
+| `threadID` | Target group or user ID. |
+| `typeChat` | `"user"` for 1-on-1; `None` for thread/group. |
+| `typeAttachment` | `"gif"` · `"image"` · `"video"` · `"file"` · `"audio"`. |
+| `attachmentID` | Upload ID returned by `_attachments`. |
+| `replyMessage` + `messageID` | For reply flows. |
 
-- `contentSend`: message content.
-- `threadID`: target group/thread ID or user ID.
-- `typeChat`:
-  - `"user"`: send direct message to a user.
-  - `None`: send to a thread/group.
-- `typeAttachment`: attachment type. Supported values:
-  - `"gif"`, `"image"`, `"video"`, `"file"`, `"audio"`
-- `attachmentID`: uploaded attachment ID (from `_attachments.py`).
-- `replyMessage` + `messageID`: used for reply flows.
+**Returns:**
 
-### Output
+- ✅ `{ "success": 1, "payload": { "messageID": ..., "timestamp": ... } }`
+- ❌ `{ "error": 1, "payload": { "error-decription": ..., "error-code": ... } }`
 
-- Success:
-  - `{ "success": 1, "payload": { "messageID": ..., "timestamp": ... } }`
-- Failure:
-  - `{ "error": 1, "payload": { "error-decription": ..., "error-code": ... } }`
-
-### Notes
-
-- The module auto-generates `offline_threading_id`, `message_id`, and `threading_id`.
-- Responses from `/messaging/send/` are prefixed with `for (;;);`; the module strips this prefix before `json.loads`.
+> 📝 The module auto-generates `offline_threading_id`, `message_id`, `threading_id`. Responses from `/messaging/send/` carry a `for (;;);` prefix — already stripped.
 
 ---
 
-## 4.2 `_listening.py`
+### `_listening.py`
 
-### Class: `listeningEvent`
+#### `class listeningEvent(dataFB)`
 
-This module listens for realtime message events through MQTT over WebSocket
-(`wss://edge-chat.facebook.com/...`).
+Listens for realtime events via **MQTT over WebSocket** (`wss://edge-chat.facebook.com/...`).
 
-### Initialization
+| Method | Description |
+|---|---|
+| `get_last_seq_id()` | Fetches & updates the latest `last_seq_id`. |
+| `connect_mqtt()` | Initializes the MQTT client, subscribes to the sync queue, receives deltas. **Blocking** (`loop_forever()`). |
 
-```python
-listeningEvent(dataFB)
+**Event payload** — `self.bodyResults` exposes:
+
+```text
+body · timestamp · userID · messageID · replyToID · type
+attachments.id · attachments.url
 ```
 
-### Main functions
+**Highlights:**
 
-- `get_last_seq_id()`
-  - Fetches and updates the latest `last_seq_id` from thread data.
-- `connect_mqtt()`
-  - Initializes MQTT client, publishes queue sync events, and receives message deltas.
-
-### Received data shape
-
-When a message event arrives, the class updates `self.bodyResults` with:
-
-- `body`, `timestamp`, `userID`, `messageID`, `replyToID`, `type`
-- `attachments.id`, `attachments.url`
-
-### Highlights
-
-- Includes reconnect handling for unexpected disconnects.
+- Built-in **reconnect** on unexpected disconnect.
 - Handles `errorCode == 100` (queue overflow) by resetting sync state.
-- `connect_mqtt()` uses `loop_forever()`, so it is usually run in a dedicated thread/process.
+- Because `connect_mqtt()` is blocking, run it in a **dedicated thread / process**.
 
 ---
 
-## 4.3 `_attachments.py`
+### `_attachments.py`
 
-### Function: `func(filenames, dataFB)`
+```python
+_uploadAttachment(filenames, dataFB)
+```
 
-- Purpose: upload files to Facebook and return an `attachmentID` for message sending.
-- Endpoint: `https://upload.facebook.com/ajax/mercury/upload.php`
+Uploads files to `https://upload.facebook.com/ajax/mercury/upload.php` and returns the `attachmentID`.
 
-### Input
-
-- `filenames`: file path or list of paths to upload.
-- `dataFB`: contains `cookieFacebook`, `fb_dtsg`, etc.
-
-### Output
+**Returns:**
 
 ```python
 {
@@ -180,176 +165,147 @@ When a message event arrives, the class updates `self.bodyResults` with:
 }
 ```
 
-### Notes
-
-- The flow is commonly used as one upload request per call.
-- On upload failure, the function currently prints an error instead of raising a detailed exception.
+> ⚠️ One call = one file. On failure the function prints to stdout instead of raising a detailed exception.
 
 ---
 
-## 4.4 `_reactions.py`
-
-### Function: `func(dataFB, typeAdded, messageID, emojiChoice)`
-
-- Purpose: add or remove a reaction on a message.
-
-### Input
-
-- `messageID`: target message ID.
-- `typeAdded`:
-  - `"add"` => add reaction
-  - any other value => remove reaction
-- `emojiChoice`: reaction emoji.
-
-### Output
-
-- Returns `requests.Response` directly.
-- Parse `response.text` if you need detailed status handling.
-
----
-
-## 4.5 `_unsend.py`
-
-### Function: `func(messageID, dataFB)`
-
-- Purpose: unsend a message by `messageID`.
-- Endpoint: `/messaging/unsend_message/`.
-
-### Input
-
-- `messageID`: target message ID.
-
-### Output
-
-- Success: `{ "success": 1, "messages": "Message unsent successfully." }`
-- Error: returns `Exception({...})`.
-
----
-
-## 4.6 `_message_requests.py`
-
-### Function: `func(dataFB)`
-
-- Purpose: fetch pending message requests (`PENDING`).
-
-### Output
-
-- Success:
-  - `{ "success": 1, "messageRequests": "<formatted json string>" }`
-- The content includes sender list, snippets, timestamps, and `total_count`.
-
----
-
-## 5) Dependency map in the project
-
-`_messaging` mainly depends on `_core._utils` and `dataFB`:
-
-- `_core._session` -> `dataGetHome(setCookies)`
-- `formAll`
-- `mainRequests`
-- `gen_threading_id`
-- `generate_session_id`, `generate_client_id`, `json_minimal`
-- `str_base`, `get_files_from_paths`
-- `Headers`, `parse_cookie_string`
-
-External libraries:
-
-- `requests`
-- `paho-mqtt`
-
----
-
-## 6) Sample source code
-
-## 6.1 Send a text message to a thread
+### `_reactions.py`
 
 ```python
-from _messaging._send import api
-
-sender = api()
-result = sender.send(dataFB, "Hello", "1234567890")
-print(result)
+func(dataFB, typeAdded, messageID, emojiChoice)
 ```
 
-## 6.2 Upload an image, then send it in a message
+Add / remove a reaction on a message.
+
+| Param | Value |
+|---|---|
+| `typeAdded` | `"add"` to add; any other value removes. |
+| `messageID` | Target message ID. |
+| `emojiChoice` | Reaction emoji. |
+
+**Returns:** raw `requests.Response` — parse `response.text` yourself for details.
+
+---
+
+### `_unsend.py`
 
 ```python
-from _messaging._attachments import func as upload_attachment
+func(messageID, dataFB)
+```
+
+Unsend a message by `messageID`. Endpoint: `/messaging/unsend_message/`.
+
+- ✅ `{ "success": 1, "messages": "Message unsent successfully." }`
+- ❌ returns `Exception({...})`.
+
+---
+
+### `_message_requests.py`
+
+```python
+func(dataFB)
+```
+
+Fetch pending message requests (`PENDING`).
+
+- ✅ `{ "success": 1, "messageRequests": "<formatted json string>" }`
+
+Includes sender list, snippet, timestamp, and `total_count`.
+
+---
+
+## 🔗 Dependency Map
+
+`_messaging` mainly depends on `_core`:
+
+```text
+_core._session.dataGetHome(setCookies)  →  dataFB
+_core._utils  →  formAll · mainRequests · gen_threading_id
+                 generate_session_id · generate_client_id · json_minimal
+                 str_base · get_files_from_paths · Headers · parse_cookie_string
+```
+
+**External libraries:** `requests`, `paho-mqtt`.
+
+---
+
+## 💡 Examples
+
+### Send a text message
+
+```python
 from _messaging._send import api
 
-uploaded = upload_attachment("path/to/image.jpg", dataFB)
-
 sender = api()
-result = sender.send(
+print(sender.send(dataFB, "Hello", "1234567890"))
+```
+
+### Upload an image then send it
+
+```python
+from _messaging._attachments import _uploadAttachment
+from _messaging._send import api
+
+uploaded = _uploadAttachment("path/to/image.jpg", dataFB)
+sender = api()
+print(sender.send(
     dataFB,
     "Here is your image",
     "1234567890",
     typeAttachment="image",
     attachmentID=uploaded["attachmentID"],
-)
-print(result)
+))
 ```
 
-## 6.3 React to a message
+### React to a message
 
 ```python
 from _messaging._reactions import func
 
-resp = func(dataFB, "add", "mid.$abc...", "\\U0001F44D")
+resp = func(dataFB, "add", "mid.$abc...", "👍")
 print(resp.status_code, resp.text)
 ```
 
-## 6.4 Unsend a message
+### Unsend a message
 
 ```python
 from _messaging._unsend import func
-
-result = func("mid.$abc...", dataFB)
-print(result)
+print(func("mid.$abc...", dataFB))
 ```
 
-## 6.5 Fetch pending message requests
+### Fetch pending requests
 
 ```python
 from _messaging._message_requests import func
-
-result = func(dataFB)
-print(result)
+print(func(dataFB))
 ```
 
-## 6.6 Listen for realtime messages
+### Listen in realtime
 
 ```python
+import threading
 from _messaging._listening import listeningEvent
 
 listener = listeningEvent(dataFB)
 listener.get_last_seq_id()
-listener.connect_mqtt()  # blocking
+threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 ```
 
 ---
 
-## 7) Common issues and troubleshooting
+## 🛠 Troubleshooting
 
-### Case 1: message sending fails
+| Symptom | Suggested fix |
+|---|---|
+| Sending fails | Check cookies & `dataFB`; verify `threadID`/`userID`; ensure `typeAttachment` matches the uploaded file. |
+| Upload fails | Verify path exists & is readable; inspect upload response (Facebook may rename keys). |
+| Listener disconnects / receives no events | Run in a dedicated thread (`loop_forever()` is blocking); inspect MQTT `errorCode`; mind `errorCode == 100` (queue overflow). |
+| JSON parse errors | Strip the `for (;;);` prefix before `json.loads`. |
 
-- Check whether cookies are still valid and `dataFB` is still fresh.
-- Verify `threadID`/`userID` format.
-- If sending an attachment, verify `typeAttachment` matches the uploaded file type.
+---
 
-### Case 2: attachment upload fails
+<div align="right">
 
-- Ensure the file path exists and is readable.
-- Check filesystem permissions on the machine running the bot/tool.
-- Inspect upload response shape because Facebook may change metadata keys.
+⬆️ [Back to main README](../../README_EN.md) · 🇻🇳 [Tiếng Việt](README.md)
 
-### Case 3: listener disconnects or receives no events
-
-- Run the listener in a dedicated thread/process (`loop_forever()` is blocking).
-- Inspect MQTT payload logs for `errorCode`.
-- For queue overflow (`errorCode = 100`), reset/reconnect is implemented, but monitoring is still recommended.
-
-### Case 4: JSON parsing errors in responses
-
-- Many endpoints return payloads prefixed with `for (;;);`.
-- Remove the prefix before `json.loads`.
+</div>

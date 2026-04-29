@@ -1,196 +1,180 @@
-# _core (`src/_core`)
+# `_core` — Tầng nền tảng
 
-`_core` là nền tảng kỹ thuật dùng chung cho toàn bộ codebase. Thư mục này không chứa tính năng người dùng cuối, mà chịu trách nhiệm:
+> Foundation layer của `fbchat-v2`. Khởi tạo phiên, sinh payload, parse cookie, sinh ID — mọi tầng phía trên đều phụ thuộc vào module này.
 
-- Khởi tạo phiên làm việc (session) từ cookie.
-- Tạo payload/request cơ bản cho các endpoint Facebook.
-- Phân tích cookie và trích xuất token động.
-- Sinh ID phục vụ gửi/nhận tin nhắn.
-- Cung cấp các hàm tiện ích dùng lại ở `_features` và `_messaging`.
+[![Layer](https://img.shields.io/badge/layer-core-6E40C9)](.)
+[![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
+[![English](https://img.shields.io/badge/docs-English-blue)](README_EN.md)
 
 ---
 
-## 1) Sơ đồ thư mục
+## 📑 Mục lục
+
+- [Vai trò](#-vai-trò)
+- [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
+- [Public API](#-public-api)
+- [Hợp đồng dữ liệu `dataFB`](#-hợp-đồng-dữ-liệu-datafb)
+- [Tham chiếu module](#-tham-chiếu-module)
+  - [`_session.py`](#sessionpy)
+  - [`_utils.py`](#utilspy)
+  - [`_facebookLogin.py`](#facebookloginpy)
+- [Sơ đồ phụ thuộc](#-sơ-đồ-phụ-thuộc)
+- [Ví dụ](#-ví-dụ)
+- [Khắc phục sự cố](#-khắc-phục-sự-cố)
+
+---
+
+## 🎯 Vai trò
+
+`_core` là tầng kỹ thuật dùng chung — **không** chứa tính năng người dùng cuối. Trách nhiệm chính:
+
+- 🔑 Khởi tạo **phiên làm việc** từ cookie người dùng.
+- 🧱 Tạo **payload / request** chuẩn cho các endpoint Facebook.
+- 🍪 Parse cookie & trích xuất **token động** (`fb_dtsg`, `jazoest`, …).
+- 🆔 Sinh các loại **ID** phục vụ luồng gửi / nhận tin.
+- 🛠 Cung cấp **utilities** dùng lại bởi `_features` và `_messaging`.
+
+---
+
+## 📂 Cấu trúc thư mục
 
 ```text
 src/_core/
 ├── __init__.py
-├── _session.py
-├── _utils.py
-├── _facebookLogin.py
-├── README.md
-├── README.md
-└── README_EN.md 
+├── _session.py           # Khởi tạo dataFB từ cookie
+├── _utils.py             # HTTP helpers, parser, ID generator…
+├── _facebookLogin.py     # Đăng nhập username/password (+ 2FA)
+├── README.md             # ← bạn đang ở đây
+└── README_EN.md
 ```
 
-### export chính
+---
 
-`src/_core/__init__.py` hiện export:
+## 📦 Public API
 
 ```python
+# src/_core/__init__.py
 __all__ = ["_session", "_utils", "_facebookLogin"]
 ```
 
-Nghĩa là bạn chỉ cần gọi `_core` là có thể dùng được các ***module*** bên trong nó.
+Sau khi `import _core`, bạn có thể truy cập tất cả module con thông qua `_core._session`, `_core._utils`, `_core._facebookLogin`.
 
 ---
 
-## 2) Nhiệm vụ chính (***QUAN TRỌNG***): `_core`
+## 🧩 Hợp đồng dữ liệu `dataFB`
 
-### `_core` được ứng dụng:
+`_session.dataGetHome(setCookies)` trả về một `dict` (thường đặt tên là **`dataFB`**) — đây là **single source of truth** cho mọi request về sau.
 
-- Tạo header và form request dùng chung.
-- Chuyển cookie string thành dict cho `requests`.
-- Trích xuất các giá trị động từ homepage Facebook (`fb_dtsg`, `jazoest`, ...).
-- Sinh ID runtime cho luồng gửi/nhận tin nhắn.
-- Cung cấp hàm format/parse/tiện ích dùng chung. 
+| Khoá | Mô tả |
+|---|---|
+| `fb_dtsg` | Token CSRF runtime |
+| `fb_dtsg_ag` | Biến thể `fb_dtsg` cho một số endpoint |
+| `jazoest` | Token kèm `fb_dtsg` |
+| `hash` | Hash phiên hiện tại |
+| `sessionID` | ID phiên runtime |
+| `FacebookID` | UID người dùng đang đăng nhập |
+| `clientRevision` | Revision client (cập nhật theo Facebook) |
+| `cookieFacebook` | Cookie gốc dạng dict, sẵn sàng cho `requests` |
 
----
-
-## 3) Dữ liệu chính (***QUAN TRỌNG***): `dataFB`
-
-`_session.dataGetHome(setCookies)` trả về một dict thường được đặt tên là `dataFB`.
-
-### Các giá trị được trả về:
-
-- `fb_dtsg`
-- `fb_dtsg_ag`
-- `jazoest`
-- `hash`
-- `sessionID`
-- `FacebookID`
-- `clientRevision`
-- `cookieFacebook`
-
-Gần như tất cả module trong `_features/*` và `_messaging/*` đều phụ thuộc vào **những giá trị này**.
+> ⚠️ Gần như **mọi** module trong `_features/*` và `_messaging/*` đều phụ thuộc vào các giá trị này.
 
 ---
 
-## 4) Tài liệu module chi tiết
+## 📚 Tham chiếu module
 
-## 4.1 `_session.py`
+### `_session.py`
 
-### Hàm: `dataGetHome(setCookies)`
+#### `dataGetHome(setCookies: str) -> dict`
 
-Hàm này truy cập `https://www.facebook.com/` bằng cookie đã cung cấp, sau đó trích xuất các token/giá trị cần thiết để gọi API tiếp theo.
+Truy cập `https://www.facebook.com/` bằng cookie đã cung cấp, trích xuất các token cần thiết.
 
-### Đầu vào
+| Tham số | Kiểu | Mô tả |
+|---|---|---|
+| `setCookies` | `str` | Cookie thô, ví dụ `"c_user=...; xs=...; fr=...; datr=...;"` |
 
-- `setCookies` (`str`): chuỗi cookie thô, ví dụ:
-  - `"c_user=...; xs=...; fr=...; datr=...;"`
+**Trả về:** `dict` theo schema `dataFB` ở trên.
 
-### Đầu ra
+**Quy trình:**
 
-- `dict` theo cấu trúc `dataFB` ở trên.
-
-### Quy trình hoạt động
-
-1. Tạo header GET giống trình duyệt.
-2. Đổi cookie string sang dict qua `_utils.parse_cookie_string`.
+1. Tạo header GET kiểu trình duyệt.
+2. Chuyển cookie string → dict (`_utils.parse_cookie_string`).
 3. Tải HTML homepage.
-4. Dùng `_utils.dataSplit` để cắt token.
-5. Trả về dict session + cookie gốc.
+4. Cắt token bằng `_utils.dataSplit`.
+5. Trả về session dict.
 
-### Lưu ý
-
-- Cách trích xuất hiện tại dựa trên split marker trong HTML, có thể xảy ra lỗi khi Facebook thay đổi cấu trúc HTML
-- Có thể dính **checkpoint**
+> ⚠️ Cách trích xuất hiện dùng split-marker; có thể vỡ khi Facebook đổi HTML. Tài khoản cũng có thể dính **checkpoint**.
 
 ---
 
-## 4.2 `_utils.py`
+### `_utils.py`
 
-Đây là module quan trọng nhất của `_core`, chứa nhiều hàm dùng chung.
+Module quan trọng nhất của `_core`. Gồm 5 nhóm hàm chính:
 
-### A) Nhóm hàm HTTP/request
+#### A. HTTP / Request
 
-- `Headers(dataForm=None, Host=None)`
-  - Tạo bộ header cơ bản.
-  - Có thể gắn `Content-Length` dựa theo độ dài `dataForm`.
-- `parse_cookie_string(cookie_string)`
-  - Chuyển cookie string thành dict cho `requests`.
-- `mainRequests(urlRequests, dataForm, setCookies)`
-  - Trả về kwargs sẵn để gọi `requests.post(**kwargs)`.
+| Hàm | Mô tả |
+|---|---|
+| `Headers(dataForm=None, Host=None)` | Tạo bộ header chuẩn; tự thêm `Content-Length` nếu có `dataForm`. |
+| `parse_cookie_string(cookie_string)` | Cookie string → `dict` cho `requests`. |
+| `mainRequests(urlRequests, dataForm, setCookies)` | Trả về `kwargs` sẵn sàng dùng `requests.post(**kwargs)`. |
 
-### B) Nhóm hàm parse/format
+#### B. Parse / Format
 
-- `digitToChar(digit)`
-- `str_base(number, base)`
-- `dataSplit(...)`
-  - Tách dữ liệu bằng delimiter.
-- `clearHTML(text)`
-  - Xóa thẻ HTML qua regex.
-- `formatResults(type, text)`
-  - Chuẩn hóa kết quả theo mẫu `{ "status": ..., "message": ... }`.
+| Hàm | Mô tả |
+|---|---|
+| `digitToChar(digit)` | Chuyển digit → char. |
+| `str_base(number, base)` | Đổi cơ số. |
+| `dataSplit(...)` | Cắt chuỗi theo delimiter. |
+| `clearHTML(text)` | Loại thẻ HTML qua regex. |
+| `formatResults(type, text)` | Chuẩn hoá output `{ "status": ..., "message": ... }`. |
 
-### C) Hàm tạo form tổng quát
+#### C. Form builder tổng quát
 
-- `formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None)`
+```python
+formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None)
+```
 
-Đây là hàm cốt sống của toàn bộ flow request.
+Backbone của hầu hết flow request, hỗ trợ 2 chế độ:
 
-Hàm tạo payload cơ bản cho endpoint Facebook theo 2 chế độ:
+1. **GraphQL** (`requireGraphql is None`): có `fb_api_req_friendly_name`, `doc_id`, `fb_api_caller_class`, …
+2. **Legacy / minimal** (`requireGraphql != None`): chỉ giữ trường tối thiểu.
 
-1. Chế độ GraphQL (`requireGraphql is None`)
-   - Có `fb_api_req_friendly_name`, `doc_id`, `fb_api_caller_class`, ...
-2. Chế độ tối giản/legacy (`requireGraphql != None`)
-   - Chỉ giữ bộ trường cần cho endpoint không cần GraphQL.
+#### D. Messaging ID generators
 
-### D) Nhóm hàm sinh ID cho messaging
+`generate_session_id()` · `generate_client_id()` · `gen_threading_id()` · `json_minimal(data)` · `_set_chat_on(value)`
 
-- `generate_session_id()`
-- `generate_client_id()`
-- `gen_threading_id()`
-- `json_minimal(data)`
-- `_set_chat_on(value)`
+> Dùng nhiều trong `_messaging._send` và `_messaging._listening`.
 
-Được dùng trong các module gửi tin, lắng nghe sự kiện.
+#### E. Tiện ích khác
 
-### E) Nhóm hàm tiện ích khác
-
-- `require_list(list_)`
-- `get_files_from_paths(filenames)`
-- `randStr(length)`
+`require_list(list_)` · `get_files_from_paths(filenames)` · `randStr(length)`
 
 ---
 
-## 4.3 `_facebookLogin.py`
+### `_facebookLogin.py`
 
-Module này xử lý đăng nhập Facebook bằng username/password.
+Đăng nhập Facebook bằng **username / password** (+ tuỳ chọn 2FA).
 
-### Thành phần công khai
+#### Thành phần công khai
 
-- `class loginFacebook`
-  - `__init__(username, password, AuthenticationGoogleCode=None)`
-  - `main()` trả về dict thành công/thất bại.
-- `GetToken2FA(key2Fa)`
-  - Gọi `https://2fa.live/tok/...` để lấy mã OTP.
-- `jsonResults(...)`
-  - Chuẩn hóa cấu trúc dữ liệu đăng nhập.
+| Symbol | Mô tả |
+|---|---|
+| `class loginFacebook(username, password, AuthenticationGoogleCode=None)` | Đăng nhập; gọi `.main()` để chạy. |
+| `GetToken2FA(key2Fa)` | Lấy OTP 2FA qua `https://2fa.live/tok/...`. |
+| `jsonResults(...)` | Chuẩn hoá cấu trúc trả về. |
 
-### Khi đăng nhập **thành công**
+#### Kết quả
 
-- `success.setCookies`
-- `success.accessTokenFB`
-- `success.cookiesKey-ValueList`
+| Trạng thái | Trường trả về |
+|---|---|
+| ✅ Thành công | `success.setCookies` · `success.accessTokenFB` · `success.cookiesKey-ValueList` |
+| ❌ Thất bại | `error.title` · `error.description` · `error.error_subcode` · `error.error_code` · `error.fbtrace_id` |
 
-### Khi đăng nhập **thất bại**
-
-- `error.title`
-- `error.description`
-- `error.error_subcode`
-- `error.error_code`
-- `error.fbtrace_id`
-
-### Cảnh báo bảo mật
-
-- Module xử lý thông tin nhạy cảm: username/password/cookie/access token.
-- ***Nên ưu tiên luồng đăng nhập bằng cookie khi triển khai thực tế.***
-- Luồng đăng nhập có thể lỗi khi endpoint auth thay đổi.
+> 🔒 Module xử lý dữ liệu cực kỳ nhạy cảm. **Khuyến nghị mạnh mẽ** dùng cookie-login trong production.
 
 ---
 
-## 5) Sơ đồ phụ thuộc trong dự án
+## 🔗 Sơ đồ phụ thuộc
 
 `_core._utils` được import rộng rãi bởi:
 
@@ -198,23 +182,21 @@ Module này xử lý đăng nhập Facebook bằng username/password.
 - `src/_features/_thread/*`
 - `src/_messaging/*`
 
-Những *function* thường được dùng nhiều nhất:
+Helpers được dùng nhiều nhất:
 
-- `formAll`
-- `mainRequests`
-- `parse_cookie_string`
-- `Headers`
-- `formatResults`
-- `gen_threading_id`, `generate_session_id`, `generate_client_id`
-- `str_base`, `randStr`, `get_files_from_paths`
+```text
+formAll · mainRequests · parse_cookie_string · Headers · formatResults
+gen_threading_id · generate_session_id · generate_client_id
+str_base · randStr · get_files_from_paths
+```
 
-**CẢNH BÁO**: chỉ cần thay đổi logic core payload/cookie là ảnh hưởng đến phần lớn tính năng.
+> ⚠️ **Cảnh báo:** thay đổi logic core payload / cookie sẽ ảnh hưởng dây chuyền tới phần lớn tính năng.
 
 ---
 
-## 6) Mã nguồn mẫu
+## 💡 Ví dụ
 
-## 6.1 Khởi tạo `dataFB` từ cookie
+### Khởi tạo `dataFB` từ cookie
 
 ```python
 from _core._session import dataGetHome
@@ -226,12 +208,10 @@ print(dataFB["FacebookID"])
 print(dataFB["fb_dtsg"])
 ```
 
-## 6.2 Tạo và gửi request GraphQL
+### Gửi request GraphQL
 
 ```python
-import json
-import requests
-
+import json, requests
 from _core._utils import formAll, mainRequests
 
 dataForm = formAll(
@@ -239,7 +219,6 @@ dataForm = formAll(
     FBApiReqFriendlyName="CometNotificationsDropdownQuery",
     docID=6770067089747450,
 )
-
 dataForm["variables"] = json.dumps({
     "count": 10,
     "environment": "MAIN_SURFACE",
@@ -251,11 +230,10 @@ resp = requests.post(**mainRequests(
     dataForm,
     dataFB["cookieFacebook"],
 ))
-
 print(resp.status_code)
 ```
 
-## 6.3 Tạo payload tối giản (không GraphQL)
+### Payload tối giản (non-GraphQL)
 
 ```python
 from _core._utils import formAll
@@ -266,18 +244,18 @@ payload["message_id"] = "mid...."
 
 ---
 
-## 7) Lỗi có thể gặp và hướng xử lý
+## 🛠 Khắc phục sự cố
 
-### TH.1: nhiều request lỗi auth/session
+| Triệu chứng | Hướng xử lý |
+|---|---|
+| Nhiều request lỗi auth/session | Cookie hết hạn → tạo lại `dataFB` qua `dataGetHome(...)`. |
+| Trường trả về giá trị fallback | HTML homepage đã đổi → cập nhật split markers trong `_session.py`. |
+| Login dính checkpoint | Đổi sang cookie-login; nếu giữ nguyên login flow, kiểm tra IP / 2FA. |
 
-- Kiểm tra lại cookie còn *LIVE* hay không.
-- Chạy lại `_session.dataGetHome(...)` và xác minh các key bắt buộc.
+---
 
-### TH.2: trường parse ra giá trị fallback
+<div align="right">
 
-- Khả năng cao là HTML homepage đã đổi.
-<<<<<<< HEAD
-- Cập nhật marker split trong `_session.py`.s
-=======
-- Cập nhật marker split trong `_session.py`.s
->>>>>>> 770781a6930055c51056b28b4dac0b20892d2ce5
+⬆️ [Về README chính](../../README.md) · 🇬🇧 [English](README_EN.md)
+
+</div>

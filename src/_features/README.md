@@ -1,20 +1,45 @@
-# _features (`src/_features`)
+# `_features` — Tầng tính năng
 
-`_features` là tầng triển khai các tính năng thao tác trực tiếp trên Facebook và tin nhắn. Thư mục này không xử lý phần nền tảng session/token như `_core`, mà tập trung vào logic nghiệp vụ cấp tính năng:
+> Triển khai các nghiệp vụ Facebook & Messenger cấp người dùng: hồ sơ, bài viết, tìm kiếm, thông báo, Marketplace, quản trị thread…
 
-- Thao tác hồ sơ cá nhân (bio, bài viết, profile phụ, professional mode).
-- Truy xuất dữ liệu người dùng và thông báo.
-- Tìm kiếm Facebook, chặn/bỏ chặn người dùng.
-- Tạo/lấy thông tin bài đăng Marketplace.
-- Quản trị thread nhóm (đổi tên, emoji, nickname, thêm admin).
+[![Layer](https://img.shields.io/badge/layer-features-3B82F6)](.)
+[![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
+[![English](https://img.shields.io/badge/docs-English-blue)](README_EN.md)
 
 ---
 
-## 1) Sơ đồ thư mục
+## 📑 Mục lục
+
+- [Vai trò](#-vai-trò)
+- [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
+- [Public API](#-public-api)
+- [Hợp đồng `dataFB`](#-hợp-đồng-datafb)
+- [Tham chiếu module](#-tham-chiếu-module)
+  - [`_facebook` — Nghiệp vụ Facebook](#facebook--nghiệp-vụ-facebook)
+  - [`_thread` — Quản trị thread](#thread--quản-trị-thread)
+- [Sơ đồ phụ thuộc](#-sơ-đồ-phụ-thuộc)
+- [Ví dụ](#-ví-dụ)
+- [Khắc phục sự cố](#-khắc-phục-sự-cố)
+
+---
+
+## 🎯 Vai trò
+
+`_features` **không** quản lý session/token (đó là việc của `_core`). Tầng này chỉ tập trung vào **business logic**:
+
+- 👤 Thao tác hồ sơ: bio, bài viết, profile phụ, professional mode.
+- 🔔 Truy xuất user info & notification.
+- 🔍 Tìm kiếm Facebook · 🚫 chặn / bỏ chặn.
+- 🛒 Tạo / lấy thông tin Marketplace listing.
+- 👥 Quản trị thread nhóm: đổi tên, emoji, biệt danh, thêm admin.
+
+---
+
+## 📂 Cấu trúc thư mục
 
 ```text
 src/_features/
-├── _facebook/
+├── _facebook/                # Nghiệp vụ trên tài khoản Facebook
 │   ├── __init__.py
 │   ├── _blocking.py
 │   ├── _changeBio.py
@@ -25,303 +50,214 @@ src/_features/
 │   ├── _professional.py
 │   ├── _registerOnProfile.py
 │   └── _search.py
-├── _thread/
+├── _thread/                  # Quản trị nhóm chat
 │   ├── __init__.py
 │   ├── _addAdmin.py
 │   ├── _all_thread_data.py
 │   ├── _changeEmoji.py
 │   ├── _changeNameThread.py
 │   └── _changeNickname.py
-└── README.md
+├── README.md                 # ← bạn đang ở đây
+└── README_EN.md
 ```
 
-### Export chính
+---
 
-`src/_features/_facebook/__init__.py` hiện export:
+## 📦 Public API
 
 ```python
+# src/_features/_facebook/__init__.py
 __all__ = [
-    "_changeBio",
-    "_createPost",
-    "_professional",
-    "_search",
-    "_blocking",
-    "_registerOnProfile",
-    "_notification",
-    "_marketplace",
-    "_get_user_info",
+    "_changeBio", "_createPost", "_professional", "_search",
+    "_blocking", "_registerOnProfile", "_notification",
+    "_marketplace", "_get_user_info",
+]
+
+# src/_features/_thread/__init__.py
+__all__ = [
+    "_changeNickname", "_addAdmin", "_changeEmoji", "_changeNameThread",
 ]
 ```
 
-`src/_features/_thread/__init__.py` hiện export:
+Sau khi `from _features._facebook import *` (hoặc `_thread`), bạn có thể gọi trực tiếp các module liệt kê trên.
+
+---
+
+## 🧩 Hợp đồng `dataFB`
+
+Hầu hết các hàm trong `_features` đều nhận **`dataFB`** làm tham số đầu tiên — sinh ra từ `_core._session.dataGetHome(setCookies)`.
+
+Trường thường dùng: `fb_dtsg` · `jazoest` · `FacebookID` · `clientRevision` · `sessionID` · `cookieFacebook`.
+
+> 📖 Chi tiết schema: xem [`_core/README.md`](../_core/README.md#-hợp-đồng-dữ-liệu-datafb).
+
+---
+
+## 📚 Tham chiếu module
+
+### `_facebook` — Nghiệp vụ Facebook
+
+#### `_changeBio.py`
 
 ```python
-__all__ = [
-    "_changeNickname",
-    "_addAdmin",
-    "_changeEmoji",
-    "_changeNameThread",
-]
+func(dataFB, newContents, uploadPost=False)
 ```
 
-Nghĩa là bạn chỉ cần gọi `_thread` hoặc `_facebook` là có thể dùng được các ***module*** bên trong nó.
+Đổi bio tài khoản. `uploadPost=True` sẽ đăng feed story kèm theo.
 
----
+- ✅ Thành công: `{ "success": 1, "messages": ... }`
+- ❌ Thất bại: `{ "error": 1, ... }`
 
-## 2) Nhiệm vụ chính (***QUAN TRỌNG***): `_features_`
-
-### `_features` được ứng dụng để:
-
-- Triển khai nghiệp vụ theo từng tính năng cụ thể.
-- Tái sử dụng dữ liệu phiên `dataFB` từ `_core._session`.
-- Tích hợp những tính năng quan trọng cho *tools*/*bot*.
-
----
-
-## 3) Dữ liệu đầu vào chung (***QUAN TRỌNG***): `dataFB`
-
-**!!** đa số các *functions* trong `_features` nhận `dataFB` làm tham số đầu tiên.
-
-### Các giá trị thường được dùng:
-
-- `fb_dtsg`
-- `jazoest`
-- `FacebookID`
-- `clientRevision`
-- `sessionID`
-- `cookieFacebook`
-
-`dataFB` được tạo từ `_core._session.dataGetHome(setCookies)`.
-
----
-
-## 4) Tài liệu module chi tiết
-(**QUAN TRỌNG**): `dataFB`: được xuất từ *_core._session* -> `dataGetHome(setCookies)`
-
-
-
-
-## 4.1 `_features._facebook` | Nhóm *_facebook*
-
-
-### `_changeBio.py`
-
-- Hàm: `func(dataFB, newContents, uploadPost=False)`
-- Mục đích: đổi bio tài khoản Facebook.
-- Đầu vào:
-  - `newContents`: nội dung bio mới.
-  - `uploadPost`: có đăng feed khi đổi bio hay không.
-- Đầu ra:
-  - Thành công: `{ "success": 1, "messages": ... }`
-  - Thất bại: `{ "error": 1, ... }`
-
-### `_createPost.py`
-
-- Hàm: `func(dataFB, newContents, attachmentID=None)`
-- Mục đích: tạo bài viết mới trên timeline.
-- Đầu vào:
-  - `newContents`: nội dung bài viết.
-  - `attachmentID`: tham số dự phòng, hiện chưa được dùng thực tế trong tính năng.
-- Đầu ra:
-  - Thành công: xuất `urlPost` đã tạo thành công.
-  - Thất bại: trả `error` và message từ API.
-
-### `_professional.py`
-
-- Hàm: `func(dataFB, statusBusiness=None)`
-- Mục đích: bật/tắt chế độ chuyên nghiệp trang cá nhân.
-- Đầu vào:
-  - `statusBusiness`: nhận `"on"`, `"off"`, `"bật"`, `"tắt"`, `True`, `False`.
-- Đầu ra: dict `success` hoặc `error`.
-
-### `_search.py`
-
-- Hàm: `func(dataFB, keywordSearch)`
-- Mục đích: tìm kiếm người dùng trên Facebook.
-- Đầu vào:
-  - `keywordSearch`: từ khóa tìm kiếm.
-- Đầu ra:
-  - `searchResults`: chuỗi định dạng đẹp (được xuất sẵn dành cho *tools*/*bot*).
-  - `searchResultsDict`: danh sách dict gồm `name`, `id`, `url`.
-
-### `_blocking.py`
-
-- Hàm: `func(dataFB, idUser, choiceInteract)`
-- Mục đích: chặn hoặc bỏ chặn người dùng.
-- Đầu vào:
-  - `choiceInteract`: `"block"` hoặc `"unblock"`.
-- Đầu ra: dict `success`/`error` theo kết quả API.
-
-### `_registerOnProfile.py`
-
-- Hàm: `func(dataFB, newName, newUsername)`
-- Mục đích: tạo profile phụ trên cùng tài khoản.
-- Đầu vào:
-  - `newName`: tên profile phụ.
-  - `newUsername`: username profile phụ.
-- Đầu ra:
-  - Thành công: `{ "success": 1, ... }`
-  - Lỗi nghiệp vụ/API: `{ "error": 1, ... }`
-- ***LƯU Ý***: Tính năng này chỉ hoạt động trên một số tài khoản nhất định.
-
-### `_notification.py`
-
-- Hàm: `func(dataFB)`
-- Mục đích: lấy danh sách thông báo.
-- Đầu vào: không có.
-- Đầu ra:
-  - Thành công: `{ "success": 1, "NotificationResults": [...] }`
-  - Thất bại: `{ "error": 1, "messages": ... }`
-
-### `_marketplace.py`
-
-- **Hàm 1**: `createItem(dataFB, nameItem, brandItem, priceItem, currencyItem, decriptionItem, hashtagList, typeItem, photoIDList, locationSeller)`
-  - Mục đích: tạo bài đăng bán hàng trên Marketplace.
-  - Đầu vào:
-    - `nameItem`: tên sản phẩm.
-    - `brandItem`: thương hiệu.
-    - `priceItem`: giá sản phẩm.
-    - `currencyItem`: đơn vị tiền tệ.
-    - `decriptionItem`: mô tả sản phẩm.
-    - `hashtagList`: danh sách hashtag.
-    - `typeItem`: Phân loại sản phẩm.
-    - `photoIDList`: Danh sách ID tệp đính kèm đã được tải lên thông qua *_messaging._attachments.py*
-    - `locationSeller`: Vị trí của người bán hàng.
-  - Đầu ra: `success` kèm `url`/`id` khi tải lên sản phẩm thành công, hoặc `error`.
-
-- **Hàm 2**: `getInformationProductItemMarketPlace(dataFB, idProductItem)`
-  - Mục đích: lấy chi tiết sản phẩm theo ID.
-  - Đầu vào: `idProductItem`: ID sản phẩm cần lấy thông tin.
-  - Đầu ra: dict chứa thông tin sản phẩm, giá, người bán, link, thời gian tạo.
-
-### `_get_user_info.py`
-
-- Hàm: `func(dataFB, userID)`
-- Mục đích: lấy thông tin người dùng qua endpoint chat user info.
-- Đầu vào:
-  - `userID`: ID người dùng cần lấy thông tin.
-- Đầu ra:
-  - Thành công: dict chi tiết người dùng.
-  - Thất bại: `{ "err": 0 }`.
-
----
-
-## 4.2 `_features._thread` | Nhóm *_thread_*
-
-### `_changeNameThread.py`
-
-- Hàm: `func(dataFB, threadID, newNameThread)`
-- Mục đích: đổi tên nhóm/chat thread.
-- Đầu vào:
-  - `newNameThread`: tên mới.
-  - `threadID`: ID thread cần đổi tên.
-- Đầu ra: chuẩn `formatResults(status, message)` từ `_core._utils`.
-
-### `_changeEmoji.py`
-
-- Hàm: `func(dataFB, threadID, newEmoji)`
-- Mục đích: đổi emoji mặc định của thread.
-- Đầu vào:
-  - `newEmoji`: emoji mới.
-  - `threadID`: ID thread cần đổi emoji.
-- Đầu ra: `formatResults("success"|"error", message)`.
-
-### `_addAdmin.py`
-
-- Hàm: `func(dataFB, threadID, idUser, statusChoice=True)`
-- Mục đích: thêm/bỏ quyền admin trong nhóm.
-- Đầu vào:
-  - `idUser`: ID người dùng cần thêm/bỏ quyền admin thread.
-  - `threadID`: ID thread cần thêm/bỏ quyền admin thread.
-
-- Đầu ra: `formatResults("success"|"error", message)`.
-
-### `_changeNickname.py`
-
-- Hàm: `func(datatFB, threadID, idUser, NewNickname)`
-- Mục đích: đổi biệt danh thành viên trong thread.
-- Đầu vào:
-  - `threadID`: ID thread cần đổi nickname.
-  - `idUser`: ID người dùng cần đổi nickname.
-  - `NewNickname`: nickname mới.
-- Đầu ra: `formatResults("success"|"error", message)`.
-
-### `_all_thread_data.py`
-
-- Hàm 1: `func(dataFB)`
-  - Mục đích: lấy danh sách thread INBOX + *`last_seq_id`*.
-  - Đầu vào: không có.
-  - Đầu ra: gồm `dataGet`, `ProcessingTime`, `last_seq_id`, `dataAllThread`.
-
-- Hàm 2: `features(dataGet, threadID, commandUse)`
-  - Mục đích: bóc tách dữ liệu sâu từ `dataGet` theo lệnh.
-  - `commandUse` hỗ trợ:
-    - `"getAdmin"`
-    - `"threadInfomation"`
-    - `"exportMemberListToJson"`
-
----
-
-## 5) Sơ đồ phụ thuộc trong dự án
-
-`_features` phụ thuộc chính vào `_core._utils` và `dataFB`:
-
-- `_core._session` -> `dataGetHome(setCookies)`
-- `formAll`
-- `mainRequests`
-- `parse_cookie_string`
-- `Headers`
-- `formatResults`
-- `randStr`
-
-*WARNING*: Có thể xảy ra lỗi nếu Facebook thay đổi cấu trúc giá trị `graphql`
-
----
-
-## 6) Mã nguồn mẫu
+#### `_createPost.py`
 
 ```python
-from _features._facebook import *
-from _features._thread import *
+func(dataFB, newContents, attachmentID=None)
+```
 
+Tạo bài viết mới trên timeline. `attachmentID` là tham số dự phòng (chưa hoạt động trong flow hiện tại).
 
-# Lấy thông báo Facebook (_core._facebook)
+- ✅ Trả về `urlPost`.
+- ❌ Trả `error` + message từ API.
 
-result = _notification.func(dataFB)
-print(result)
+#### `_professional.py`
 
-# Chặn người dùng (_core._facebook)
+```python
+func(dataFB, statusBusiness=None)
+```
 
-result = _blocking.func(dataFB, idUser="1000...", choiceInteract="block")
-print(result)
+Bật/tắt **Professional Mode**. `statusBusiness` chấp nhận: `"on"`, `"off"`, `"bật"`, `"tắt"`, `True`, `False`.
 
-# Thay đổi emoji nhóm (_core._thread)
+#### `_search.py`
 
-result = _changeEmoji.func(dataFB, threadID="1234567890", newEmoji="🔥")
-print(result)
+```python
+func(dataFB, keywordSearch)
+```
 
-# 6.4 Lấy dữ liệu tổng thread (_core._thread)
+Tìm kiếm người dùng. Trả về:
 
+- `searchResults` — chuỗi đã format đẹp (cho bot/CLI).
+- `searchResultsDict` — list các dict `{name, id, url}`.
 
+#### `_blocking.py`
+
+```python
+func(dataFB, idUser, choiceInteract)
+```
+
+Chặn / bỏ chặn user. `choiceInteract`: `"block"` hoặc `"unblock"`.
+
+#### `_registerOnProfile.py`
+
+```python
+func(dataFB, newName, newUsername)
+```
+
+Tạo **profile phụ** trên cùng tài khoản.
+
+> ⚠️ Chỉ hoạt động trên một số tài khoản đủ điều kiện.
+
+#### `_notification.py`
+
+```python
+func(dataFB)
+```
+
+Lấy danh sách thông báo.
+
+- ✅ `{ "success": 1, "NotificationResults": [...] }`
+- ❌ `{ "error": 1, "messages": ... }`
+
+#### `_marketplace.py`
+
+| Hàm | Mục đích |
+|---|---|
+| `createItem(dataFB, nameItem, brandItem, priceItem, currencyItem, decriptionItem, hashtagList, typeItem, photoIDList, locationSeller)` | Đăng sản phẩm Marketplace mới. `photoIDList` lấy từ `_messaging._attachments`. |
+| `getInformationProductItemMarketPlace(dataFB, idProductItem)` | Lấy chi tiết sản phẩm theo ID. |
+
+#### `_get_user_info.py`
+
+```python
+func(dataFB, userID)
+```
+
+Lấy thông tin người dùng qua endpoint chat user info.
+
+- ✅ Dict thông tin chi tiết.
+- ❌ `{ "err": 0 }`.
+
+---
+
+### `_thread` — Quản trị thread
+
+| Module | Hàm | Mục đích |
+|---|---|---|
+| `_changeNameThread.py` | `func(dataFB, threadID, newNameThread)` | Đổi tên nhóm. |
+| `_changeEmoji.py` | `func(dataFB, threadID, newEmoji)` | Đổi emoji mặc định của thread. |
+| `_addAdmin.py` | `func(dataFB, threadID, idUser, statusChoice=True)` | Thêm / bỏ quyền admin. |
+| `_changeNickname.py` | `func(dataFB, threadID, idUser, NewNickname)` | Đổi biệt danh thành viên. |
+
+Tất cả trả về `formatResults("success" \| "error", message)` từ `_core._utils`.
+
+#### `_all_thread_data.py`
+
+| Hàm | Mục đích |
+|---|---|
+| `func(dataFB)` | Lấy danh sách INBOX + `last_seq_id`. Trả về `dataGet`, `ProcessingTime`, `last_seq_id`, `dataAllThread`. |
+| `features(dataGet, threadID, commandUse)` | Bóc tách dữ liệu từ `dataGet`. `commandUse` ∈ `{"getAdmin", "threadInfomation", "exportMemberListToJson"}`. |
+
+---
+
+## 🔗 Sơ đồ phụ thuộc
+
+`_features` chủ yếu phụ thuộc vào `_core`:
+
+```text
+_core._session.dataGetHome(setCookies)  →  dataFB
+_core._utils  →  formAll · mainRequests · parse_cookie_string
+                 Headers · formatResults · randStr
+```
+
+> ⚠️ Có thể gãy nếu Facebook đổi schema GraphQL hoặc `doc_id`.
+
+---
+
+## 💡 Ví dụ
+
+```python
+from _core._session import dataGetHome
+from _features._facebook import _notification, _blocking
+from _features._thread import _changeEmoji, _all_thread_data
+
+dataFB = dataGetHome("c_user=...; xs=...;")
+
+# Lấy thông báo
+print(_notification.func(dataFB))
+
+# Chặn người dùng
+print(_blocking.func(dataFB, idUser="1000...", choiceInteract="block"))
+
+# Đổi emoji nhóm
+print(_changeEmoji.func(dataFB, threadID="1234567890", newEmoji="🔥"))
+
+# Lấy toàn bộ inbox
 threads = _all_thread_data.func(dataFB)
 print(threads["dataAllThread"])
 ```
 
 ---
 
-## 7) Lỗi có thể gặp và hướng xử lý
+## 🛠 Khắc phục sự cố
 
-### TH.1: lỗi auth/session ở nhiều feature
+| Triệu chứng | Hướng xử lý |
+|---|---|
+| Lỗi auth/session ở nhiều feature | Cookie hết hạn → tạo lại `dataFB`. |
+| API trả lỗi hoặc rỗng dữ liệu | Endpoint / `doc_id` đã đổi; verify `variables` đúng schema mới. |
+| Lỗi parse JSON response | Một số endpoint có tiền tố `for (;;);` — split trước khi `json.loads`. |
 
-- Kiểm tra cookie còn hạn hay không.
-- Tạo lại `dataFB` từ `_core._session.dataGetHome(...)`.
+---
 
-### TH.2: API trả lỗi hoặc không có dữ liệu
+<div align="right">
 
-- Endpoint/doc_id có thể đã đổi.
-- Kiểm tra payload `variables` đúng schema hiện tại.
+⬆️ [Về README chính](../../README.md) · 🇬🇧 [English](README_EN.md)
 
-### TH.3: lỗi parse JSON phản hồi
-
-- Một số endpoint trả dạng có tiền tố `for (;;);`.
-- Cần split tiền tố trước `json.loads` (một số module đã làm sẵn).
+</div>

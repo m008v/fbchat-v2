@@ -1,88 +1,96 @@
-# _messaging (`src/_messaging`)
+# `_messaging` — Tầng nhắn tin
 
-`_messaging` là phần để triển khai các tính năng nhắn tin. Thư mục này tập trung vào thao tác Messenger trực tiếp, không xử lý lớp nền session/token như `_core`:
+> Mọi thao tác Messenger trực tiếp: gửi, nhận realtime, upload tệp, react, thu hồi, message requests.
 
-- Gửi tin nhắn văn bản vào user hoặc thread.
-- Upload tệp đính kèm để gửi qua Messenger.
-- Lắng nghe sự kiện tin nhắn realtime qua MQTT/WebSocket.
-- Thêm/xóa reaction cho tin nhắn.
-- Thu hồi tin nhắn đã gửi.
-- Lấy danh sách tin nhắn chờ (Message Requests).
+[![Layer](https://img.shields.io/badge/layer-messaging-EC4899)](.)
+[![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
+[![English](https://img.shields.io/badge/docs-English-blue)](README_EN.md)
 
 ---
 
-## 1) Sơ đồ thư mục
+## 📑 Mục lục
+
+- [Vai trò](#-vai-trò)
+- [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
+- [Public API](#-public-api)
+- [Hợp đồng `dataFB`](#-hợp-đồng-datafb)
+- [Tham chiếu module](#-tham-chiếu-module)
+  - [`_send.py`](#sendpy)
+  - [`_listening.py`](#listeningpy)
+  - [`_attachments.py`](#attachmentspy)
+  - [`_reactions.py`](#reactionspy)
+  - [`_unsend.py`](#unsendpy)
+  - [`_message_requests.py`](#message_requestspy)
+- [Sơ đồ phụ thuộc](#-sơ-đồ-phụ-thuộc)
+- [Ví dụ](#-ví-dụ)
+- [Khắc phục sự cố](#-khắc-phục-sự-cố)
+
+---
+
+## 🎯 Vai trò
+
+`_messaging` đóng gói các endpoint Messenger thành hàm/class Python dễ dùng. Tầng này **không** xử lý session/token (đã có `_core`):
+
+- 📤 Gửi tin văn bản tới user hoặc thread.
+- 📎 Upload tệp đính kèm để gửi qua Messenger.
+- 📡 Lắng nghe sự kiện realtime qua **MQTT over WebSocket**.
+- ❤️ Thêm / xoá reaction.
+- ↩️ Thu hồi tin nhắn đã gửi.
+- 📥 Lấy danh sách **Message Requests** (tin nhắn chờ).
+
+---
+
+## 📂 Cấu trúc thư mục
 
 ```text
 src/_messaging/
 ├── __init__.py
-├── _attachments.py
-├── _listening.py
-├── _message_requests.py
-├── _reactions.py
-├── _send.py
-├── _unsend.py
-└── README.md
+├── _attachments.py        # Upload tệp → attachmentID
+├── _listening.py          # MQTT realtime listener
+├── _message_requests.py   # Tin nhắn chờ
+├── _reactions.py          # Thả / gỡ reaction
+├── _send.py               # Gửi tin nhắn (HTTP)
+├── _unsend.py             # Thu hồi tin nhắn
+├── README.md              # ← bạn đang ở đây
+└── README_EN.md
 ```
 
-### export chính
+---
 
-`src/_messaging/__init__.py` hiện export:
+## 📦 Public API
 
 ```python
+# src/_messaging/__init__.py
 __all__ = [
-    '_attachments',
-    '_listening',
-    '_reactions',
-    '_send',
-    '_unsend',
-    '_message_requests'
+    "_attachments", "_listening", "_reactions",
+    "_send", "_unsend", "_message_requests",
 ]
 ```
 
-Nghĩa là bạn có thể import qua `_messaging` để dùng các module nhắn tin cốt lõi.
+Import qua `_messaging._send`, `_messaging._listening`, … để dùng từng module.
 
 ---
 
-## 2) Nhiệm vụ chính (***QUAN TRỌNG***): `_messaging_`
+## 🧩 Hợp đồng `dataFB`
 
-### `_messaging` được ứng dụng để:
+Mọi API trong `_messaging` đều nhận **`dataFB`** — sinh từ `_core._session.dataGetHome(setCookies)`.
 
-- Đóng gói endpoint Messenger thành hàm/class Python dễ gọi.
-- Tái sử dụng `dataFB` từ `_core._session` để xác thực request.
-- Chuẩn hóa thao tác gửi/nhận/react/unsend theo từng module riêng.
-- Hỗ trợ bot/tool xử lý tin nhắn đồng bộ (HTTP) và realtime (MQTT).
+Trường thường dùng: `fb_dtsg` · `jazoest` · `FacebookID` · `clientRevision` · `cookieFacebook`.
 
----
-
-## 3) Dữ liệu đầu vào chung (***QUAN TRỌNG***): `dataFB`
-
-Hầu hết API trong `_messaging` nhận `dataFB` làm tham số đầu vào.
-
-### Các giá trị thường được dùng:
-
-- `fb_dtsg`
-- `jazoest`
-- `FacebookID`
-- `clientRevision`
-- `cookieFacebook`
-
-`dataFB` được tạo từ `_core._session.dataGetHome(setCookies)`.
+> 📖 Schema đầy đủ: [`_core/README.md`](../_core/README.md#-hợp-đồng-dữ-liệu-datafb).
 
 ---
 
-## 4) Tài liệu module chi tiết
+## 📚 Tham chiếu module
 
-## 4.1 `_send.py`
+### `_send.py`
 
-### Class: `api`
+#### `class api`
 
-Đây là module gửi tin nhắn chính.
-
-### Hàm quan trọng: `send(...)`
+Module gửi tin nhắn chính.
 
 ```python
-send(
+api().send(
     dataFB,
     contentSend,
     threadID,
@@ -94,77 +102,59 @@ send(
 )
 ```
 
-### Đầu vào
+| Tham số | Mô tả |
+|---|---|
+| `contentSend` | Nội dung tin nhắn. |
+| `threadID` | ID nhóm hoặc user nhận. |
+| `typeChat` | `"user"` để nhắn 1-1, `None` để nhắn vào thread/group. |
+| `typeAttachment` | `"gif"` · `"image"` · `"video"` · `"file"` · `"audio"`. |
+| `attachmentID` | ID tệp đã upload qua `_attachments`. |
+| `replyMessage` + `messageID` | Dùng cho luồng reply tin nhắn. |
 
-- `contentSend`: nội dung tin nhắn.
-- `threadID`: ID nhóm hoặc user cần nhắn.
-- `typeChat`:
-  - `"user"`: nhắn trực tiếp user.
-  - `None`: nhắn vào thread/group.
-- `typeAttachment`: loại tệp gửi kèm, hỗ trợ:
-  - `"gif"`, `"image"`, `"video"`, `"file"`, `"audio"`
-- `attachmentID`: ID tệp đính kèm (sau khi upload).
-- `replyMessage` + `messageID`: dùng cho luồng trả lời tin nhắn.
+**Trả về:**
 
-### Đầu ra
+- ✅ `{ "success": 1, "payload": { "messageID": ..., "timestamp": ... } }`
+- ❌ `{ "error": 1, "payload": { "error-decription": ..., "error-code": ... } }`
 
-- Thành công:
-  - `{ "success": 1, "payload": { "messageID": ..., "timestamp": ... } }`
-- Thất bại:
-  - `{ "error": 1, "payload": { "error-decription": ..., "error-code": ... } }`
-
-### Lưu ý
-
-- Module tự sinh `offline_threading_id`, `message_id`, `threading_id`.
-- Response từ endpoint `/messaging/send/` có tiền tố `for (;;);`, module đã xử lý tách trước `json.loads`.
+> 📝 Module tự sinh `offline_threading_id`, `message_id`, `threading_id`. Response `/messaging/send/` có tiền tố `for (;;);` — đã được tách sẵn.
 
 ---
 
-## 4.2 `_listening.py`
+### `_listening.py`
 
-### Class: `listeningEvent`
+#### `class listeningEvent(dataFB)`
 
-Module lắng nghe tin nhắn realtime qua MQTT over WebSocket (`wss://edge-chat.facebook.com/...`).
+Lắng nghe sự kiện realtime qua **MQTT over WebSocket** (`wss://edge-chat.facebook.com/...`).
 
-### Khởi tạo
+| Method | Mô tả |
+|---|---|
+| `get_last_seq_id()` | Lấy & cập nhật `last_seq_id` mới nhất. |
+| `connect_mqtt()` | Khởi tạo MQTT client, subscribe sync queue, nhận message delta. **Blocking** (`loop_forever()`). |
 
-```python
-listeningEvent(dataFB)
+**Khi có sự kiện** — `self.bodyResults` chứa:
+
+```text
+body · timestamp · userID · messageID · replyToID · type
+attachments.id · attachments.url
 ```
 
-### function chính
+**Highlights:**
 
-- `connect_mqtt()`
-  - Thiết lập MQTT client, subscribe queue sync, nhận delta tin nhắn.
-
-### Dữ liệu nhận được
-
-Khi có sự kiện, class cập nhật `self.bodyResults`:
-
-- `body`, `timestamp`, `userID`, `messageID`, `replyToID`, `type`
-- `attachments.id`, `attachments.url`
-
-### Tính năng nổi bật
-
-- Có cơ chế reconnect khi disconnect bất thường.
-- Có xử lý `errorCode == 100` (queue overflow) bằng reset queue token.
-- `connect_mqtt()` dùng `loop_forever()`, nên thường chạy trong thread riêng.
+- Có cơ chế **reconnect** khi disconnect bất thường.
+- Tự xử lý `errorCode == 100` (queue overflow) bằng cách reset queue token.
+- Vì `connect_mqtt()` blocking → nên chạy trong **thread / process riêng**.
 
 ---
 
-## 4.3 `_attachments.py`
+### `_attachments.py`
 
-### Hàm: `_uploadAttachment(filenames, dataFB)`
+```python
+_uploadAttachment(filenames, dataFB)
+```
 
-- Mục đích: upload tệp lên Facebook để lấy `attachmentID` dùng cho gửi tin.
-- Endpoint: `https://upload.facebook.com/ajax/mercury/upload.php`
+Upload tệp lên `https://upload.facebook.com/ajax/mercury/upload.php` để lấy `attachmentID`.
 
-### Đầu vào
-
-- `filenames`: đường dẫn tệp cần upload.
-- `dataFB`: chứa `cookieFacebook`, `fb_dtsg`, ....
-
-### Đầu ra
+**Trả về:**
 
 ```python
 {
@@ -175,175 +165,147 @@ Khi có sự kiện, class cập nhật `self.bodyResults`:
 }
 ```
 
-### Lưu ý
-
-- Hàm hiện thiết kế theo flow một đường dẫn tệp mỗi lần gọi.
-- Khi upload lỗi, module in lỗi trực tiếp thay vì ném exception chi tiết.
+> ⚠️ Một call = một file. Khi lỗi, hàm in trực tiếp ra console thay vì raise exception chi tiết.
 
 ---
 
-## 4.4 `_reactions.py`
+### `_reactions.py`
 
-### Hàm: `func(dataFB, typeAdded, messageID, emojiChoice)`
+```python
+func(dataFB, typeAdded, messageID, emojiChoice)
+```
 
-- Mục đích: thêm hoặc xóa reaction trên tin nhắn.
-### Đầu vào
-  - `messageID`: ID tin nhắn cần reaction.
-  - `typeAdded`:
-    - `"add"` => thêm reaction
-    - giá trị khác => remove reaction
-    
+Thêm / xoá reaction trên tin nhắn.
 
-### Đầu ra
+| Tham số | Giá trị |
+|---|---|
+| `typeAdded` | `"add"` để thêm; bất kỳ giá trị khác để xoá. |
+| `messageID` | ID tin nhắn cần react. |
+| `emojiChoice` | Emoji muốn dùng. |
 
-- Trả về trực tiếp `requests.Response`.
-- Bạn cần tự parse `response.text` nếu muốn kiểm tra sâu kết quả.
-
----
-
-## 4.5 `_unsend.py`
-
-### Hàm: `func(messageID, dataFB)`
-
-- Mục đích: thu hồi tin nhắn theo `messageID`.
-
-### Đầu vào
-
-- `messageID`: ID tin nhắn cần thu hồi.
-- Endpoint: `/messaging/unsend_message/`.
-
-### Đầu ra
-
-- Thành công: `{ "success": 1, "messages": "Thu hồi tin nhắn thành công." }`
-- Lỗi: trả về object `Exception({...})`.
+**Trả về:** `requests.Response` thô — bạn cần tự parse `response.text`.
 
 ---
 
-## 4.6 `_message_requests.py`
+### `_unsend.py`
 
-### Hàm: `func(dataFB)`
+```python
+func(messageID, dataFB)
+```
 
-- Mục đích: lấy danh sách tin nhắn chờ (`PENDING`).
+Thu hồi tin nhắn theo `messageID`. Endpoint: `/messaging/unsend_message/`.
 
-### Đầu ra
-
-- Thành công:
-  - `{ "success": 1, "messageRequests": "<json string đã format>" }`
-- Nội dung gồm danh sách người gửi, snippet, timestamp và `total_count`.
-
----
-
-## 5) Sơ đồ phụ thuộc trong dự án
-
-`_messaging` phụ thuộc chính vào `_core._utils` và `dataFB`:
-
-- `_core._session` -> `dataGetHome(setCookies)`
-- `formAll`
-- `mainRequests`
-- `gen_threading_id`
-- `generate_session_id`, `generate_client_id`, `json_minimal`
-- `str_base`, `get_files_from_paths`
-- `Headers`, `parse_cookie_string`
-
-Ngoài ra có phụ thuộc thư viện ngoài:
-
-- `requests`
-- `paho-mqtt`
+- ✅ `{ "success": 1, "messages": "Thu hồi tin nhắn thành công." }`
+- ❌ Trả về `Exception({...})`.
 
 ---
 
-## 6) Mã nguồn mẫu
+### `_message_requests.py`
 
-## 6.1 Gửi tin nhắn văn bản vào thread
+```python
+func(dataFB)
+```
+
+Lấy danh sách tin nhắn chờ (`PENDING`).
+
+- ✅ `{ "success": 1, "messageRequests": "<json string đã format>" }`
+
+Nội dung gồm danh sách người gửi, snippet, timestamp và `total_count`.
+
+---
+
+## 🔗 Sơ đồ phụ thuộc
+
+`_messaging` phụ thuộc chính vào `_core`:
+
+```text
+_core._session.dataGetHome(setCookies)  →  dataFB
+_core._utils  →  formAll · mainRequests · gen_threading_id
+                 generate_session_id · generate_client_id · json_minimal
+                 str_base · get_files_from_paths · Headers · parse_cookie_string
+```
+
+**Thư viện ngoài:** `requests`, `paho-mqtt`.
+
+---
+
+## 💡 Ví dụ
+
+### Gửi tin nhắn văn bản
 
 ```python
 from _messaging._send import api
 
 sender = api()
-result = sender.send(dataFB, "Xin chào", "1234567890")
-print(result)
+print(sender.send(dataFB, "Xin chào", "1234567890"))
 ```
 
-## 6.2 Upload ảnh rồi gửi kèm tin nhắn
+### Upload ảnh rồi gửi kèm
 
 ```python
 from _messaging._attachments import _uploadAttachment
 from _messaging._send import api
 
 uploaded = _uploadAttachment("path/to/image.jpg", dataFB)
-
 sender = api()
-result = sender.send(
+print(sender.send(
     dataFB,
     "Ảnh của bạn đây",
     "1234567890",
     typeAttachment="image",
     attachmentID=uploaded["attachmentID"],
-)
-print(result)
+))
 ```
 
-## 6.3 React vào tin nhắn
+### React vào tin nhắn
 
 ```python
-from _messaging._reactions import Main
+from _messaging._reactions import func
 
-resp = Main(dataFB, "add", "mid.$abc...", "👍")
+resp = func(dataFB, "add", "mid.$abc...", "👍")
 print(resp.status_code, resp.text)
 ```
 
-## 6.4 Thu hồi tin nhắn
+### Thu hồi tin nhắn
 
 ```python
-from _messaging._unsend import _unsend
-
-result = _unsend("mid.$abc...", dataFB)
-print(result)
+from _messaging._unsend import func
+print(func("mid.$abc...", dataFB))
 ```
 
-## 6.5 Lấy danh sách tin nhắn chờ
+### Lấy tin nhắn chờ
 
 ```python
 from _messaging._message_requests import func
-
-result = func(dataFB)
-print(result)
+print(func(dataFB))
 ```
 
-## 6.6 Lắng nghe tin nhắn realtime
+### Lắng nghe realtime
 
 ```python
+import threading
 from _messaging._listening import listeningEvent
 
-listener = listeningEvent(fbt, dataFB)
+listener = listeningEvent(dataFB)
 listener.get_last_seq_id()
-listener.connect_mqtt()  # blocking
+threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 ```
 
 ---
 
-## 7) Lỗi có thể gặp và hướng xử lý
+## 🛠 Khắc phục sự cố
 
-### TH.1: gửi tin nhắn thất bại
+| Triệu chứng | Hướng xử lý |
+|---|---|
+| Gửi tin nhắn thất bại | Kiểm tra cookie & `dataFB` còn hợp lệ; verify `threadID`/`userID`; `typeAttachment` khớp với file đã upload. |
+| Upload tệp lỗi | Verify đường dẫn tồn tại + quyền đọc; kiểm tra metadata response (Facebook có thể đổi key). |
+| Listener tự ngắt / không nhận event | Chạy trong thread riêng (`loop_forever()` blocking); theo dõi `errorCode` trong MQTT payload; quan tâm `errorCode == 100` (queue overflow). |
+| Lỗi parse JSON | Loại tiền tố `for (;;);` trước `json.loads`. |
 
-- Kiểm tra cookie còn hạn và `dataFB` còn hợp lệ.
-- Kiểm tra `threadID`/`userID` đúng định dạng.
-- Nếu gửi kèm file, xác minh `typeAttachment` khớp với ID đã upload.
+---
 
-### TH.2: upload tệp lỗi
+<div align="right">
 
-- Đảm bảo đường dẫn file tồn tại và đọc được.
-- Kiểm tra quyền truy cập file trên máy chạy bot/tool.
-- Kiểm tra response upload vì API có thể thay đổi metadata key.
+⬆️ [Về README chính](../../README.md) · 🇬🇧 [English](README_EN.md)
 
-### TH.3: listener tự ngắt hoặc không nhận event
-
-- Chạy listener trong thread riêng (do `loop_forever()` blocking).
-- Kiểm tra log `errorCode` trong MQTT payload.
-- Nếu bị queue overflow (`errorCode = 100`), module đã có cơ chế reset nhưng vẫn nên theo dõi reconnect.
-
-### TH.4: lỗi parse JSON response
-
-- Nhiều endpoint trả chuỗi có tiền tố `for (;;);`.
-- Cần tách tiền tố trước khi `json.loads`.
-
+</div>

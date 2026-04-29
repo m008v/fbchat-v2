@@ -1,197 +1,180 @@
-# _core (`src/_core`)
+# `_core` — Foundation Layer
 
-`_core` is the shared technical foundation for the entire codebase. This folder does not implement end-user features directly. Instead, it is responsible for:
+> The foundation of `fbchat-v2`. Bootstraps sessions, builds request payloads, parses cookies, generates IDs — every higher layer depends on this module.
 
-- Initializing sessions from cookies.
-- Building base payloads/requests for Facebook endpoints.
-- Parsing cookies and extracting dynamic tokens.
-- Generating IDs for messaging send/listen flows.
-- Providing reusable utility functions for `_features` and `_messaging`.
+[![Layer](https://img.shields.io/badge/layer-core-6E40C9)](.)
+[![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
+[![Vietnamese](https://img.shields.io/badge/docs-Ti%E1%BA%BFng%20Vi%E1%BB%87t-blue)](README.md)
 
 ---
 
-## 1) Folder structure
+## 📑 Table of Contents
+
+- [Responsibilities](#-responsibilities)
+- [Folder Structure](#-folder-structure)
+- [Public API](#-public-api)
+- [The `dataFB` Contract](#-the-datafb-contract)
+- [Module Reference](#-module-reference)
+  - [`_session.py`](#sessionpy)
+  - [`_utils.py`](#utilspy)
+  - [`_facebookLogin.py`](#facebookloginpy)
+- [Dependency Map](#-dependency-map)
+- [Examples](#-examples)
+- [Troubleshooting](#-troubleshooting)
+
+---
+
+## 🎯 Responsibilities
+
+`_core` is the shared technical foundation — it does **not** implement end-user features. Its responsibilities are:
+
+- 🔑 Bootstrap a **user session** from cookies.
+- 🧱 Build standardized **payloads / requests** for Facebook endpoints.
+- 🍪 Parse cookies and extract **dynamic tokens** (`fb_dtsg`, `jazoest`, …).
+- 🆔 Generate the various **IDs** required by send/listen flows.
+- 🛠 Provide **utilities** reused by `_features` and `_messaging`.
+
+---
+
+## 📂 Folder Structure
 
 ```text
 src/_core/
 ├── __init__.py
-├── _session.py
-├── _utils.py
-├── _facebookLogin.py
+├── _session.py           # Bootstraps dataFB from cookies
+├── _utils.py             # HTTP helpers, parsers, ID generators…
+├── _facebookLogin.py     # Username/password login (+ 2FA)
 ├── README.md
-├── REAME.md
-├── REAME_VI.md
-└── README_EN.md
+└── README_EN.md          # ← you are here
 ```
 
-### Primary exports
+---
 
-`src/_core/__init__.py` currently exports:
+## 📦 Public API
 
 ```python
+# src/_core/__init__.py
 __all__ = ["_session", "_utils", "_facebookLogin"]
 ```
 
-This means you can import from `_core` and access these exported modules directly.
+After `import _core` you can reach every submodule via `_core._session`, `_core._utils`, `_core._facebookLogin`.
 
 ---
 
-## 2) Responsibility scope
+## 🧩 The `dataFB` Contract
 
-### `_core` is used for:
+`_session.dataGetHome(setCookies)` returns a `dict` (commonly named **`dataFB`**) — the **single source of truth** for every subsequent request.
 
-- Building shared headers and request forms.
-- Converting cookie strings into `requests`-compatible dictionaries.
-- Extracting dynamic values from the Facebook homepage (`fb_dtsg`, `jazoest`, etc.).
-- Generating runtime IDs for messaging workflows.
-- Providing shared parsing/formatting/helper utilities.
+| Key | Description |
+|---|---|
+| `fb_dtsg` | Runtime CSRF token |
+| `fb_dtsg_ag` | Variant of `fb_dtsg` for certain endpoints |
+| `jazoest` | Companion token to `fb_dtsg` |
+| `hash` | Current session hash |
+| `sessionID` | Runtime session ID |
+| `FacebookID` | UID of the logged-in account |
+| `clientRevision` | Client revision (Facebook updates it) |
+| `cookieFacebook` | Original cookies as a dict, ready for `requests` |
 
----
-
-## 3) Core data contract (**IMPORTANT**): `dataFB`
-
-`_session.dataGetHome(setCookies)` returns a dictionary usually named `dataFB`.
-
-### Returned fields
-
-- `fb_dtsg`
-- `fb_dtsg_ag`
-- `jazoest`
-- `hash`
-- `sessionID`
-- `FacebookID`
-- `clientRevision`
-- `cookieFacebook`
-
-Almost every module in `_features/*` and `_messaging/*` depends on these values.
+> ⚠️ Almost **every** module in `_features/*` and `_messaging/*` depends on these values.
 
 ---
 
-## 4) Detailed module reference
+## 📚 Module Reference
 
-## 4.1 `_session.py`
+### `_session.py`
 
-### Function: `dataGetHome(setCookies)`
+#### `dataGetHome(setCookies: str) -> dict`
 
-This function requests `https://www.facebook.com/` using the provided cookies, then extracts the tokens/values required for follow-up API calls.
+Hits `https://www.facebook.com/` with the supplied cookies and extracts the tokens needed for follow-up API calls.
 
-### Input
+| Param | Type | Description |
+|---|---|---|
+| `setCookies` | `str` | Raw cookie string, e.g. `"c_user=...; xs=...; fr=...; datr=...;"` |
 
-- `setCookies` (`str`): raw cookie string, for example:
-  - `"c_user=...; xs=...; fr=...; datr=...;"`
+**Returns:** a `dict` matching the `dataFB` schema above.
 
-### Output
-
-- A `dict` in the `dataFB` format shown above.
-
-### Workflow
+**Workflow:**
 
 1. Build browser-like GET headers.
-2. Convert the cookie string to a dictionary using `_utils.parse_cookie_string`.
+2. Convert the cookie string into a dict (`_utils.parse_cookie_string`).
 3. Download the homepage HTML.
-4. Extract token values with `_utils.dataSplit`.
-5. Return the session dictionary plus the original cookie string.
+4. Extract tokens via `_utils.dataSplit`.
+5. Return the session dict.
 
-### Notes
-
-- The current extraction is marker/split-based and may fail if Facebook changes its HTML structure.
-- Accounts may hit checkpoint flows.
+> ⚠️ Extraction is split-marker based and may break when Facebook changes its HTML. Accounts can also hit **checkpoint** flows.
 
 ---
 
-## 4.2 `_utils.py`
+### `_utils.py`
 
-This is the most important module inside `_core`, and it contains many shared helpers.
+The most important module inside `_core`. Five helper groups:
 
-### A) HTTP/request helper group
+#### A. HTTP / Request
 
-- `Headers(dataForm=None, Host=None)`
-  - Builds the base header set.
-  - Can add `Content-Length` based on `dataForm` size.
-- `parse_cookie_string(cookie_string)`
-  - Converts cookie strings into dictionaries for `requests`.
-- `mainRequests(urlRequests, dataForm, setCookies)`
-  - Returns a kwargs dictionary ready for `requests.post(**kwargs)`.
+| Function | Description |
+|---|---|
+| `Headers(dataForm=None, Host=None)` | Builds the base headers; auto-sets `Content-Length` when `dataForm` is given. |
+| `parse_cookie_string(cookie_string)` | Cookie string → `dict` for `requests`. |
+| `mainRequests(urlRequests, dataForm, setCookies)` | Returns a `kwargs` dict ready for `requests.post(**kwargs)`. |
 
-### B) Parse/format helper group
+#### B. Parse / Format
 
-- `digitToChar(digit)`
-- `str_base(number, base)`
-- `dataSplit(...)`
-  - Splits/extracts data using delimiters.
-- `clearHTML(text)`
-  - Removes HTML tags via regex.
-- `formatResults(type, text)`
-  - Normalizes output into `{ "status": ..., "message": ... }`.
+| Function | Description |
+|---|---|
+| `digitToChar(digit)` | Digit → char mapping. |
+| `str_base(number, base)` | Numeric base conversion. |
+| `dataSplit(...)` | Slice text by delimiter. |
+| `clearHTML(text)` | Strip HTML tags via regex. |
+| `formatResults(type, text)` | Normalize output to `{ "status": ..., "message": ... }`. |
 
-### C) General form builder
+#### C. General Form Builder
 
-- `formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None)`
+```python
+formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None)
+```
 
-This is the backbone helper for most request flows.
+The backbone of most request flows — supports two modes:
 
-It builds baseline payloads for Facebook endpoints in two modes:
+1. **GraphQL** (`requireGraphql is None`): includes `fb_api_req_friendly_name`, `doc_id`, `fb_api_caller_class`, …
+2. **Legacy / minimal** (`requireGraphql != None`): keeps only the fields needed for non-GraphQL endpoints.
 
-1. GraphQL mode (`requireGraphql is None`)
-   - Includes `fb_api_req_friendly_name`, `doc_id`, `fb_api_caller_class`, etc.
-2. Minimal/legacy mode (`requireGraphql != None`)
-   - Keeps only fields required for non-GraphQL endpoints.
+#### D. Messaging ID Generators
 
-### D) Messaging ID helper group
+`generate_session_id()` · `generate_client_id()` · `gen_threading_id()` · `json_minimal(data)` · `_set_chat_on(value)`
 
-- `generate_session_id()`
-- `generate_client_id()`
-- `gen_threading_id()`
-- `json_minimal(data)`
-- `_set_chat_on(value)`
+> Used heavily by `_messaging._send` and `_messaging._listening`.
 
-These are used by message sending and event listening modules.
+#### E. Misc Utilities
 
-### E) Other utility helpers
-
-- `require_list(list_)`
-- `get_files_from_paths(filenames)`
-- `randStr(length)`
+`require_list(list_)` · `get_files_from_paths(filenames)` · `randStr(length)`
 
 ---
 
-## 4.3 `_facebookLogin.py`
+### `_facebookLogin.py`
 
-This module handles Facebook login using username/password.
+Logs into Facebook with **username / password** (+ optional 2FA).
 
-### Public components
+#### Public components
 
-- `class loginFacebook`
-  - `__init__(username, password, AuthenticationGoogleCode=None)`
-  - `main()` returns a success/failure dictionary.
-- `GetToken2FA(key2Fa)`
-  - Calls `https://2fa.live/tok/...` to fetch an OTP code.
-- `jsonResults(...)`
-  - Normalizes the login response structure.
+| Symbol | Description |
+|---|---|
+| `class loginFacebook(username, password, AuthenticationGoogleCode=None)` | Login class; call `.main()` to execute. |
+| `GetToken2FA(key2Fa)` | Fetches a 2FA OTP via `https://2fa.live/tok/...`. |
+| `jsonResults(...)` | Normalizes the response shape. |
 
-### On successful login
+#### Result shape
 
-- `success.setCookies`
-- `success.accessTokenFB`
-- `success.cookiesKey-ValueList`
+| Status | Returned fields |
+|---|---|
+| ✅ Success | `success.setCookies` · `success.accessTokenFB` · `success.cookiesKey-ValueList` |
+| ❌ Failure | `error.title` · `error.description` · `error.error_subcode` · `error.error_code` · `error.fbtrace_id` |
 
-### On failed login
-
-- `error.title`
-- `error.description`
-- `error.error_subcode`
-- `error.error_code`
-- `error.fbtrace_id`
-
-### Security warning
-
-- This module handles sensitive data: username, password, cookies, and access token.
-- In production use, prefer cookie-based login whenever possible.
-- The login flow may break if Facebook changes auth endpoints.
+> 🔒 This module handles highly sensitive data. **Strongly prefer** cookie-based login in production.
 
 ---
 
-## 5) Dependency map in the project
+## 🔗 Dependency Map
 
 `_core._utils` is widely imported by:
 
@@ -199,23 +182,21 @@ This module handles Facebook login using username/password.
 - `src/_features/_thread/*`
 - `src/_messaging/*`
 
-Most frequently used helpers:
+Most-used helpers:
 
-- `formAll`
-- `mainRequests`
-- `parse_cookie_string`
-- `Headers`
-- `formatResults`
-- `gen_threading_id`, `generate_session_id`, `generate_client_id`
-- `str_base`, `randStr`, `get_files_from_paths`
+```text
+formAll · mainRequests · parse_cookie_string · Headers · formatResults
+gen_threading_id · generate_session_id · generate_client_id
+str_base · randStr · get_files_from_paths
+```
 
-**Warning**: changes in core payload/cookie logic can affect a large portion of the feature layer.
+> ⚠️ **Warning:** changes to core payload / cookie logic ripple across most features.
 
 ---
 
-## 6) Example source code
+## 💡 Examples
 
-## 6.1 Initialize `dataFB` from cookies
+### Bootstrap `dataFB` from cookies
 
 ```python
 from _core._session import dataGetHome
@@ -227,12 +208,10 @@ print(dataFB["FacebookID"])
 print(dataFB["fb_dtsg"])
 ```
 
-## 6.2 Build and send a GraphQL request
+### Build & send a GraphQL request
 
 ```python
-import json
-import requests
-
+import json, requests
 from _core._utils import formAll, mainRequests
 
 dataForm = formAll(
@@ -240,7 +219,6 @@ dataForm = formAll(
     FBApiReqFriendlyName="CometNotificationsDropdownQuery",
     docID=6770067089747450,
 )
-
 dataForm["variables"] = json.dumps({
     "count": 10,
     "environment": "MAIN_SURFACE",
@@ -252,11 +230,10 @@ resp = requests.post(**mainRequests(
     dataForm,
     dataFB["cookieFacebook"],
 ))
-
 print(resp.status_code)
 ```
 
-## 6.3 Build a minimal payload (non-GraphQL)
+### Minimal payload (non-GraphQL)
 
 ```python
 from _core._utils import formAll
@@ -267,14 +244,18 @@ payload["message_id"] = "mid...."
 
 ---
 
-## 7) Common issues and handling
+## 🛠 Troubleshooting
 
-### Case 1: many requests fail with auth/session errors
+| Symptom | Suggested fix |
+|---|---|
+| Many requests fail with auth/session errors | Cookies expired → regenerate `dataFB` via `dataGetHome(...)`. |
+| Parsed field returns a fallback value | Homepage HTML changed → update split markers in `_session.py`. |
+| Login hits checkpoint | Switch to cookie-based login; if you must keep the login flow, check IP / 2FA. |
 
-- Check whether the cookie is still valid.
-- Re-run `_session.dataGetHome(...)` and verify required keys.
+---
 
-### Case 2: parsed field returns a fallback value
+<div align="right">
 
-- Facebook homepage HTML likely changed.
-- Update split markers in `_session.py`.
+⬆️ [Back to main README](../../README_EN.md) · 🇻🇳 [Tiếng Việt](README.md)
+
+</div>
