@@ -24,7 +24,7 @@ Cấu hình / Configuration:
             "admins":  ["1000xxxxxxxxxx"]
         }
 
-@MinhHuyDev (Claude Opus 4.7)
+@MinhHuyDev (Claude Opus 4.7) | Telegram: @minhhuydev
 """
 
 from __future__ import annotations
@@ -313,3 +313,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+ 
