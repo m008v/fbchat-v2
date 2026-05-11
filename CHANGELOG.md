@@ -7,6 +7,57 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
+## [2.1.1] — 2026-05-12
+
+> **Bản vá tài liệu & hạ tầng phân phối.** Không thay đổi runtime; chủ yếu
+> hoàn thiện tài liệu trên website, README và đẩy gói lên **PyPI** để
+> `pip install fbchat-v2` hoạt động chính thức.
+
+### ✨ Added
+
+- **PyPI**: dự án đã lên [pypi.org/project/fbchat-v2](https://pypi.org/project/fbchat-v2/).
+  - Badge `pypi/v` (live version) ở đầu cả `README.md` và `README_EN.md`.
+  - Nút **📦 PyPI** trong dải nav phía dưới badge của 2 README.
+  - Nút **PyPI** (icon Python) trong hero website (`website/index.html`)
+    bên cạnh nút *Mã nguồn / Source*.
+- **Website — Section E2EE mới** (`#guide-e2ee`):
+  - Sidebar Chương II thêm liên kết **"E2EE · Mã hoá / Encryption"**
+    (icon `fa-shield-halved`).
+  - File-tree `_messaging/` thêm dòng `_listening_e2ee.py # E2EE qua Go bridge`.
+  - Module card mới: `_listening_e2ee.listeningE2EEEvent(dataFB)` với code
+    mẫu decorator `@on_message` + `send_e2ee_message`.
+  - Trang hướng dẫn song ngữ VI/EN: kiến trúc, lệnh build bridge Go,
+    bảng 8 loại event, ví dụ gửi tin E2EE, persist `device_path`, FAQ.
+- **`CLAUDE.md`** viết lại theo hướng *agent-first* (Claude / Codex /
+  Copilot): thêm TL;DR, bảng "Quick reference", bảng *Common gotchas* (đã
+  liệt kê các bug `@attr.s` override `__init__`, `EventBuffer` thiếu method,
+  `BridgeError binary not found`…), tách rõ phần bridge Go.
+
+### 🛠 Changed
+
+- **Cảnh báo E2EE trên home website**: alert `alert--danger` *"E2EE NOTICE —
+  bypass đang chuẩn bị phát hành"* → `alert--success` **"E2EE READY"** với
+  link nội bộ trỏ thẳng tới section `#guide-e2ee`.
+- README VI/EN: dải nav được sắp xếp lại để link **PyPI** đứng ngay sau
+  link song ngữ.
+
+### 🔧 Fixed
+
+- Không có thay đổi mã nguồn Python / Go.
+
+### 📦 Dependencies
+
+- Không thay đổi.
+
+### ⚠️ Lưu ý nâng cấp từ 2.1.0
+
+- **Không có breaking change.** Có thể nâng cấp bằng:
+  ```bash
+  pip install --upgrade fbchat-v2
+  ```
+
+---
+
 ## [2.1.0] — 2026-05-12
 
 > **Bản cập nhật lớn:** chính thức hỗ trợ giải mã **End-to-End Encryption (E2EE)**
@@ -104,5 +155,6 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
+[2.1.1]: https://github.com/MinhHuyDev/fbchat-v2/releases/tag/v2.1.1
 [2.1.0]: https://github.com/MinhHuyDev/fbchat-v2/releases/tag/v2.1.0
 [2.0.x]: https://github.com/MinhHuyDev/fbchat-v2/releases
