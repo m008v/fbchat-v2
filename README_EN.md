@@ -484,7 +484,9 @@ Please also read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before participating.
 
 ## 🌟 Acknowledgements
 
-Across **4 years** of development, this project would not exist without the community. Heartfelt thanks to every contributor who shared ideas, opened issues, and helped keep `fbchat` alive:
+Across **4 years** of development, this project would not exist without the community. Heartfelt thanks to every contributor who shared ideas, opened issues, and helped keep `fbchat` alive.
+
+### 👥 Community contributors
 
 - [tomdev112](https://github.com/tomdev211)
 - [syrex1013](https://github.com/syrex1013)
@@ -498,7 +500,18 @@ Across **4 years** of development, this project would not exist without the comm
 - [Hoàng Lân](https://www.facebook.com/100026754347158/)
 - Kareem Adel Abomandor
 - @lluevy · @phuncnheo · @minhphatnw · @khanh235a · @chapesh1 · @klongg13 · @seafibrahem · @agent1047 · @stefekdziura
-- *Claude Opus 4.7* / *Codex 5.3*
+
+### 🔓 Upstream projects that made **v2.1.0 (E2EE)** possible
+
+- [`mautrix/meta`](https://github.com/mautrix/meta) — Go implementation of Meta Labyrinth / Lightspeed.
+- [`tulir/whatsmeow`](https://github.com/tulir/whatsmeow) — Signal Protocol (Curve25519, Double Ratchet, Sender Keys, Noise XX) for Go.
+- [`yumi-team/meta-messenger.js`](https://github.com/yumi-team/meta-messenger.js) — design reference for the JSON-RPC bridge.
+- [`mautrix/go`](https://github.com/mautrix/go) — helper utilities for Matrix / Meta clients.
+
+### 🤖 AI assistants
+
+- *Claude Opus 4.7* (Anthropic) — code review, documentation, refactoring.
+- *Codex 5.3* (OpenAI) — boilerplate generation, RPC prototyping.
 
 > If you’ve contributed and your name isn’t listed here, please open an issue or PR — it would be my pleasure to add you.
 
