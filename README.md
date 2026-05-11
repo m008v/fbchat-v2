@@ -412,6 +412,16 @@ threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 Override đường dẫn binary qua biến môi trường `FBCHAT_E2EE_BIN=/path/to/binary`.
 Chi tiết build & RPC: [`bridge-e2ee/README.md`](bridge-e2ee/README.md).
 
+#### 📸 Demo — nhận tin nhắn 1-1 đã giải mã E2EE
+
+<div align="center">
+
+<img src="https://i.ibb.co/23ctmvjq/image.png" alt="Demo: fbchat-v2 nhận tin nhắn cá nhân Messenger qua bridge E2EE" width="780" />
+
+<sub><i>Output thực tế của <code>listeningE2EEEvent</code> — <code>bodyResults</code> giữ nguyên schema của <code>_listening.py</code> cũ.</i></sub>
+
+</div>
+
 ---
 
 ## ⚙️ Cấu hình

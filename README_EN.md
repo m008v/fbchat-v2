@@ -412,6 +412,16 @@ threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 Override the binary path with the env var `FBCHAT_E2EE_BIN=/path/to/binary`.
 Full build & RPC docs: [`bridge-e2ee/README.md`](bridge-e2ee/README.md).
 
+#### 📸 Demo — receiving a decrypted E2EE direct message
+
+<div align="center">
+
+<img src="https://i.ibb.co/23ctmvjq/image.png" alt="Demo: fbchat-v2 receiving a Messenger direct message via the E2EE bridge" width="780" />
+
+<sub><i>Real output of <code>listeningE2EEEvent</code> — <code>bodyResults</code> keeps the exact schema of the legacy <code>_listening.py</code>.</i></sub>
+
+</div>
+
 ---
 
 ## ⚙️ Configuration
