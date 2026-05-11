@@ -5,13 +5,14 @@
 ### Thư viện Python hiện đại cho Facebook Messenger API (không chính thức), hoạt động trên tài khoản người dùng
 
 [![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/MinhHuyDev/fbchat-v2)
+[![PyPI](https://img.shields.io/pypi/v/fbchat-v2?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/fbchat-v2/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Version](https://img.shields.io/badge/version-2.x-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
 [![Issues](https://img.shields.io/github/issues/MinhHuyDev/fbchat-v2?color=orange)](https://github.com/MinhHuyDev/fbchat-v2/issues)
 [![License](https://img.shields.io/badge/license-Xem%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
 
-[**🇬🇧 English**](README_EN.md) · [**📖 Tài liệu**](DOCS.md) · [**📊 Sơ đồ luồng**](FLOWCHART.md) · [**🐛 Báo lỗi**](https://github.com/MinhHuyDev/fbchat-v2/issues)
+[**🇬🇧 English**](README_EN.md) · [**📦 PyPI**](https://pypi.org/project/fbchat-v2/) · [**📖 Tài liệu**](DOCS.md) · [**📊 Sơ đồ luồng**](FLOWCHART.md) · [**🐛 Báo lỗi**](https://github.com/MinhHuyDev/fbchat-v2/issues)
 
 </div>
 

@@ -377,47 +377,6 @@ class listeningE2EEEvent:
             except Exception as exc:  # noqa: BLE001
                 print(f"[{datetime.datetime.now()}] handler raised: {exc}")
 
-    @staticmethod
-    def _infer_type(msg: dict[str, Any]) -> str:
-        """Trả về 'user' (DM) hoặc 'thread' (group) để khớp _listening.py."""
-        if msg.get("chatType") == "user":
-            return "user"
-        if msg.get("chatType") in ("group", "thread"):
-            return "thread"
-        if msg.get("isGroup") is True:
-            return "thread"
-        if msg.get("isGroup") is False:
-            return "user"
-        # Fallback: nếu không có hint, giả định DM
-        return "user"
-
-    @staticmethod
-    def _extract_attachment(msg: dict[str, Any]) -> dict[str, Any]:
-        """Lấy attachment[0] theo đúng shape của _listening.py:
-        { 'id': <fbid hay 'Unable to retrieve attachment ID'>, 'url': <preview uri> }.
-        """
-        out: dict[str, Any] = {"id": 0, "url": None}
-        atts = msg.get("attachments") or []
-        if not atts:
-            return out
-        try:
-            first = atts[0]
-            out["id"] = (
-                first.get("fbid")
-                or first.get("id")
-                or first.get("stickerId")
-                or "Unable to retrieve attachment ID"
-            )
-            out["url"] = (
-                first.get("url")
-                or first.get("previewUrl")
-                or (((first.get("mercury") or {}).get("blob_attachment") or {})
-                    .get("preview") or {}).get("uri")
-            )
-        except (KeyError, TypeError, IndexError):
-            out["id"] = "Unable to retrieve attachment ID"
-        return out
-
     def _populate_regular(self, msg: dict[str, Any]) -> None:
         body = self._fresh_body()
         body["body"] = msg.get("text")
@@ -425,8 +384,13 @@ class listeningE2EEEvent:
         body["userID"] = msg.get("senderId", 0)
         body["messageID"] = msg.get("id")
         body["replyToID"] = msg.get("threadId", 0)
-        body["type"] = self._infer_type(msg)
-        body["attachments"] = self._extract_attachment(msg)
+        body["type"] = "thread"
+
+        atts = msg.get("attachments") or []
+        if atts:
+            first = atts[0]
+            body["attachments"]["id"] = first.get("stickerId") or first.get("fileSize") or 0
+            body["attachments"]["url"] = first.get("url") or first.get("previewUrl")
 
         self.bodyResults = body
         self.e2eeBodyResults = {"chatJid": None, "senderJid": None}
@@ -438,8 +402,13 @@ class listeningE2EEEvent:
         body["userID"] = msg.get("senderId", 0)
         body["messageID"] = msg.get("id")
         body["replyToID"] = msg.get("threadId", 0)
-        body["type"] = self._infer_type(msg)
-        body["attachments"] = self._extract_attachment(msg)
+        body["type"] = "e2ee"
+
+        atts = msg.get("attachments") or []
+        if atts:
+            first = atts[0]
+            body["attachments"]["id"] = first.get("stickerId") or 0
+            body["attachments"]["url"] = first.get("url") or first.get("previewUrl")
 
         self.bodyResults = body
         self.e2eeBodyResults = {
@@ -471,5 +440,3 @@ class listeningE2EEEvent:
         })
 
 
-
-# MinhHuyDev - 12/05/2026
