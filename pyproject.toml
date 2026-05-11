@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fbchat-v2"
+version = "2.1.1"
+description = "Modern, account-based Python library for the unofficial Facebook Messenger API — with E2EE support."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "MinhHuyDev", email = "minhhuydev@protonmail.com" },
+]
+maintainers = [
+    { name = "MinhHuyDev", email = "minhhuydev@protonmail.com" },
+]
+keywords = [
+    "facebook",
+    "messenger",
+    "fbchat",
+    "messenger-api",
+    "e2ee",
+    "labyrinth",
+    "chatbot",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Chat",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "requests>=2.31.0",
+    "paho-mqtt>=1.6.1",
+    "attrs>=23.2.0",
+    "pyotp>=2.9.0",
+]
+
+[project.optional-dependencies]
+# Bridge Go cho E2EE phải build/tải riêng — xem README.
+# Extras này hiện reserved, dành cho future helper Python (vd: auto-download binary).
+e2ee = []
+dev = [
+    "build>=1.2.0",
+    "twine>=5.0.0",
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+]
+
+[project.urls]
+Homepage      = "https://github.com/MinhHuyDev/fbchat-v2"
+Documentation = "https://github.com/MinhHuyDev/fbchat-v2/blob/main/DOCS.md"
+Repository    = "https://github.com/MinhHuyDev/fbchat-v2"
+Issues        = "https://github.com/MinhHuyDev/fbchat-v2/issues"
+Changelog     = "https://github.com/MinhHuyDev/fbchat-v2/blob/main/CHANGELOG.md"
+Telegram      = "https://t.me/MinhHuyDev"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fbchat_v2"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/fbchat_v2/**",
+    "README.md",
+    "README_EN.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+exclude = [
+    "**/__pycache__",
+    "**/*.pyc",
+    "**/config.json",
+    "build/**",
+    "bridge-e2ee/meta/**",
+    "tests/**",
+    ".venv/**",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

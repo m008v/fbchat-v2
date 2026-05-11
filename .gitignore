@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.Python
+.venv/
+.env
+
+# Build artefact
+build/
+dist/
+wheels/
+*.whl
+*.tar.gz
+
+# Cấu hình runtime — KHÔNG commit
+src/fbchat_v2/config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / lint cache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage

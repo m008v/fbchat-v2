@@ -1,0 +1,23 @@
+# Trừ những gì cần ship, mọi thứ khác đều bị loại
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+
+include LICENSE
+include README.md
+include README_EN.md
+include CHANGELOG.md
+include pyproject.toml
+
+recursive-include src/fbchat_v2 *.py
+recursive-include src/fbchat_v2 py.typed
+
+# Loại các artefact dev/runtime
+exclude src/fbchat_v2/config.json
+prune build
+prune dist
+prune .venv
+prune tests
+prune bridge-e2ee/meta
+prune docs/_build
