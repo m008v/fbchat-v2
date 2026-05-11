@@ -19,9 +19,11 @@
 
 ## 📢 Important Notice
 
-> Since **November 2024**, Facebook has officially rolled out **End-to-End Encryption (E2EE)** for all user-to-user conversations on Messenger. As a consequence, this library can currently retrieve **group messages only** — direct one-to-one messages cannot be fetched through the public mobile/web endpoints anymore.
+> Since **November 2024**, Facebook has officially rolled out **End-to-End Encryption (E2EE)** for all user-to-user conversations on Messenger.
 >
-> **Good news:** as of **March 24, 2026**, the author has successfully reverse-engineered the Messenger E2EE flow. Support for E2EE direct messages will be merged into `fbchat-v2` in an upcoming release.
+> **Update — May 12, 2026:** `fbchat-v2` now **officially supports E2EE decryption** for direct Messenger messages through the new module [`_messaging/_listening_e2ee.py`](src/_messaging/_listening_e2ee.py) backed by the Go binary [`bridge-e2ee/`](bridge-e2ee/). The event payload schema is **identical** to the legacy `_listening.py` — just swap the import.
+>
+> Group messages still use `_listening.py` (MQTT WebSocket); 1–1 messages use `_listening_e2ee.py`.
 
 > ⚠️ **Disclaimer** — This project is **not** an official Facebook product. Facebook ships an official Messenger Platform API for chatbots [here](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` is different in that it authenticates with **regular Facebook user accounts / cookies**, which carries inherent risk. Use at your own discretion.
 
@@ -64,7 +66,8 @@ There are still rough edges and inconsistencies left to polish. If you spot any,
 
 ### Messaging
 - 📥 Read messages from both **users** and **group chats (threads)**
-- 📤 Send text, **files**, **stickers**, and **mentions**
+- � **E2EE listener** for direct Messenger messages (Secret Conversations / Labyrinth) via a Go bridge
+- �📤 Send text, **files**, **stickers**, and **mentions**
 - 🔍 Search messages and conversation threads
 - ↩️ React, unsend, and handle message requests
 - 📡 Real-time **listener** for instant command-driven replies
@@ -80,7 +83,7 @@ There are still rough edges and inconsistencies left to polish. If you spot any,
 
 ### Coming Soon
 - ⚡ Native `async` / `await` support
-- 🔓 Messenger **E2EE** decryption for direct messages
+- � Pre-built E2EE bridge binaries for Windows / Linux / macOS
 
 > (*) Cookie / credential-based login carries security risk; never share your tokens.
 
@@ -139,11 +142,17 @@ fbchat-v2/
 │   │       └── _changeNickname.py
 │   └── _messaging/                      # ── Messaging layer ──
 │       ├── _attachments.py
-│       ├── _listening.py
+│       ├── _listening.py                # MQTT — group messages
+│       ├── _listening_e2ee.py           # Go bridge — 1-on-1 E2EE messages
 │       ├── _message_requests.py
 │       ├── _reactions.py
 │       ├── _send.py
 │       └── _unsend.py
+├── bridge-e2ee/                         # ── Go bridge for E2EE ──
+│   ├── main.go
+│   ├── go.mod
+│   └── README.md
+├── build/                               # `fbchat-bridge-e2ee[.exe]` produced by `go build`
 ├── language/
 │   └── vi_VN.lang                       # Localization
 ├── docs/                                # Extended documentation
@@ -196,10 +205,14 @@ mindmap
       _messaging
         _attachments.py
         _listening.py
+        _listening_e2ee.py
         _message_requests.py
         _reactions.py
         _send.py
         _unsend.py
+    E2EE bridge
+      bridge-e2ee/main.go
+      build/fbchat-bridge-e2ee
     Language
       language/vi_VN.lang
     Environment
@@ -211,17 +224,29 @@ mindmap
 
 ## 🔧 Requirements
 
-| Component | Minimum | Recommended |
-|---|---|---|
-| Python | 3.10 | 3.11 / 3.12 |
-| OS | Windows / Linux / macOS | — |
-| Network | Stable internet, unrestricted access to `facebook.com` | — |
+| Component | Minimum | Recommended | Notes |
+|---|---|---|---|
+| Python | 3.10 | 3.11 / 3.12 | Required |
+| Go (toolchain) | 1.24 | 1.24+ | **Only needed for E2EE** — to build `fbchat-bridge-e2ee` |
+| Git | any | latest | Needed for `go mod tidy` to fetch `mautrix/meta` |
+| OS | Windows / Linux / macOS | — | — |
+| RAM | 256 MB | 1 GB+ | The E2EE bridge uses ~80–150 MB at runtime |
+| Network | Stable connection, unrestricted access to `facebook.com` and `edge-chat.facebook.com` | — | — |
 
-Dependencies are pinned in [requirements.txt](requirements.txt).
+Python dependencies are pinned in [requirements.txt](requirements.txt):
+
+```text
+requests>=2.31.0   # HTTP client
+paho-mqtt>=1.6.1   # MQTT WebSocket for _listening.py
+attrs>=23.2.0      # Decorator class
+pyotp>=2.9.0       # 2FA TOTP when logging in with username/password
+```
 
 ---
 
 ## 📦 Installation
+
+> TL;DR: **Steps 1–4 are required** for everyone. **Step 5 is only required if you want to receive 1-on-1 (E2EE) messages**.
 
 ### 1. Clone the repository
 
@@ -248,10 +273,17 @@ Activate it:
 source .venv/bin/activate
 ```
 
-### 3. Install dependencies
+### 3. Install Python dependencies
 
 ```bash
+pip install --upgrade pip
 pip install -r requirements.txt
+```
+
+Quick sanity check:
+
+```bash
+python -c "import requests, paho.mqtt.client, attr, pyotp; print('OK')"
 ```
 
 ### 4. Make `src/` importable
@@ -268,6 +300,75 @@ export PYTHONPATH=src
 
 Alternatively, import the modules manually with the full `src.` prefix.
 
+### 5. *(Optional)* Build the E2EE bridge — for 1-on-1 messages
+
+If you only need group messages, **skip this step**. Otherwise, direct (E2EE) messages require the Go binary `fbchat-bridge-e2ee`.
+
+#### 5.1. Install the Go toolchain
+
+- Download: <https://go.dev/dl/> (Go ≥ 1.24).
+- Open a fresh terminal and verify:
+
+  ```bash
+  go version
+  ```
+
+#### 5.2. Fetch the `mautrix/meta` source
+
+```bash
+cd bridge-e2ee
+git clone https://github.com/mautrix/meta.git ./meta
+```
+
+> The `go.mod` inside `bridge-e2ee/` uses a `replace` directive pointing to `./meta`, so cloning to **this exact path** is mandatory.
+
+#### 5.3. Download deps & build
+
+```bash
+go mod tidy
+
+# Windows
+go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .
+
+# Linux / macOS
+go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee .
+```
+
+The first build takes a few minutes (~300 MB Go module cache). The resulting binary is roughly 25–40 MB and lives in `fbchat-v2/build/`.
+
+#### 5.4. Verify
+
+```bash
+cd ..
+# Windows
+.\build\fbchat-bridge-e2ee.exe --help
+# Linux/macOS
+./build/fbchat-bridge-e2ee --help
+```
+
+If the binary is not at the default location, set the env var:
+
+```bash
+# Windows
+$env:FBCHAT_E2EE_BIN = "C:\path\to\fbchat-bridge-e2ee.exe"
+# Linux/macOS
+export FBCHAT_E2EE_BIN=/path/to/fbchat-bridge-e2ee
+```
+
+More details: [`bridge-e2ee/README.md`](bridge-e2ee/README.md).
+
+### 6. Configure cookies
+
+Open [`src/config.json`](src/config.json) and paste your Facebook session cookies into the `cookies` field. See the [Configuration](#-configuration) section for details.
+
+### 7. Smoke test
+
+```bash
+python src/main.py
+```
+
+If the console prints account info plus a `last_seq_id`, your installation is complete.
+
 ---
 
 ## 🚀 Quick Start
@@ -283,6 +384,33 @@ Before running:
 1. Open `src/config.json`.
 2. Paste your Facebook session cookies into the `cookies` field.
 3. (Optional) tweak any other runtime options exposed by the file.
+
+### Enable the E2EE listener (1-on-1 chats)
+
+E2EE requires the Go binary `fbchat-bridge-e2ee`. Build it once:
+
+```bash
+cd bridge-e2ee
+git clone https://github.com/mautrix/meta.git ./meta
+go mod tidy
+go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .   # Windows
+# Linux/macOS: drop the .exe suffix
+```
+
+Then use it just like `_listening.py`:
+
+```python
+import threading
+from _messaging._listening_e2ee import listeningE2EEEvent
+
+listener = listeningE2EEEvent(dataFB)
+listener.get_last_seq_id()
+threading.Thread(target=listener.connect_mqtt, daemon=True).start()
+# listener.bodyResults follows the same schema as _listening.py
+```
+
+Override the binary path with the env var `FBCHAT_E2EE_BIN=/path/to/binary`.
+Full build & RPC docs: [`bridge-e2ee/README.md`](bridge-e2ee/README.md).
 
 ---
 
@@ -316,8 +444,9 @@ For the cross-cutting design and end-to-end request flow, read [DOCS.md](DOCS.md
 
 ## 🗺 Roadmap
 
+- [x] Messenger **E2EE** direct-message decryption *(v2.x — Go bridge)*
 - [ ] Native `async` / `await` API
-- [ ] Messenger **E2EE** direct-message decryption (already prototyped)
+- [ ] Ship the E2EE bridge as pre-built binaries with each release
 - [ ] Type hints across the entire public surface
 - [ ] Pluggable storage backend for sessions
 - [ ] More integration tests & CI

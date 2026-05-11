@@ -11,12 +11,14 @@
 ## 📑 Table of Contents
 
 - [Responsibilities](#-responsibilities)
+- [Installation](#-installation)
 - [Folder Structure](#-folder-structure)
 - [Public API](#-public-api)
 - [The `dataFB` Contract](#-the-datafb-contract)
 - [Module Reference](#-module-reference)
   - [`_send.py`](#sendpy)
   - [`_listening.py`](#listeningpy)
+  - [`_listening_e2ee.py`](#listening_e2eepy)
   - [`_attachments.py`](#attachmentspy)
   - [`_reactions.py`](#reactionspy)
   - [`_unsend.py`](#unsendpy)
@@ -40,13 +42,62 @@
 
 ---
 
+## 📦 Installation
+
+`_messaging` ships as part of the `fbchat-v2` source tree — you do not install it on its own. This section lists **what the module needs** at runtime.
+
+### 1. Python dependencies (already in `requirements.txt`)
+
+| Package | Used by | Notes |
+|---|---|---|
+| `requests` | `_send` · `_attachments` · `_reactions` · `_unsend` · `_message_requests` | HTTP client |
+| `paho-mqtt` | `_listening` | MQTT over WebSocket |
+| `attrs` | `_listening` | Decorator class |
+
+Quick install if you only want `_messaging`:
+
+```bash
+pip install requests paho-mqtt attrs
+```
+
+### 2. Go bridge for `_listening_e2ee` (optional)
+
+Only needed if you use `listeningE2EEEvent` to receive 1-on-1 (E2EE) messages. Requires **Go ≥ 1.24** and **Git**.
+
+```bash
+cd ../../bridge-e2ee            # from fbchat-v2/src/_messaging/
+git clone https://github.com/mautrix/meta.git ./meta
+go mod tidy
+
+# Windows
+go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .
+# Linux / macOS
+go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee .
+```
+
+The Python wrapper resolves the binary in this order:
+
+1. The `FBCHAT_E2EE_BIN` env var (if set).
+2. `fbchat-v2/build/fbchat-bridge-e2ee[.exe]` (default).
+
+If the binary is missing, `_listening_e2ee` raises `FileNotFoundError` with build instructions.
+
+### 3. `dataFB` from `_core`
+
+Every `_messaging` function takes a `dataFB` produced by `_core._session.dataGetHome(setCookies)` — see [`_core/README_EN.md`](../_core/README_EN.md#-the-datafb-contract).
+
+Full setup walkthrough (clone, venv, Go toolchain, smoke test): see [the root README § Installation](../../README_EN.md#-installation).
+
+---
+
 ## 📂 Folder Structure
 
 ```text
 src/_messaging/
 ├── __init__.py
 ├── _attachments.py        # Upload file → attachmentID
-├── _listening.py          # MQTT realtime listener
+├── _listening.py          # MQTT realtime listener (group messages)
+├── _listening_e2ee.py     # Go bridge — E2EE listener (1-on-1 messages)
 ├── _message_requests.py   # Pending messages
 ├── _reactions.py          # Add / remove reactions
 ├── _send.py               # Send messages (HTTP)
@@ -146,6 +197,35 @@ attachments.id · attachments.url
 
 ---
 
+### `_listening_e2ee.py`
+
+#### `class listeningE2EEEvent(dataFB, *, log_level="none", binary=None)`
+
+Listens to **E2EE** (1-on-1) Messenger messages by spawning the Go binary `fbchat-bridge-e2ee` as a subprocess. The exposed event payload is **identical** to [`_listening.py`](#listeningpy), so you can swap implementations without changing your handler logic.
+
+| Method | Description |
+|---|---|
+| `get_last_seq_id()` | Prints the latest `last_seq_id` (parity with `_listening.py`). |
+| `connect_mqtt()` | Spawns the bridge, signs in, streams decrypted E2EE messages. **Blocking**. |
+| `on_message(fn)` | Decorator/handler: receives a `dict` event (already decrypted). |
+| `stop()` | Stops the bridge and closes the subprocess. |
+
+**Event payload** — `self.bodyResults` exposes the same shape as `_listening.py`:
+
+```text
+body · timestamp · userID · messageID · replyToID · type
+attachments.id · attachments.url
+```
+
+`self.e2eeBodyResults` adds Signal metadata: `chatJid` · `senderJid`.
+
+**Requirements:**
+
+- Binary at `fbchat-v2/build/fbchat-bridge-e2ee[.exe]`, or a path provided via `FBCHAT_E2EE_BIN`.
+- Build instructions: [`bridge-e2ee/README.md`](../../bridge-e2ee/README.md).
+
+---
+
 ### `_attachments.py`
 
 ```python
@@ -227,6 +307,8 @@ _core._utils  →  formAll · mainRequests · gen_threading_id
 
 **External libraries:** `requests`, `paho-mqtt`.
 
+> `_listening_e2ee.py` additionally requires the Go binary `fbchat-bridge-e2ee` (subprocess, not a Python dependency).
+
 ---
 
 ## 💡 Examples
@@ -291,6 +373,23 @@ listener.get_last_seq_id()
 threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 ```
 
+### Listen in realtime (E2EE / 1-on-1)
+
+```python
+import threading
+from _messaging._listening_e2ee import listeningE2EEEvent
+
+listener = listeningE2EEEvent(dataFB)
+listener.get_last_seq_id()
+
+@listener.on_message
+def handle(evt):
+    print(listener.bodyResults)        # same schema as _listening.py
+    print(listener.e2eeBodyResults)    # chatJid / senderJid
+
+threading.Thread(target=listener.connect_mqtt, daemon=True).start()
+```
+
 ---
 
 ## 🛠 Troubleshooting
@@ -301,6 +400,8 @@ threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 | Upload fails | Verify path exists & is readable; inspect upload response (Facebook may rename keys). |
 | Listener disconnects / receives no events | Run in a dedicated thread (`loop_forever()` is blocking); inspect MQTT `errorCode`; mind `errorCode == 100` (queue overflow). |
 | JSON parse errors | Strip the `for (;;);` prefix before `json.loads`. |
+| `FileNotFoundError` from `_listening_e2ee` | Build the `fbchat-bridge-e2ee` binary (see `bridge-e2ee/README.md`) or set the `FBCHAT_E2EE_BIN` env var. |
+| Bridge crashes inside `connect_mqtt()` | Verify cookies are still valid, inspect stderr (logged by default), and retry after re-authenticating to Messenger. |
 
 ---
 
