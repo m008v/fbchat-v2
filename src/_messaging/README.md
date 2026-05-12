@@ -17,6 +17,7 @@
 - [Hợp đồng `dataFB`](#-hợp-đồng-datafb)
 - [Tham chiếu module](#-tham-chiếu-module)
   - [`_send.py`](#sendpy)
+  - [`_send_e2ee.py`](#send_e2eepy)
   - [`_listening.py`](#listeningpy)
   - [`_listening_e2ee.py`](#listening_e2eepy)
   - [`_attachments.py`](#attachmentspy)
@@ -101,6 +102,7 @@ src/_messaging/
 ├── _message_requests.py   # Tin nhắn chờ
 ├── _reactions.py          # Thả / gỡ reaction
 ├── _send.py               # Gửi tin nhắn (HTTP)
+├── _send_e2ee.py          # Bridge Go — sender E2EE (tin nhắn 1-1 Secret Conversations)
 ├── _unsend.py             # Thu hồi tin nhắn
 ├── README.md              # ← bạn đang ở đây
 └── README_EN.md
@@ -113,8 +115,8 @@ src/_messaging/
 ```python
 # src/_messaging/__init__.py
 __all__ = [
-    "_attachments", "_listening", "_reactions",
-    "_send", "_unsend", "_message_requests",
+    "_attachments", "_listening", "_listening_e2ee", "_reactions",
+    "_send", "_send_e2ee", "_unsend", "_message_requests",
 ]
 ```
 
@@ -168,6 +170,50 @@ api().send(
 - ❌ `{ "error": 1, "payload": { "error-decription": ..., "error-code": ... } }`
 
 > 📝 Module tự sinh `offline_threading_id`, `message_id`, `threading_id`. Response `/messaging/send/` có tiền tố `for (;;);` — đã được tách sẵn.
+
+---
+
+### `_send_e2ee.py`
+
+#### `class api`
+
+Phiên bản E2EE của `_send.api` — gửi tin nhắn text vào cuộc trò chuyện
+1-1 (Secret Conversations) thông qua bridge Go (`fbchat-bridge-e2ee`). Schema
+return **giống hệt** `_send.api.send` nên code gọi không cần branch riêng.
+
+Hai chế độ khởi tạo:
+
+```python
+# A) Reuse bridge của listener — KHUYẾN NGHỊ.
+#    Không cần pair lại, không bắn thông báo "đăng nhập thiết bị mới".
+sender = api(listener=listeningE2EEEvent_instance)
+
+# B) Standalone — spawn bridge riêng.
+sender = api(
+    dataFB=dataFB,
+    log_level="warn",
+    device_path=None,        # đặt path + e2ee_memory_only=False để persist Signal keys
+    e2ee_memory_only=True,
+    binary_path=None,        # auto-resolve build/fbchat-bridge-e2ee[.exe]
+)
+sender.connect()             # blocking pairing — chỉ dùng cho standalone
+```
+
+| Method | Mô tả |
+|---|---|
+| `send(chat_jid, contentSend, replyMessage="", replySenderJid="")` | Gửi 1 tin nhắn E2EE text. `chat_jid` là JID Signal dạng `<id>@s.whatsapp.net` — lấy từ `evt["data"]["chatJid"]`, **không** ghi thủ công từ `threadID` số. |
+| `reply(evt_data, contentSend)` | Helper: tự bóc `chatJid`, `id`, `senderJid` từ event listener để quote-reply. |
+| `connect(*, enable_e2ee=True, timeout=120)` | Chỉ standalone. Gọi `newClient` → `connect` → `connectE2EE` trên bridge. |
+| `close()` | Chỉ standalone. Đóng bridge subprocess mình sở hữu. |
+| `__enter__` / `__exit__` | Standalone dùng `with` — tự `connect()` + `close()`. |
+
+**Trả về** — cùng schema với [`_send.py`](#sendpy):
+
+- ✅ `{ "success": 1, "payload": { "messageID": ..., "timestamp": ... } }`
+- ❌ `{ "error": 1, "payload": { "error-decription": ..., "error-code": "bridge_error" | "not_connected" } }`
+
+> ⚠️ Gửi media E2EE (`SendE2EEImage` / `Video` / `Audio`) đã có trong bridge
+> Go nhưng **chưa** được expose qua wrapper Python — hiện tại chỉ gửi text.
 
 ---
 
@@ -307,7 +353,7 @@ _core._utils  →  formAll · mainRequests · gen_threading_id
 
 **Thư viện ngoài:** `requests`, `paho-mqtt`.
 
-> Riêng `_listening_e2ee.py` còn cần binary Go `fbchat-bridge-e2ee` (subprocess, không phải Python dependency).
+> Riêng `_listening_e2ee.py` **và** `_send_e2ee.py` còn cần binary Go `fbchat-bridge-e2ee` (subprocess, không phải Python dependency). `_send_e2ee.py` tái sử dụng `_BridgeProcess`, `_resolve_binary` và `parse_cookie_string` từ `_listening_e2ee.py` — hai module có thể chia sẻ chung 1 bridge.
 
 ---
 
@@ -390,6 +436,38 @@ def handle(evt):
 threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 ```
 
+### Gửi tin nhắn E2EE (reuse bridge của listener)
+
+```python
+import threading
+from _messaging._listening_e2ee import listeningE2EEEvent
+from _messaging._send_e2ee import api as E2EESender
+
+listener = listeningE2EEEvent(dataFB)
+threading.Thread(target=listener.connect_mqtt, daemon=True).start()
+# (đợi event "e2eeConnected" trước khi gửi)
+
+sender = E2EESender(listener=listener)
+
+@listener.on_message
+def on_msg(evt):
+    if evt["type"] == "e2eeMessage" and evt["data"].get("text") == "ping":
+        print(sender.reply(evt["data"], "pong"))
+        # → {'success': 1, 'payload': {'messageID': '3EB0…', 'timestamp': 1715000000000}}
+```
+
+### Gửi tin nhắn E2EE (standalone — không listener)
+
+```python
+from _messaging._send_e2ee import api as E2EESender
+
+with E2EESender(dataFB=dataFB, log_level="warn") as sender:
+    sender.send(
+        chat_jid    = "100012345678@s.whatsapp.net",
+        contentSend = "hello E2EE",
+    )
+```
+
 ---
 
 ## 🛠 Khắc phục sự cố
@@ -398,6 +476,9 @@ threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 |---|---|
 | Gửi tin nhắn thất bại | Kiểm tra cookie & `dataFB` còn hợp lệ; verify `threadID`/`userID`; `typeAttachment` khớp với file đã upload. |
 | Upload tệp lỗi | Verify đường dẫn tồn tại + quyền đọc; kiểm tra metadata response (Facebook có thể đổi key). |
+| `_send_e2ee.api` trả `{"error": 1, ..., "error-code": "not_connected"}` | Standalone quên gọi `sender.connect()`; chế độ reuse đợi `connect_mqtt()` của listener đến event `e2eeConnected`. |
+| `_send_e2ee.api` trả `{"error": 1, ..., "error-code": "bridge_error"}` | Bridge Go subprocess chết hoặc JSON-RPC call lỗi — bật `log_level="debug"` để xem stderr của bridge. |
+| `ValueError: Phải truyền 'listener=' (reuse) HOẶC 'dataFB=' (standalone)` | Truyền đúng một trong hai — `listener=` hoặc `dataFB=` — cho `_send_e2ee.api(...)`. |
 | Listener tự ngắt / không nhận event | Chạy trong thread riêng (`loop_forever()` blocking); theo dõi `errorCode` trong MQTT payload; quan tâm `errorCode == 100` (queue overflow). |
 | Lỗi parse JSON | Loại tiền tố `for (;;);` trước `json.loads`. |
 | `FileNotFoundError` ở `_listening_e2ee` | Build binary `fbchat-bridge-e2ee` (xem `bridge-e2ee/README.md`) hoặc set env `FBCHAT_E2EE_BIN`. |
