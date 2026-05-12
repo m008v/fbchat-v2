@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+website/
 *.py[cod]
 *.egg-info/
 *.egg

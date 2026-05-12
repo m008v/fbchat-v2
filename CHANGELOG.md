@@ -6,7 +6,39 @@ Tất cả thay đổi đáng chú ý của `fbchat-v2` sẽ được ghi lại 
 phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
+## [2.1.2] — 2026-05-12
 
+> **Bug-fix tài liệu.** Không đổi runtime; chỉ sửa README trên PyPI vì
+> đoạn Quick Start trước đó gọi sai chữ ký `dataGetHome(...)`.
+
+### 🔧 Fixed
+
+- README PyPI: sửa ví dụ `dataGetHome(cookies=YOUR_COOKIES)` (không tồn tại
+  kwarg `cookies=`) thành `dataGetHome("c_user=...; xs=...; ...")` — đúng chữ
+  ký `dataGetHome(setCookies)` (1 chuỗi positional).
+- Bổ sung note giải thích `setCookies` là chuỗi `Cookie:` header copy từ
+  DevTools, không phải dict.
+- Quick Start E2EE: liệt kê đầy đủ keyword args `log_level`,
+  `e2ee_memory_only`, `device_path`, `enable_e2ee`, `binary_path`; thêm
+  block decorator `@listener.on_message` với ví dụ `send_e2ee_message`.
+
+### 🛠 Changed
+
+- Bump `__version__` → `2.1.2`.
+
+### 📦 Dependencies
+
+- Không thay đổi.
+
+### ⚠️ Lưu ý nâng cấp
+
+Không có breaking change. Cách nâng cấp:
+
+```bash
+pip install --upgrade fbchat-v2
+```
+
+---
 ## [2.1.0] — 2026-05-12
 
 > **Bản cập nhật lớn:** chính thức hỗ trợ giải mã **End-to-End Encryption (E2EE)**

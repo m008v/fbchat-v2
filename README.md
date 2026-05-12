@@ -101,21 +101,28 @@ pip install "fbchat-v2[e2ee]"   # currently a no-op placeholder
 
 ## 🚀 Quick Start
 
+> `dataGetHome(setCookies)` takes a **single positional cookie string** —
+> exactly the value of the `Cookie:` header you would copy from your browser
+> DevTools (e.g. `"c_user=...; xs=...; fr=...; datr=...;"`). It is **not** a
+> dict and there is **no** `cookies=` keyword.
+
 ### Group chat listener (no Go required)
 
 ```python
 import threading
 from fbchat_v2 import dataGetHome, listeningEvent
 
-# 1) Load your Facebook session (cookies dict / string)
-dataFB = dataGetHome(cookies=YOUR_COOKIES)
+COOKIE = "c_user=100012345678; xs=...; fr=...; datr=...;"
+
+# 1) Bootstrap the session (scrapes fb_dtsg, jazoest, FacebookID, … from facebook.com)
+dataFB = dataGetHome(COOKIE)
 
 # 2) Start the MQTT listener
 listener = listeningEvent(dataFB)
 listener.get_last_seq_id()
 threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 
-# listener.bodyResults is updated in real time with each new event
+# listener.bodyResults is mutated in place — poll it from the main thread.
 ```
 
 ### 1-on-1 E2EE listener (requires Go bridge)
@@ -124,14 +131,36 @@ threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 import threading
 from fbchat_v2 import dataGetHome, listeningE2EEEvent
 
-dataFB = dataGetHome(cookies=YOUR_COOKIES)
+COOKIE = "c_user=100012345678; xs=...; fr=...; datr=...;"
 
-listener = listeningE2EEEvent(dataFB)
+dataFB = dataGetHome(COOKIE)
+
+listener = listeningE2EEEvent(
+    dataFB,
+    log_level="warn",          # "none" | "error" | "warn" | "info" | "debug"
+    e2ee_memory_only=True,     # set False + device_path="./device.json" to persist keys
+    enable_e2ee=True,
+    binary_path=None,          # auto-resolves; or pass an explicit path
+)
 listener.get_last_seq_id()
 threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 
 # listener.bodyResults uses the SAME schema as listeningEvent —
 # you can swap the import without changing your event handler.
+```
+
+#### Decorator-style handler (E2EE)
+
+```python
+@listener.on_message
+def on_msg(evt):                    # evt = {"type": "...", "data": {...}, "timestamp": ms}
+    if evt["type"] == "e2eeMessage" and evt["data"].get("text") == "ping":
+        listener.send_e2ee_message(
+            chat_jid=evt["data"]["chatJid"],
+            text="pong",
+            reply_to_id=evt["data"]["id"],
+            reply_to_sender_jid=evt["data"]["senderJid"],
+        )
 ```
 
 #### Demo — receiving decrypted 1-on-1 E2EE messages
