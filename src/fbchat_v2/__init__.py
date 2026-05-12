@@ -13,7 +13,7 @@ Xem README để biết chi tiết.
 
 from __future__ import annotations
 
-__version__ = "2.1.2a1"
+__version__ = "2.1.3"
 __author__ = "MinhHuyDev"
 __license__ = "MIT"
 

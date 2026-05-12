@@ -163,7 +163,7 @@ def on_msg(evt):                    # evt = {"type": "...", "data": {...}, "time
         )
 ```
 
-### 1-on-1 E2EE sender — `sendingE2EEEvent` *(new in 2.1.2a1)*
+### 1-on-1 E2EE sender — `sendingE2EEEvent` *(new in 2.1.3)*
 
 `sendingE2EEEvent` is the **send-side companion** to `listeningE2EEEvent`. It
 speaks the same Go bridge and returns the **same `{"success": 1, "payload": {...}}`
@@ -289,7 +289,7 @@ fbchat_v2/
     ├── _message_requests.py
     ├── _reactions.py
     ├── _send.py                # HTTP sender (groups + plain DMs)
-    ├── _send_e2ee.py           # Go bridge — 1-on-1 E2EE sender (new in 2.1.2a1)
+    ├── _send_e2ee.py           # Go bridge — 1-on-1 E2EE sender (new in 2.1.3)
     └── _unsend.py
 ```
 
@@ -302,7 +302,7 @@ The top-level `fbchat_v2` namespace re-exports the most common entry points:
 | `dataGetHome` | `fbchat_v2._core._session` | Build the session object from cookies / login |
 | `listeningEvent` | `fbchat_v2._messaging._listening` | MQTT listener for **group** messages |
 | `listeningE2EEEvent` | `fbchat_v2._messaging._listening_e2ee` | E2EE listener for **1-on-1** messages |
-| `sendingE2EEEvent` | `fbchat_v2._messaging._send_e2ee` | E2EE **sender** for 1-on-1 messages *(new in 2.1.2a1)* |
+| `sendingE2EEEvent` | `fbchat_v2._messaging._send_e2ee` | E2EE **sender** for 1-on-1 messages *(new in 2.1.3)* |
 | `__version__` | `fbchat_v2` | Package version string |
 
 Submodules (`fbchat_v2._features._facebook._createPost`, etc.) can be imported directly for fine-grained access.
