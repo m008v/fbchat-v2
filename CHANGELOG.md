@@ -6,6 +6,71 @@ Tất cả thay đổi đáng chú ý của `fbchat-v2` sẽ được ghi lại 
 phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
+## [2.1.2a1] — 2026-05-13
+
+> **Pre-release alpha.** Bổ sung sender E2EE để ghép cặp với listener đã có
+> từ 2.1.0. Schema return tương thích 100% với `_send.api` cũ — caller code
+> chỉ cần import thêm là dùng được.
+
+### ✨ Added
+
+- **`_messaging/_send_e2ee.py`** — module mới `class api` (alias công khai
+  `sendingE2EEEvent`) cho phép **gửi tin nhắn E2EE** (Secret Conversations)
+  vào các cuộc trò chuyện 1-1 thông qua bridge Go `fbchat-bridge-e2ee`.
+  - Hai chế độ khởi tạo:
+    - **Reuse** (khuyến nghị): `sendingE2EEEvent(listener=listeningE2EEEvent_instance)`
+      — dùng chung bridge với listener, không pair lại với Meta, không bắn
+      thông báo "đăng nhập thiết bị mới" cho người nhận.
+    - **Standalone**: `sendingE2EEEvent(dataFB=..., log_level=, device_path=,
+      e2ee_memory_only=, binary_path=)` rồi `sender.connect()` — spawn bridge
+      riêng. Hỗ trợ context manager (`with sendingE2EEEvent(dataFB=...) as sender:`)
+      tự `connect()` + `close()`.
+  - API chính: `send(chat_jid, contentSend, replyMessage="", replySenderJid="")`
+    — gọi RPC `sendE2EEMessage` qua bridge Go.
+  - Helper `reply(evt_data, contentSend)` tự bóc `chatJid` / `id` / `senderJid`
+    từ event của `listeningE2EEEvent` để quote-reply nhanh.
+  - **Schema return trùng khớp `_send.api.send`** — caller code không cần branch:
+    - ✅ `{"success": 1, "payload": {"messageID": str, "timestamp": int}}`
+    - ❌ `{"error": 1, "payload": {"error-decription": str, "error-code": "bridge_error" | "not_connected"}}`
+  - Tái sử dụng `_BridgeProcess`, `_resolve_binary`, `parse_cookie_string`,
+    `_REQUIRED_COOKIES` từ `_listening_e2ee.py` — không nhân đôi logic
+    discovery binary / parse cookie.
+
+- **`fbchat_v2.__init__`**: re-export `sendingE2EEEvent` ở top-level cùng
+  với `listeningEvent`, `listeningE2EEEvent`, `dataGetHome` — đặt tên đối
+  xứng với `listeningE2EEEvent` cho dễ nhớ.
+
+### 📝 Documentation
+
+- README PyPI: thêm section **"1-on-1 E2EE sender — `sendingE2EEEvent`"** với
+  ví dụ Mode A (reuse) + Mode B (standalone with-statement), bảng đối số
+  `send(...)`, bảng method tiện ích, cảnh báo `chat_jid` vs `threadID`.
+- README PyPI: cập nhật cây thư mục, bảng Public API và liệt kê
+  `_send_e2ee.py` mới.
+
+### 🛠 Changed
+
+- Bump `__version__` → `2.1.2a1` (PEP 440 alpha pre-release).
+- `pyproject.toml` → `version = "2.1.2a1"`.
+
+### 📦 Dependencies
+
+- Không thay đổi.
+
+### ⚠️ Lưu ý nâng cấp
+
+Đây là **bản pre-release alpha** — pip mặc định **bỏ qua** các bản pre-release.
+Để cài chính thức:
+
+```bash
+pip install --upgrade --pre fbchat-v2
+# hoặc khoá version:
+pip install fbchat-v2==2.1.2a1
+```
+
+Không có breaking change so với 2.1.2; mọi import cũ vẫn hoạt động bình thường.
+
+---
 ## [2.1.2] — 2026-05-12
 
 > **Bug-fix tài liệu.** Không đổi runtime; chỉ sửa README trên PyPI vì

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fbchat-v2"
-version = "2.1.2"
+version = "2.1.2a1"
 description = "Modern, account-based Python library for the unofficial Facebook Messenger API — with E2EE support."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -163,6 +163,88 @@ def on_msg(evt):                    # evt = {"type": "...", "data": {...}, "time
         )
 ```
 
+### 1-on-1 E2EE sender — `sendingE2EEEvent` *(new in 2.1.2a1)*
+
+`sendingE2EEEvent` is the **send-side companion** to `listeningE2EEEvent`. It
+speaks the same Go bridge and returns the **same `{"success": 1, "payload": {...}}`
+/ `{"error": 1, "payload": {...}}` schema** as the plain HTTP `_send.api`,
+so your bot code does not need a special branch for E2EE replies.
+
+**Mode A — reuse the listener's bridge (recommended).** No extra pairing
+handshake, no "new device" notification on the peer:
+
+```python
+import threading
+from fbchat_v2 import dataGetHome, listeningE2EEEvent, sendingE2EEEvent
+
+dataFB   = dataGetHome(COOKIE)
+listener = listeningE2EEEvent(dataFB)
+threading.Thread(target=listener.connect_mqtt, daemon=True).start()
+# ... wait for the "e2eeConnected" event before sending ...
+
+sender = sendingE2EEEvent(listener=listener)
+
+@listener.on_message
+def on_msg(evt):
+    if evt["type"] == "e2eeMessage" and evt["data"].get("text") == "ping":
+        result = sender.reply(evt["data"], "pong")
+        # → {'success': 1, 'payload': {'messageID': '3EB0…', 'timestamp': 1715000000000}}
+```
+
+**Mode B — standalone (own bridge subprocess).** Useful for one-shot scripts;
+supports Python's `with` statement:
+
+```python
+from fbchat_v2 import dataGetHome, sendingE2EEEvent
+
+dataFB = dataGetHome(COOKIE)
+
+with sendingE2EEEvent(
+    dataFB=dataFB,
+    log_level="warn",          # "none" | "error" | "warn" | "info" | "debug"
+    device_path="./device.json",
+    e2ee_memory_only=False,    # persist Signal keys across runs
+    binary_path=None,          # auto-resolves; or pass an explicit path
+) as sender:
+    sender.send(
+        chat_jid    = "100012345678@s.whatsapp.net",
+        contentSend = "hello E2EE",
+    )
+```
+
+#### `sendingE2EEEvent.send(...)` reference
+
+| Argument | Type | Description |
+|---|---|---|
+| `chat_jid` | str | Signal-style JID. Always copy from `evt["data"]["chatJid"]` — do **not** build it from a numeric `threadID`. DM = `<id>@s.whatsapp.net`, group = `<id>@g.us`. |
+| `contentSend` | str | Message body. |
+| `replyMessage` | str | (Optional) `id` of the message you are quote-replying to. |
+| `replySenderJid` | str | (Optional, required if `replyMessage` is set) JID of the original sender. |
+
+**Returns** — mirrors `_send.api.send`:
+
+- ✅ `{"success": 1, "payload": {"messageID": str, "timestamp": int}}`
+- ❌ `{"error":   1, "payload": {"error-decription": str, "error-code": "bridge_error" | "not_connected"}}`
+
+> The typo `error-decription` is **intentional** — it preserves the
+> existing `_send.api` contract so callers can use one error handler for both.
+
+**Convenience methods**
+
+| Method | Use |
+|---|---|
+| `sender.reply(evt_data, contentSend)` | Quote-reply in one line — auto-fills `chat_jid`, `replyMessage`, `replySenderJid` from a listener event. |
+| `sender.connect(*, enable_e2ee=True, timeout=120)` | Standalone-only — spawn bridge, pair with Meta. |
+| `sender.close()` | Standalone-only — stop the owned bridge subprocess. |
+| `with sender: ...` | Standalone context-manager — auto `connect()` + `close()`. |
+
+> ⚠️ Passing **both** `listener=` and `dataFB=` raises `ValueError`. Pick one.
+> Reuse mode is strongly preferred — each standalone process must re-pair with
+> Meta and pops a *new device* alert on the peer's account.
+
+> 📦 E2EE **media** sending (`SendE2EEImage` / `Video` / `Audio`) is implemented
+> in the Go bridge but not yet exposed by the Python wrapper — text only for now.
+
 #### Demo — receiving decrypted 1-on-1 E2EE messages
 
 <p align="center">
@@ -203,10 +285,11 @@ fbchat_v2/
 └── _messaging/
     ├── _attachments.py
     ├── _listening.py           # MQTT — group messages
-    ├── _listening_e2ee.py      # Go bridge — 1-on-1 E2EE messages
+    ├── _listening_e2ee.py      # Go bridge — 1-on-1 E2EE listener
     ├── _message_requests.py
     ├── _reactions.py
-    ├── _send.py
+    ├── _send.py                # HTTP sender (groups + plain DMs)
+    ├── _send_e2ee.py           # Go bridge — 1-on-1 E2EE sender (new in 2.1.2a1)
     └── _unsend.py
 ```
 
@@ -219,6 +302,7 @@ The top-level `fbchat_v2` namespace re-exports the most common entry points:
 | `dataGetHome` | `fbchat_v2._core._session` | Build the session object from cookies / login |
 | `listeningEvent` | `fbchat_v2._messaging._listening` | MQTT listener for **group** messages |
 | `listeningE2EEEvent` | `fbchat_v2._messaging._listening_e2ee` | E2EE listener for **1-on-1** messages |
+| `sendingE2EEEvent` | `fbchat_v2._messaging._send_e2ee` | E2EE **sender** for 1-on-1 messages *(new in 2.1.2a1)* |
 | `__version__` | `fbchat_v2` | Package version string |
 
 Submodules (`fbchat_v2._features._facebook._createPost`, etc.) can be imported directly for fine-grained access.
