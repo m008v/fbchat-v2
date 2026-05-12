@@ -17,6 +17,7 @@
 - [The `dataFB` Contract](#-the-datafb-contract)
 - [Module Reference](#-module-reference)
   - [`_send.py`](#sendpy)
+  - [`_send_e2ee.py`](#send_e2eepy)
   - [`_listening.py`](#listeningpy)
   - [`_listening_e2ee.py`](#listening_e2eepy)
   - [`_attachments.py`](#attachmentspy)
@@ -101,6 +102,7 @@ src/_messaging/
 ├── _message_requests.py   # Pending messages
 ├── _reactions.py          # Add / remove reactions
 ├── _send.py               # Send messages (HTTP)
+├── _send_e2ee.py          # Go bridge — E2EE sender (1-on-1 Secret Conversations)
 ├── _unsend.py             # Unsend messages
 ├── README.md
 └── README_EN.md           # ← you are here
@@ -113,8 +115,8 @@ src/_messaging/
 ```python
 # src/_messaging/__init__.py
 __all__ = [
-    "_attachments", "_listening", "_reactions",
-    "_send", "_unsend", "_message_requests",
+    "_attachments", "_listening", "_listening_e2ee", "_reactions",
+    "_send", "_send_e2ee", "_unsend", "_message_requests",
 ]
 ```
 
@@ -168,6 +170,50 @@ api().send(
 - ❌ `{ "error": 1, "payload": { "error-decription": ..., "error-code": ... } }`
 
 > 📝 The module auto-generates `offline_threading_id`, `message_id`, `threading_id`. Responses from `/messaging/send/` carry a `for (;;);` prefix — already stripped.
+
+---
+
+### `_send_e2ee.py`
+
+#### `class api`
+
+E2EE counterpart of `_send.api` — sends text messages into 1-on-1 Secret
+Conversations through the Go bridge (`fbchat-bridge-e2ee`). Same return
+schema as `_send.api.send` so caller code does not need a special branch.
+
+Two construction modes:
+
+```python
+# A) Reuse the listener's bridge — RECOMMENDED.
+#    No extra pairing handshake; no "new device" notification on the peer.
+sender = api(listener=listeningE2EEEvent_instance)
+
+# B) Standalone — spawn a private bridge process.
+sender = api(
+    dataFB=dataFB,
+    log_level="warn",
+    device_path=None,        # set to a path + e2ee_memory_only=False to persist Signal keys
+    e2ee_memory_only=True,
+    binary_path=None,        # auto-resolves build/fbchat-bridge-e2ee[.exe]
+)
+sender.connect()             # blocking pairing — only for standalone
+```
+
+| Method | Description |
+|---|---|
+| `send(chat_jid, contentSend, replyMessage="", replySenderJid="")` | Send one E2EE text message. `chat_jid` is a Signal JID like `<id>@s.whatsapp.net` — copy from `evt["data"]["chatJid"]`, do **not** construct it from a numeric `threadID`. |
+| `reply(evt_data, contentSend)` | Helper that pulls `chatJid`, `id`, `senderJid` from a listener event and quote-replies in one call. |
+| `connect(*, enable_e2ee=True, timeout=120)` | Standalone-only. Calls `newClient` → `connect` → `connectE2EE` on the bridge. |
+| `close()` | Standalone-only. Stops the owned bridge subprocess. |
+| `__enter__` / `__exit__` | Standalone context-manager support — auto `connect()` + `close()`. |
+
+**Returns** — same shape as [`_send.py`](#sendpy):
+
+- ✅ `{ "success": 1, "payload": { "messageID": ..., "timestamp": ... } }`
+- ❌ `{ "error": 1, "payload": { "error-decription": ..., "error-code": "bridge_error" | "not_connected" } }`
+
+> ⚠️ E2EE media sending (`SendE2EEImage` / `Video` / `Audio`) is implemented
+> in the Go bridge but not yet exposed by the Python wrapper — text only for now.
 
 ---
 
@@ -307,7 +353,7 @@ _core._utils  →  formAll · mainRequests · gen_threading_id
 
 **External libraries:** `requests`, `paho-mqtt`.
 
-> `_listening_e2ee.py` additionally requires the Go binary `fbchat-bridge-e2ee` (subprocess, not a Python dependency).
+> `_listening_e2ee.py` **and** `_send_e2ee.py` additionally require the Go binary `fbchat-bridge-e2ee` (subprocess, not a Python dependency). `_send_e2ee.py` re-uses `_BridgeProcess`, `_resolve_binary` and `parse_cookie_string` from `_listening_e2ee.py` — both modules can share a single bridge instance.
 
 ---
 
@@ -390,6 +436,38 @@ def handle(evt):
 threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 ```
 
+### Send an E2EE message (reuse listener's bridge)
+
+```python
+import threading
+from _messaging._listening_e2ee import listeningE2EEEvent
+from _messaging._send_e2ee import api as E2EESender
+
+listener = listeningE2EEEvent(dataFB)
+threading.Thread(target=listener.connect_mqtt, daemon=True).start()
+# (wait for the "e2eeConnected" event before sending)
+
+sender = E2EESender(listener=listener)
+
+@listener.on_message
+def on_msg(evt):
+    if evt["type"] == "e2eeMessage" and evt["data"].get("text") == "ping":
+        print(sender.reply(evt["data"], "pong"))
+        # → {'success': 1, 'payload': {'messageID': '3EB0…', 'timestamp': 1715000000000}}
+```
+
+### Send an E2EE message (standalone — no listener)
+
+```python
+from _messaging._send_e2ee import api as E2EESender
+
+with E2EESender(dataFB=dataFB, log_level="warn") as sender:
+    sender.send(
+        chat_jid    = "100012345678@s.whatsapp.net",
+        contentSend = "hello E2EE",
+    )
+```
+
 ---
 
 ## 🛠 Troubleshooting
@@ -398,6 +476,9 @@ threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 |---|---|
 | Sending fails | Check cookies & `dataFB`; verify `threadID`/`userID`; ensure `typeAttachment` matches the uploaded file. |
 | Upload fails | Verify path exists & is readable; inspect upload response (Facebook may rename keys). |
+| `_send_e2ee.api` returns `{"error": 1, ..., "error-code": "not_connected"}` | Standalone mode forgot `sender.connect()`; reuse mode means the listener's `connect_mqtt()` thread hasn't reached the `e2eeConnected` event yet. |
+| `_send_e2ee.api` returns `{"error": 1, ..., "error-code": "bridge_error"}` | The Go bridge subprocess died or the JSON-RPC call failed — turn on `log_level="debug"` to see bridge stderr. |
+| `ValueError: Phải truyền 'listener=' (reuse) HOẶC 'dataFB=' (standalone)` | Pass exactly one of `listener=` or `dataFB=` to `_send_e2ee.api(...)`. |
 | Listener disconnects / receives no events | Run in a dedicated thread (`loop_forever()` is blocking); inspect MQTT `errorCode`; mind `errorCode == 100` (queue overflow). |
 | JSON parse errors | Strip the `for (;;);` prefix before `json.loads`. |
 | `FileNotFoundError` from `_listening_e2ee` | Build the `fbchat-bridge-e2ee` binary (see `bridge-e2ee/README.md`) or set the `FBCHAT_E2EE_BIN` env var. |

@@ -32,6 +32,7 @@ fbchat-v2/
 │   │       └── _all_thread_data.py   # Inbox + last_seq_id (needed by listener)
 │   └── _messaging/                   # L3: send / listen / react
 │       ├── _send.py                  # class api().send(...)
+│       ├── _send_e2ee.py             # class api().send(...) for E2EE (drives Go bridge)
 │       ├── _unsend.py
 │       ├── _attachments.py
 │       ├── _reactions.py
@@ -135,6 +136,7 @@ Return shape contract:
 | File                   | Public surface                                   | Notes                                              |
 |------------------------|--------------------------------------------------|----------------------------------------------------|
 | `_send.py`             | `class api`, `.send(dataFB, content, threadID)`  | POST `/messaging/send/`                            |
+| `_send_e2ee.py`        | `class api`, `.send(chat_jid, content, ...)`     | E2EE sender; reuses `_listening_e2ee` Go bridge    |
 | `_unsend.py`           | `func(messageID, dataFB)`                        | POST `/messaging/unsend_message/`                  |
 | `_attachments.py`      | `func(...)`                                      | Upload first, returns attachmentID                 |
 | `_reactions.py`        | `func(...)`                                      | Add/remove reaction                                |
@@ -189,6 +191,27 @@ listener.connect_mqtt()            # blocking
 Event types emitted by the Go bridge: `ready`, `e2eeConnected`, `message`, `e2eeMessage`, `reaction`, `e2eeReaction`, `messageEdit`, `messageUnsend`, `typing`, `readReceipt`, `disconnected`, `error`.
 
 Override binary path: env `FBCHAT_E2EE_BIN=...`.
+
+### `_send_e2ee.api` flow
+
+Thin Python wrapper around the bridge's `sendE2EEMessage` RPC. Two modes:
+
+```python
+# Mode A — reuse listener's bridge (no extra pairing handshake)
+from _messaging._send_e2ee import api as E2EESender
+sender = E2EESender(listener=listener)
+sender.reply(evt["data"], "pong")          # auto-fills chatJid / id / senderJid
+
+# Mode B — standalone (own bridge subprocess)
+with E2EESender(dataFB=dataFB, log_level="warn") as sender:
+    sender.send(chat_jid="...@s.whatsapp.net", contentSend="hi")
+```
+
+Return shape mirrors `_send.api.send` exactly:
+- ✅ `{"success": 1, "payload": {"messageID": str, "timestamp": int}}`
+- ❌ `{"error": 1, "payload": {"error-decription": str, "error-code": "bridge_error" | "not_connected"}}`
+
+**Do NOT instantiate twice**: passing both `listener=` and `dataFB=` raises `ValueError`. Reuse mode is strongly preferred — each standalone process must re-pair with Meta and pops a "new device" alert on the peer.
 
 ---
 

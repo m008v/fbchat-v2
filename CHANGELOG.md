@@ -7,6 +7,51 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
+## [Unreleased]
+
+### ✨ Added
+
+- **`_messaging/_send_e2ee.py`** — module mới `class api` cho phép **gửi tin
+  nhắn E2EE** (Secret Conversations) vào các cuộc trò chuyện 1-1, hoàn thiện
+  cặp listener + sender E2EE.
+  - Hai chế độ khởi tạo:
+    - **Reuse** (khuyến nghị): `api(listener=listeningE2EEEvent_instance)` —
+      dùng chung bridge Go với listener, không pair lại với Meta, không bắn
+      thông báo "đăng nhập thiết bị mới".
+    - **Standalone**: `api(dataFB=..., log_level=, device_path=, e2ee_memory_only=, binary_path=)`
+      rồi `sender.connect()` — spawn bridge riêng. Hỗ trợ context manager
+      (`with api(dataFB=...) as sender:`) để tự connect/close.
+  - API chính: `send(chat_jid, contentSend, replyMessage="", replySenderJid="")`
+    — gọi RPC `sendE2EEMessage` qua bridge Go.
+  - Helper `reply(evt_data, contentSend)` tự bóc `chatJid` / `id` / `senderJid`
+    từ event của `listeningE2EEEvent` để quote-reply nhanh.
+  - **Schema return trùng khớp `_send.api.send`** — caller code không cần branch:
+    - ✅ `{"success": 1, "payload": {"messageID": str, "timestamp": int}}`
+    - ❌ `{"error": 1, "payload": {"error-decription": str, "error-code": "bridge_error" | "not_connected"}}`
+  - Tái sử dụng `_BridgeProcess`, `_resolve_binary`, `parse_cookie_string`,
+    `_REQUIRED_COOKIES` từ `_listening_e2ee.py` — không nhân đôi logic
+    discovery binary / parse cookie.
+
+### 📝 Documentation
+
+- `DOCS.md` được viết lại hoàn toàn bằng tiếng Anh + bổ sung section **FAQ**
+  ~20 câu hỏi (cookie expiry, `BridgeError`, `chat_jid` vs `threadID`,
+  phân biệt `_send.api` vs `_send_e2ee.api`, persist Signal keys, v.v.).
+- `src/_messaging/README.md` + `README_EN.md`: thêm mục `_send_e2ee.py` vào
+  table of contents, module reference, dependency map và ví dụ (reuse +
+  standalone). Cập nhật bảng troubleshooting với 3 lỗi thường gặp:
+  `not_connected`, `bridge_error`, `ValueError: Phải truyền 'listener=' ...`.
+- `CLAUDE.md`: thêm `_send_e2ee.py` vào cây thư mục, bảng Layer 3 và một
+  block flow ngắn cho `_send_e2ee.api` (mode A vs mode B + return shape).
+- `bridge-e2ee/README.md`: ghi chú rằng `sendE2EEMessage` hiện được expose
+  qua wrapper Python `_messaging._send_e2ee.api`.
+
+### 📦 Dependencies
+
+- Không thay đổi.
+
+---
+
 ## [2.1.1] — 2026-05-12
 
 > **Bản vá tài liệu & hạ tầng phân phối.** Không thay đổi runtime; chủ yếu

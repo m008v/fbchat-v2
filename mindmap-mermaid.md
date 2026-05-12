@@ -2,8 +2,11 @@ mindmap
   root((fbchat-v2))
     Root code
       requirements.txt
+      .github/
+      .gitattributes
+      .gitignore
 
-    docs/
+    website/
       index.html
       script.js
       style.css
@@ -11,9 +14,24 @@ mindmap
     language/
       vi_VN.lang
 
+    build/
+      fbchat-bridge-e2ee.exe
+
+    bridge-e2ee/
+      main.go
+      go.mod
+      go.sum
+      bridge/
+        client.go
+        events.go
+        media.go
+        messages.go
+        store.go
+
     src/
       config.json
       main.py
+      _e2ee_listening_test.py
 
       _core/
         __init__.py
@@ -46,9 +64,11 @@ mindmap
         __init__.py
         _attachments.py
         _listening.py
+        _listening_e2ee.py
         _message_requests.py
         _reactions.py
         _send.py
+        _send_e2ee.py
         _unsend.py
 
     docs-text
@@ -56,9 +76,12 @@ mindmap
       README_EN.md
       DOCS.md
       FLOWCHART.md
+      CHANGELOG.md
+      CLAUDE.md
       CODE_OF_CONDUCT.md
       LICENSE
       language/README.md
+      bridge-e2ee/README.md
       src/_core/README.md
       src/_core/README_EN.md
       src/_features/README.md
