@@ -30,8 +30,7 @@ def func(dataFB, typeAdded, messageID, emojiChoice):
 
  * Dữ liệu yêu cầu (args):
 
-     - dataFB: lấy từ __facebookToolsV2.dataGetHome(setCookies)
-     - setCookies: Cookie account Facebook
+     - dataFB: lấy từ _core._session.dataGetHome(setCookies)
      - typeAdded: "add" thêm reaction vào tin nhắn đó. "remove" để xoá reaction tại tin nhắn đó
      - messageID: messageID của tin nhắn
      - emojiChoice: emoji cần reaction vào tin nhắn (VD: 👍, 😭, 😎,....)(All emoji)
@@ -42,7 +41,7 @@ def func(dataFB, typeAdded, messageID, emojiChoice):
      - Ghi chú: tùy thuộc vào nhiều trường hợp mà error có thể báo code lỗi và chi tiết khác nhau!
 
 * Thông tin tác giả:
-     Facebook:  m.me/Booking.MinhHuyDev
+     Facebook:  m.me/zminhhuydev
      Telegram: t.me/minhhuydev
      Github: MinhHuyDev
 

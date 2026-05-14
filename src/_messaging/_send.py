@@ -1,5 +1,4 @@
 import json, random, requests, time
-# import __facebookToolsV2
 from _core._utils import gen_threading_id, mainRequests, formAll
      
 class api:
@@ -141,7 +140,8 @@ class api:
      
 
 # _ = api()
-# dataFB = __facebookToolsV2.dataGetHome('this is cookie Facebook')
+# from _core._session import dataGetHome
+# dataFB = dataGetHome('this is cookie Facebook')
 # _.send(dataFB, "<contents message>", "<userID/threadID>", ...[args])
 # test1_sendImage = _.send(dataFB, "test send image", "100034261636200", typeAttachment="image", attachmentID=757191223105185, typeChat="user", replyMessage=1)
 # test2_sendMessage = _.send(dataFB, "test send msg", "100034261636200", typeChat="user", replyMessage=1)

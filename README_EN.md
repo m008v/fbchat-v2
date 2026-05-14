@@ -143,6 +143,7 @@ fbchat-v2/
 │   │       └── _changeNickname.py
 │   └── _messaging/                      # ── Messaging layer ──
 │       ├── _attachments.py
+│       ├── _createNotes.py              # Messenger Notes (24h status)
 │       ├── _listening.py                # MQTT — group messages
 │       ├── _listening_e2ee.py           # Go bridge — 1-on-1 E2EE messages
 │       ├── _message_requests.py
@@ -205,6 +206,7 @@ mindmap
           _changeNickname.py
       _messaging
         _attachments.py
+        _createNotes.py
         _listening.py
         _listening_e2ee.py
         _message_requests.py

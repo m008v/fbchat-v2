@@ -213,9 +213,11 @@ class listeningEvent:
           
 """
 # This is example code:
-i = __facebookToolsV2.dataGetHome('cookie Facebook')
-fbt = __facebookToolsV2.fbTools(i, 0)
-_ = listeningEvent(fbt, i)
+from _core._session import dataGetHome
+from _messaging._listening import listeningEvent
+
+dataFB = dataGetHome('cookie Facebook')
+_ = listeningEvent(dataFB)
 _.get_last_seq_id()
 _.connect_mqtt()
 """

@@ -55,8 +55,7 @@ def func(dataFB, userID):
 
  * Dữ liệu yêu cầu (args):
  
-     - dataFB: lấy từ __facebookToolsV2.dataGetHome(setCookies)
-     - setCookies: Cookie account Facebook
+     - dataFB: lấy từ _core._session.dataGetHome(setCookies)
      - userID: ID người dùng cần lấy thông tin
      
 * Kết quả trả về:
@@ -72,7 +71,7 @@ def func(dataFB, userID):
      - Ghi chú: nếu không hiểu gì hãy ib tui nhé hehe.
 
 * Thông tin tác giả:
-     Facebook:  m.me/Booking.MinhHuyDev
+     Facebook:  m.me/zminhhuydev
      Telegram: t.me/minhhuydev
      Github: MinhHuyDev
 

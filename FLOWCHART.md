@@ -87,6 +87,7 @@ flowchart TD
     SRC --> MSG[src/_messaging/]
     MSG --> MSG_INIT[__init__.py]
     MSG --> MSG_ATTACH[_attachments.py]
+    MSG --> MSG_NOTES[_createNotes.py]
     MSG --> MSG_LISTEN[_listening.py]
     MSG --> MSG_LISTEN_E2EE[_listening_e2ee.py]
     MSG --> MSG_REQ[_message_requests.py]
@@ -135,6 +136,7 @@ flowchart LR
     REACT[_messaging._reactions] --> FB_API
     UNSEND[_messaging._unsend] --> FB_API
     MSG_REQ[_messaging._message_requests] --> FB_API
+    NOTES[_messaging._createNotes] --> FB_API
 
     EXTERNAL[External libs: requests, paho-mqtt, attrs]
     EXTERNAL --> FEATURES

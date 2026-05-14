@@ -24,6 +24,7 @@
   - [`_reactions.py`](#reactionspy)
   - [`_unsend.py`](#unsendpy)
   - [`_message_requests.py`](#message_requestspy)
+  - [`_createNotes.py`](#createnotespy)
 - [Sơ đồ phụ thuộc](#-sơ-đồ-phụ-thuộc)
 - [Ví dụ](#-ví-dụ)
 - [Khắc phục sự cố](#-khắc-phục-sự-cố)
@@ -40,6 +41,7 @@
 - ❤️ Thêm / xoá reaction.
 - ↩️ Thu hồi tin nhắn đã gửi.
 - 📥 Lấy danh sách **Message Requests** (tin nhắn chờ).
+- 📝 Quản lý **Messenger Notes** (note 24h dạng status): check / create / delete / recreate.
 
 ---
 
@@ -51,7 +53,7 @@
 
 | Package | Dùng cho | Ghi chú |
 |---|---|---|
-| `requests` | `_send` · `_attachments` · `_reactions` · `_unsend` · `_message_requests` | HTTP client |
+| `requests` | `_send` · `_attachments` · `_reactions` · `_unsend` · `_message_requests` · `_createNotes` | HTTP client |
 | `paho-mqtt` | `_listening` | MQTT over WebSocket |
 | `attrs` | `_listening` | Decorator class |
 
@@ -97,6 +99,7 @@ Hướng dẫn cài đặt đầy đủ (clone, venv, Go toolchain, smoke test):
 src/_messaging/
 ├── __init__.py
 ├── _attachments.py        # Upload tệp → attachmentID
+├── _createNotes.py        # Messenger Notes (status 24h): check/create/delete/recreate
 ├── _listening.py          # MQTT realtime listener (tin nhắn nhóm)
 ├── _listening_e2ee.py     # Bridge Go — listener E2EE (tin nhắn 1-1)
 ├── _message_requests.py   # Tin nhắn chờ
@@ -116,7 +119,7 @@ src/_messaging/
 # src/_messaging/__init__.py
 __all__ = [
     "_attachments", "_listening", "_listening_e2ee", "_reactions",
-    "_send", "_send_e2ee", "_unsend", "_message_requests",
+    "_send", "_send_e2ee", "_unsend", "_message_requests", "_createNotes",
 ]
 ```
 
@@ -340,6 +343,59 @@ Nội dung gồm danh sách người gửi, snippet, timestamp và `total_count`
 
 ---
 
+### `_createNotes.py`
+
+Quản lý **Messenger Notes** — note dạng status hiển thị trên đầu inbox
+Messenger, mặc định tồn tại 24 giờ. Module được port từ `ws3-fca/notes.js`
+(@ChoruOfficial) sang style fbchat-v2.
+
+```python
+from _messaging import _createNotes
+
+_createNotes.checkNote(dataFB)
+_createNotes.createNote(dataFB, text, privacy="FRIENDS")
+_createNotes.deleteNote(dataFB, noteID)
+_createNotes.recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS")
+
+# Hoặc dùng entry point thống nhất:
+_createNotes.func(dataFB, action="check")
+_createNotes.func(dataFB, action="create",   text="Hello", privacy="FRIENDS")
+_createNotes.func(dataFB, action="delete",   noteID="<note_id>")
+_createNotes.func(dataFB, action="recreate", oldNoteID="<id>", newText="...")
+```
+
+| Hàm | Mô tả |
+|---|---|
+| `checkNote(dataFB)` | Trả về note hiện tại của tài khoản (`msgr_user_rich_status`). |
+| `createNote(dataFB, text, privacy="FRIENDS")` | Tạo note text mới, thời lượng 86400s (24h). |
+| `deleteNote(dataFB, noteID)` | Xoá note theo `rich_status_id`. |
+| `recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS")` | Xoá note cũ rồi tạo note mới (atomic 2-step). |
+| `func(dataFB, action, **kwargs)` | Entry point chung — `action` ∈ `"check" / "create" / "delete" / "recreate"`. |
+
+**Tham số `privacy`** (case-insensitive):
+
+| Giá trị truyền vào | Được map thành |
+|---|---|
+| `"FRIENDS"` *(mặc định)* | `FRIENDS` |
+| `"EVERYONE"` · `"PUBLIC"` | `FRIENDS` *(Messenger Notes hiện chỉ hỗ trợ FRIENDS)* |
+| Khác | Giữ nguyên dạng UPPERCASE |
+
+**Trả về:**
+
+- ✅ `{ "success": 1, "messages": "...", "data": {...} }`
+- ❌ `{ "error": 1, "messages": "...", "details"|"raw": ... }`
+
+**Cơ chế:**
+
+- Gọi 3 GraphQL `friendly_name` / `doc_id` riêng (check / create / delete).
+- Có **timeout** `(connect=10s, read=45s)` và **retry** tối đa 2 lần với
+  `requests.Timeout` / `requests.RequestException`.
+- Tự strip prefix `for (;;);` của response Facebook trước khi `json.loads`.
+- `client_mutation_id` random 0–10, `session_id` sinh bằng
+  `_core._utils.generate_client_id()`.
+
+---
+
 ## 🔗 Sơ đồ phụ thuộc
 
 `_messaging` phụ thuộc chính vào `_core`:
@@ -406,6 +462,25 @@ print(func("mid.$abc...", dataFB))
 ```python
 from _messaging._message_requests import func
 print(func(dataFB))
+```
+
+### Tạo / xoá Messenger Note (status 24h)
+
+```python
+from _messaging import _createNotes
+
+# Xem note hiện tại
+print(_createNotes.checkNote(dataFB))
+
+# Tạo note mới (mặc định 24h, privacy FRIENDS)
+created = _createNotes.createNote(dataFB, "Đang code fbchat-v2 ❤️")
+note_id = created["data"]["id"]
+
+# Xoá note
+_createNotes.deleteNote(dataFB, note_id)
+
+# Hoặc thay note cũ bằng note mới trong 1 call
+_createNotes.recreateNote(dataFB, note_id, "Đã xong v2.1.3 🎉")
 ```
 
 ### Lắng nghe realtime

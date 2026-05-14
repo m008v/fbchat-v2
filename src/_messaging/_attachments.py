@@ -1,5 +1,4 @@
 import random, attr, requests, json
-# import __facebookToolsV2
 from _core._utils import str_base,  get_files_from_paths
 
 def func(filenames, dataFB):
@@ -54,8 +53,9 @@ def func(filenames, dataFB):
      }
 
 
-# _uploadAttachment("file-name.jpg", dataFB)
-# print(_uploadAttachment("Name file to need uploads", __facebookToolsV2.dataGetHome("this is cookie Facebook")))
+# func("file-name.jpg", dataFB)
+# from _core._session import dataGetHome
+# print(func("Name file to need uploads", dataGetHome("this is cookie Facebook")))
 # output-image: {'attachmentID': 676421537934928, 'attachmentUrl': 'https://scontent.fsgn5-8.fna.fbcdn.net/v/t1.15752-9/328999258_555852780015611_2452318447980968642_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=b65b05&_nc_ohc=ngkZ0e3NqzYAX8ZdVYx&_nc_ht=scontent.fsgn5-8.fna&oh=03_AdTrTWSDqWiSrYcTG8c_WKn1ksUdttUbcK3hmvTu2WEmRQ&oe=65A10D97', 'attachmentType': 'image/jpeg', 'attachmentDataSend': [(676421537934928, 'image/jpeg')]}
 # ouput-video: {'attachmentID': 848156417052481, 'attachmentUrl': 'https://scontent.fsgn5-10.fna.fbcdn.net/v/t15.3394-10/416827059_6699338906842547_1263326403482126710_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=407108&_nc_eui2=AeGD75e6KV6vQfPcP4aCq9Yua-QBDRBkDOJr5AENEGQM4oV21IQSIev2_QwXWrdXFSg&_nc_ohc=aFezV-zIf3EAX_UjIAF&_nc_ht=scontent.fsgn5-10.fna&oh=03_AdQESAAFJ9GODQx-H36DmwWZ_ENQvbqnWz5Mm6lcZmoc8Q&oe=6599A974', 'attachmentType': 'video/mp4', 'attachmentDataSend': None}
 

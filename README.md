@@ -143,6 +143,7 @@ fbchat-v2/
 │   │       └── _changeNickname.py
 │   └── _messaging/                      # ── Tầng nhắn tin ──
 │       ├── _attachments.py
+│       ├── _createNotes.py              # Messenger Notes (status 24h)
 │       ├── _listening.py                # MQTT — tin nhắn nhóm
 │       ├── _listening_e2ee.py           # Bridge Go — tin nhắn 1-1 E2EE
 │       ├── _message_requests.py
@@ -205,6 +206,7 @@ mindmap
           _changeNickname.py
       _messaging
         _attachments.py
+        _createNotes.py
         _listening.py
         _listening_e2ee.py
         _message_requests.py

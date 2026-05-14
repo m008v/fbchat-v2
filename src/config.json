@@ -1,7 +1,7 @@
 {
     "botName": "[fbchat-tester] - Raintee.bot",
-    "'prefix'": "!",
-    "cookies": "datr=-cZfaVKhV1X4Vyz8MYNOzcDT; sb=-cZfaXmr3bC0O-Uhcdo_KyXz; ps_l=1; ps_n=1; c_user=61583942146559; pas=61583942146559%3AVnamtPl6u6; locale=vi_VN; wl_cbv=v2%3Bclient_version%3A3158%3Btimestamp%3A1778521380; fbl_st=100638231%3BT%3A29642023; vpd=v1%3B844x390x3; dpr=1; wd=900x945; fr=1nrekx5XwLB3YROos.AWeLvRcKvcJyncvZPNXfBrXVfQ6jpzfIzD5qnnCmxNFGYUwxJwQ.BqAi1S..AAA.0.0.BqAi1S.AWcsMF9dfcaKlVANmhJyEOtojas; xs=3%3ALjmwCYS9A89d7A%3A2%3A1778430097%3A-1%3A-1%3A%3AAcw4Db63rukkMr2JsuITRXx-tLGspTdocA1uehrOnJU; presence=C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1778527582089%2C%22v%22%3A1%7D",
+    "prefix": "!",
+    "cookies": "datr=-cZfaVKhV1X4Vyz8MYNOzcDT; sb=-cZfaXmr3bC0O-Uhcdo_KyXz; ps_l=1; ps_n=1; pas=61583942146559%3AVnamtPl6u6; locale=vi_VN; wl_cbv=v2%3Bclient_version%3A3158%3Btimestamp%3A1778521380; vpd=v1%3B844x390x3; dpr=1; c_user=61583942146559; xs=10%3AzOw0UvH67tRNZA%3A2%3A1778671194%3A-1%3A-1%3A%3AAcxf4qZJAAUugo2qPwq6kENaLUEAb6XYat7fViNouA; fr=1Dibgw57WfbJ5sJkw.AWdNgSnqBXMalGfliBYQOkDGl8X5DmArQa6igNuJgwL_31JWmBo.BqBGVx..AAA.0.0.BqBgIy.AWf7NdG0Zwmt21qXnX65en68tZI; wd=1244x945; presence=C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1778778971995%2C%22v%22%3A1%7D",
     "ownerID": ["9209278"],
     "version": "0.0.1"
 }

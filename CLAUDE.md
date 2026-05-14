@@ -35,6 +35,7 @@ fbchat-v2/
 │       ├── _send_e2ee.py             # class api().send(...) for E2EE (drives Go bridge)
 │       ├── _unsend.py
 │       ├── _attachments.py
+│       ├── _createNotes.py        # Messenger Notes (24h status)
 │       ├── _reactions.py
 │       ├── _message_requests.py
 │       ├── _listening.py             # Plain MQTT listener
@@ -66,7 +67,7 @@ main.py
   │     └─ _thread/
   │
   └─→ _messaging       (imports _core + _features as needed)
-        ├─ _send / _unsend / _attachments / _reactions / _message_requests
+        ├─ _send / _unsend / _attachments / _reactions / _message_requests / _createNotes
         ├─ _listening
         └─ _listening_e2ee  ──────► subprocess: build/fbchat-bridge-e2ee.exe
 ```
@@ -141,6 +142,7 @@ Return shape contract:
 | `_attachments.py`      | `func(...)`                                      | Upload first, returns attachmentID                 |
 | `_reactions.py`        | `func(...)`                                      | Add/remove reaction                                |
 | `_message_requests.py` | `func(...)`                                      | Accept/decline pending requests                    |
+| `_createNotes.py`      | `checkNote / createNote / deleteNote / recreateNote / func(action=...)` | Messenger Notes — 24h status-style notes (GraphQL) |
 | `_listening.py`        | `class listeningEvent(dataFB)`                   | paho-mqtt over WSS to `edge-chat.facebook.com:443` |
 | `_listening_e2ee.py`   | `class listeningE2EEEvent(dataFB, **opts)`       | Subprocess bridge for Secret Conversations         |
 

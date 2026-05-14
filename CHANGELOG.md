@@ -7,7 +7,7 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
-## [Unreleased]
+## [2.1.2a] - 2026-05-13
 
 ### ✨ Added
 
