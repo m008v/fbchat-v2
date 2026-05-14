@@ -6,6 +6,62 @@ Tất cả thay đổi đáng chú ý của `fbchat-v2` sẽ được ghi lại 
 phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
+## [2.1.4] — 2026-05-15
+
+### ✨ Added
+
+- **`_messaging/_createNotes.py`** — module mới quản lý **Messenger Notes**
+  (status 24h hiển thị trên đầu inbox Messenger). Port từ
+  `ws3-fca/notes.js` (© @ChoruOfficial) sang style fbchat-v2.
+  - 4 hàm CRUD: `checkNote(dataFB)` · `createNote(dataFB, text, privacy="FRIENDS")`
+    · `deleteNote(dataFB, noteID)` · `recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS")`.
+  - Entry point thống nhất: `func(dataFB, action="check"|"create"|"delete"|"recreate", **kwargs)`.
+  - Mỗi call dùng GraphQL `friendly_name` / `doc_id` riêng (3 endpoint:
+    `MWInboxTrayNoteCreationDialogQuery`, `MWInboxTrayNoteCreationDialogCreationStepContentMutation`,
+    `useMWInboxTrayDeleteNoteMutation`).
+  - **Privacy mapping**: `EVERYONE` / `PUBLIC` đều bị normalize về `FRIENDS`
+    (Messenger Notes hiện chỉ hỗ trợ scope FRIENDS).
+  - **Resilience**: timeout `(connect=10s, read=45s)` + 2 retries cho
+    `requests.Timeout` / `requests.RequestException` (tổng ≤ 3 lần thử).
+  - Tự strip prefix `for (;;);` trước khi `json.loads`.
+  - Schema return: ✅ `{"success": 1, "messages": "...", "data": {...}}`
+    / ❌ `{"error": 1, "messages": "...", "details"|"raw": ...}`.
+  - Hard-coded `duration = 86400s` (24h) — Messenger web flow chưa hỗ trợ
+    duration tuỳ ý.
+  - **Hạn chế**: chỉ `note_type="TEXT_NOTE"` (chưa wire music / sticker).
+
+- **`fbchat_v2.__init__`**: re-export `createNotes` ở top-level
+  (`from fbchat_v2 import createNotes` → `createNotes.checkNote(dataFB)` …).
+
+### 📝 Documentation
+
+- README PyPI: section mới **"Messenger Notes (24h status) — `createNotes`"**
+  với ví dụ CRUD, bảng function reference (kèm GraphQL `friendly_name`),
+  bảng privacy mapping, return shape, internals.
+- README PyPI: cập nhật cây thư mục `_messaging/` thêm `_createNotes.py`,
+  bảng Public API thêm dòng `createNotes`.
+- Sub-README `_messaging/`: cập nhật cây thư mục + `__all__`.
+
+### 🛠 Changed
+
+- Bump `__version__` → `2.1.4`.
+- `pyproject.toml` → `version = "2.1.4"`.
+- `_messaging/__init__.py`: `__all__` thêm `_createNotes`, `_listening_e2ee`,
+  `_send_e2ee` (đồng bộ với các module đã thêm trong các bản trước).
+
+### 📦 Dependencies
+
+- Không thay đổi.
+
+### ⚠️ Lưu ý nâng cấp
+
+```bash
+pip install --upgrade fbchat-v2
+```
+
+Không có breaking change so với 2.1.3; mọi import cũ vẫn hoạt động bình thường.
+
+---
 ## [2.1.3] — 2026-05-13
 
 > **Stable release.** Promotes the `2.1.2a1` alpha to a full release so the

@@ -96,11 +96,13 @@ Hướng dẫn cài đặt đầy đủ (clone, venv, Go toolchain, smoke test):
 src/_messaging/
 ├── __init__.py
 ├── _attachments.py        # Upload tệp → attachmentID
+├── _createNotes.py        # Messenger Notes (24h status): check/create/delete/recreate
 ├── _listening.py          # MQTT realtime listener (tin nhắn nhóm)
 ├── _listening_e2ee.py     # Bridge Go — listener E2EE (tin nhắn 1-1)
 ├── _message_requests.py   # Tin nhắn chờ
 ├── _reactions.py          # Thả / gỡ reaction
 ├── _send.py               # Gửi tin nhắn (HTTP)
+├── _send_e2ee.py          # Bridge Go — sender E2EE (tin nhắn 1-1)
 ├── _unsend.py             # Thu hồi tin nhắn
 ├── README.md              # ← bạn đang ở đây
 └── README_EN.md
@@ -113,8 +115,8 @@ src/_messaging/
 ```python
 # src/_messaging/__init__.py
 __all__ = [
-    "_attachments", "_listening", "_reactions",
-    "_send", "_unsend", "_message_requests",
+    "_attachments", "_listening", "_listening_e2ee", "_reactions",
+    "_send", "_send_e2ee", "_unsend", "_message_requests", "_createNotes",
 ]
 ```
 

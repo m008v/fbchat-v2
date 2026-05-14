@@ -253,6 +253,87 @@ with sendingE2EEEvent(
 
 ---
 
+### Messenger Notes (24h status) — `createNotes` *(new in 2.1.4)*
+
+Messenger Notes are the short status-style entries shown at the top of the
+Messenger inbox; they auto-expire after 24 hours. `createNotes` exposes full
+CRUD coverage — ported from `ws3-fca/notes.js` (© @ChoruOfficial) into the
+fbchat-v2 style.
+
+```python
+from fbchat_v2 import dataGetHome, createNotes
+
+dataFB = dataGetHome(COOKIE)
+
+# Inspect the current note (returns msgr_user_rich_status or None)
+print(createNotes.checkNote(dataFB))
+
+# Create a new 24-hour note
+created = createNotes.createNote(dataFB, "Coding fbchat-v2 ❤️", privacy="FRIENDS")
+note_id = created["data"]["id"]
+
+# Delete a note
+createNotes.deleteNote(dataFB, note_id)
+
+# Replace the current note in one call (delete-then-create, fail-fast)
+createNotes.recreateNote(dataFB, note_id, "Shipped v2.1.4 🎉")
+
+# Or use the unified dispatcher:
+createNotes.func(dataFB, action="check")
+createNotes.func(dataFB, action="create",   text="hi", privacy="FRIENDS")
+createNotes.func(dataFB, action="delete",   noteID="<id>")
+createNotes.func(dataFB, action="recreate", oldNoteID="<id>", newText="...")
+```
+
+#### Function reference
+
+| Function | Purpose | GraphQL `friendly_name` |
+|---|---|---|
+| `checkNote(dataFB)` | Returns the current note (`msgr_user_rich_status`) of the logged-in account | `MWInboxTrayNoteCreationDialogQuery` |
+| `createNote(dataFB, text, privacy="FRIENDS")` | Creates a new text note (24 h lifetime) | `MWInboxTrayNoteCreationDialogCreationStepContentMutation` |
+| `deleteNote(dataFB, noteID)` | Deletes a note by `rich_status_id` | `useMWInboxTrayDeleteNoteMutation` |
+| `recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS")` | Atomic 2-step delete + create; aborts on first error | *(both of the above)* |
+| `func(dataFB, action, **kwargs)` | Unified dispatcher — `action ∈ {"check", "create", "delete", "recreate"}` | *(routes to one of the above)* |
+
+#### `privacy` argument
+
+Case-insensitive, normalised at request time:
+
+| Input | Sent to Facebook |
+|---|---|
+| `"FRIENDS"` *(default)* | `FRIENDS` |
+| `"EVERYONE"` · `"PUBLIC"` | `FRIENDS` *(Messenger Notes only support FRIENDS today)* |
+| Anything else | Forwarded as-is, uppercased |
+
+#### Return shape
+
+```python
+# success
+{'success': 1, 'messages': '...', 'data': {...}}
+
+# failure (GraphQL or transport)
+{'error':   1, 'messages': '...', 'details'|'raw': ...}
+```
+
+#### Internals
+
+- Each call hits a dedicated GraphQL `friendly_name` / `doc_id` pair — no
+  shared mutation, so a failing `delete` won't cascade into a failing `create`.
+- Network defaults: `timeout=(connect=10s, read=45s)`, **2 retries** for
+  `requests.Timeout` / `requests.RequestException` (total ≤ 3 attempts).
+- Facebook's `for (;;);` JSON-hijacking prefix is stripped automatically
+  before `json.loads`.
+- `client_mutation_id` is a random `0–10` int; `session_id` is generated
+  internally. You don't need to pass either.
+- Notes always live for `duration = 86400` seconds (24 h). The endpoint
+  doesn't currently accept other durations from the web flow, so the
+  parameter is hard-coded.
+
+> ⚠️ Only `note_type="TEXT_NOTE"` is wired up. Music / sticker note types
+> exist server-side but require additional GraphQL mutations.
+
+---
+
 ## 📂 Package Layout
 
 Installed Python package (importable as `fbchat_v2`):
@@ -284,6 +365,7 @@ fbchat_v2/
 │       └── _changeNickname.py
 └── _messaging/
     ├── _attachments.py
+    ├── _createNotes.py         # Messenger Notes — 24h status (new in 2.1.4)
     ├── _listening.py           # MQTT — group messages
     ├── _listening_e2ee.py      # Go bridge — 1-on-1 E2EE listener
     ├── _message_requests.py
@@ -303,6 +385,7 @@ The top-level `fbchat_v2` namespace re-exports the most common entry points:
 | `listeningEvent` | `fbchat_v2._messaging._listening` | MQTT listener for **group** messages |
 | `listeningE2EEEvent` | `fbchat_v2._messaging._listening_e2ee` | E2EE listener for **1-on-1** messages |
 | `sendingE2EEEvent` | `fbchat_v2._messaging._send_e2ee` | E2EE **sender** for 1-on-1 messages *(new in 2.1.3)* |
+| `createNotes` | `fbchat_v2._messaging._createNotes` | Messenger Notes — 24h status (`checkNote` / `createNote` / `deleteNote` / `recreateNote` / `func`) *(new in 2.1.4)* |
 | `__version__` | `fbchat_v2` | Package version string |
 
 Submodules (`fbchat_v2._features._facebook._createPost`, etc.) can be imported directly for fine-grained access.

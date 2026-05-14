@@ -6,6 +6,7 @@ Public re-exports:
     listeningEvent       — group-message MQTT listener
     listeningE2EEEvent   — 1-on-1 E2EE listener (requires Go bridge binary)
     sendingE2EEEvent     — 1-on-1 E2EE sender (requires Go bridge binary)
+    createNotes          — Messenger Notes (24h status): check / create / delete / recreate
     dataGetHome          — bootstrap dataFB session dict from cookies
 
 Xem README để biết chi tiết.
@@ -13,7 +14,7 @@ Xem README để biết chi tiết.
 
 from __future__ import annotations
 
-__version__ = "2.1.3"
+__version__ = "2.1.4"
 __author__ = "MinhHuyDev"
 __license__ = "MIT"
 
@@ -21,6 +22,7 @@ from ._core._session import dataGetHome
 from ._messaging._listening import listeningEvent
 from ._messaging._listening_e2ee import listeningE2EEEvent
 from ._messaging._send_e2ee import sendingE2EEEvent
+from ._messaging import _createNotes as createNotes
 
 __all__ = [
     "__version__",
@@ -30,4 +32,5 @@ __all__ = [
     "listeningEvent",
     "listeningE2EEEvent",
     "sendingE2EEEvent",
+    "createNotes",
 ]
