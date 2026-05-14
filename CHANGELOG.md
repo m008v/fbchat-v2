@@ -7,6 +7,78 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
+## [2.1.2b] — 2026-05-15
+
+### ✨ Added
+
+- **`_messaging/_createNotes.py`** — module mới quản lý **Messenger Notes**
+  (status 24h hiển thị trên đầu inbox Messenger). Port từ
+  `ws3-fca/notes.js` (© @ChoruOfficial) sang style fbchat-v2.
+  - 4 hàm CRUD độc lập:
+    - `checkNote(dataFB)` — lấy note hiện tại (`msgr_user_rich_status`).
+    - `createNote(dataFB, text, privacy="FRIENDS")` — tạo note text 24h.
+    - `deleteNote(dataFB, noteID)` — xoá note theo `rich_status_id`.
+    - `recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS")` — xoá +
+      tạo lại nguyên tử (fail-fast nếu bước nào lỗi thì abort).
+  - Entry point thống nhất:
+    `func(dataFB, action="check"|"create"|"delete"|"recreate", **kwargs)`.
+  - Mỗi call hit một GraphQL `friendly_name` / `doc_id` riêng — không share
+    mutation, lỗi ở `delete` không cascade sang `create`:
+    - `MWInboxTrayNoteCreationDialogQuery` (doc_id `30899655739648624`)
+    - `MWInboxTrayNoteCreationDialogCreationStepContentMutation`
+      (doc_id `24060573783603122`)
+    - `useMWInboxTrayDeleteNoteMutation` (doc_id `9532619970198958`)
+  - **Privacy mapping** (`PRIVACY_ALIASES`): `EVERYONE` / `PUBLIC` đều bị
+    normalize về `FRIENDS` (Messenger Notes hiện chỉ hỗ trợ scope FRIENDS).
+    Input tự uppercase, các giá trị khác forward as-is.
+  - **Resilience**: `timeout=(connect=10s, read=45s)` + 2 retries cho
+    `requests.Timeout` / `requests.RequestException` (tổng ≤ 3 lần thử).
+  - Tự strip prefix `for (;;);` trước khi `json.loads`.
+  - `client_mutation_id` random `0-10`; `session_id` sinh nội bộ qua
+    `generate_client_id()` — caller không cần truyền.
+  - **Schema return chuẩn fbchat-v2**:
+    - ✅ `{"success": 1, "messages": "...", "data": {...}}`
+    - ❌ `{"error": 1, "messages": "...", "details" | "raw": ...}`
+  - Hard-coded `duration = 86400s` (24h) — Messenger web flow chưa hỗ trợ
+    duration tuỳ ý.
+
+### 📝 Documentation
+
+- `DOCS.md`: thêm **§10 Messenger Notes (24h status)** đầy đủ ví dụ CRUD,
+  bảng function reference (kèm `friendly_name` GraphQL), bảng privacy
+  mapping, return shape, internals; **§13 FAQ** thêm subsection Messenger
+  Notes; renumber §10–§14.
+- `src/_messaging/README.md` + `README_EN.md`: thêm `_createNotes.py` vào
+  cây thư mục, table of contents, module reference, dependency map và
+  block ví dụ usage.
+- `CLAUDE.md`: thêm `_createNotes.py` vào cây thư mục + bảng Layer 3.
+- `FLOWCHART.md`, `mindmap-mermaid.md`: cập nhật sơ đồ phản ánh module mới.
+- README VI/EN gốc: cập nhật cây thư mục + Quick Start mention `createNotes`.
+
+### 🛠 Changed
+
+- Thay thế các tham chiếu legacy `__facebookToolsV2` còn sót lại trong
+  comment hướng dẫn của 6 file module (giờ dùng tên class chuẩn).
+- Cập nhật link liên hệ `m.me/Booking.MinhHuyDev` → `m.me/zminhhuydev` ở
+  `_reactions.py` và `_get_user_info.py`.
+
+### 🔧 Fixed
+
+- Sửa typo `datatFB` → `dataFB` trong tutorial của `_changeNickname.py`.
+
+### 📦 Dependencies
+
+- Không thay đổi.
+
+### ⚠️ Lưu ý nâng cấp từ 2.1.2a
+
+- **Không có breaking change.** Chỉ thêm module mới `_createNotes` — code
+  hiện tại không bị ảnh hưởng.
+- Bản PyPI tương ứng được phát hành dưới tag stable
+  [`fbchat-v2 2.1.4`](https://pypi.org/project/fbchat-v2/2.1.4/).
+
+---
+
 ## [2.1.2a] - 2026-05-13
 
 ### ✨ Added
