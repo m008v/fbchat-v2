@@ -124,6 +124,8 @@ type Mention struct {
 type Message struct {
 	ID          string        `json:"id"`
 	ThreadID    int64         `json:"threadId"`
+	ThreadName  string        `json:"threadName,omitempty"`
+	ThreadType  int           `json:"threadType,omitempty"`
 	SenderID    int64         `json:"senderId"`
 	Text        string        `json:"text"`
 	TimestampMs int64         `json:"timestampMs"`
@@ -255,6 +257,10 @@ func (c *Client) handleEvent(ctx context.Context, evt any) {
 
 // handleTable processes a table from publish response
 func (c *Client) handleTable(tbl *table.LSTable) {
+	for _, thread := range tbl.LSDeleteThenInsertThread {
+		c.cacheThread(convertThread(thread))
+	}
+
 	// Process wrapped messages (includes attachments info)
 	// upsert = sync/backfill messages (should NOT emit events)
 	// insert = new real-time messages (should emit events)
@@ -283,9 +289,12 @@ func (c *Client) handleTable(tbl *table.LSTable) {
 		if handledMsgIds[msg.MessageId] {
 			continue
 		}
+		threadName, threadType := c.threadMeta(msg.ThreadKey)
 		c.emitEvent(EventTypeMessage, &Message{
 			ID:          msg.MessageId,
 			ThreadID:    msg.ThreadKey,
+			ThreadName:  threadName,
+			ThreadType:  threadType,
 			SenderID:    msg.SenderId,
 			Text:        msg.Text,
 			TimestampMs: msg.TimestampMs,
@@ -469,9 +478,12 @@ func (c *Client) convertWrappedMessage(msg *table.WrappedMessage) *Message {
 		}
 	}
 
+	threadName, threadType := c.threadMeta(msg.ThreadKey)
 	m := &Message{
 		ID:          msg.MessageId,
 		ThreadID:    msg.ThreadKey,
+		ThreadName:  threadName,
+		ThreadType:  threadType,
 		SenderID:    msg.SenderId,
 		Text:        msg.Text,
 		TimestampMs: msg.TimestampMs,
@@ -589,6 +601,28 @@ func (c *Client) convertWrappedMessage(msg *table.WrappedMessage) *Message {
 	}
 
 	return m
+}
+
+func (c *Client) cacheThread(thread *Thread) {
+	if thread == nil || thread.ID == 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.threadCache == nil {
+		c.threadCache = make(map[int64]*Thread)
+	}
+	c.threadCache[thread.ID] = thread
+}
+
+func (c *Client) threadMeta(threadID int64) (string, int) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	thread := c.threadCache[threadID]
+	if thread == nil {
+		return "", 0
+	}
+	return thread.Name, thread.Type
 }
 
 // convertBlobAttachment converts a blob attachment to our format

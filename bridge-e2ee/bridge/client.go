@@ -39,6 +39,7 @@ type Client struct {
 	ctx                 context.Context
 	cancel              context.CancelFunc
 	mu                  sync.RWMutex
+	threadCache         map[int64]*Thread
 	recentUnreactions   map[string]int64 // key: messageId+actorId, value: timestamp
 	recentUnreactionsMu sync.RWMutex
 }
@@ -132,6 +133,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		eventChan:         make(chan *Event, 100),
 		ctx:               ctx,
 		cancel:            cancel,
+		threadCache:       make(map[int64]*Thread),
 		recentUnreactions: make(map[string]int64),
 	}
 
@@ -153,9 +155,14 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 // Connect connects to Messenger
 func (c *Client) Connect() (*UserInfo, *InitialData, error) {
 	// Load messages page
-	currentUser, _, err := c.Messagix.LoadMessagesPage(c.ctx)
+	currentUser, initialTable, err := c.Messagix.LoadMessagesPage(c.ctx)
 	if err != nil {
 		return nil, nil, err
+	}
+	if initialTable != nil {
+		for _, thread := range initialTable.LSDeleteThenInsertThread {
+			c.cacheThread(convertThread(thread))
+		}
 	}
 
 	// Extract user info
