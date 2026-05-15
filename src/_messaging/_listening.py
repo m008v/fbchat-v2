@@ -34,11 +34,58 @@ class listeningEvent:
           self.syncToken = None
           self.lastSeqID = None
           self.dataFB = dataFB
-          self.fbt = _all_thread_data.func(dataFB)
+          try:
+               self.fbt = _all_thread_data.func(dataFB)
+          except Exception as err:
+               print(f"[{datetime.datetime.now()}]failed initial thread data fetch: {err}")
+               self.fbt = {}
+
+
+     def _coerce_seq_id(self, value, source="seq_id"):
+          try:
+               seq_id = int(str(value).strip())
+          except (TypeError, ValueError):
+               print(f"[{datetime.datetime.now()}]ignore invalid {source}: {value}")
+               return None
+
+          if seq_id < 0:
+               print(f"[{datetime.datetime.now()}]ignore invalid negative {source}: {seq_id}")
+               return None
+          return seq_id
+
+     def _set_last_seq_id(self, value, source="seq_id", allow_reset=False):
+          seq_id = self._coerce_seq_id(value, source)
+          if seq_id is None:
+               return False
+
+          previous = self._coerce_seq_id(self.lastSeqID, "previous last_seq_id") if self.lastSeqID is not None else None
+          if previous is not None and seq_id < previous and not allow_reset:
+               print(f"[{datetime.datetime.now()}]ignore stale {source}: {seq_id} < {previous}")
+               return False
+
+          self.lastSeqID = seq_id
+          return True
      
      
      def get_last_seq_id(self):
-          self.lastSeqID = self.fbt["last_seq_id"]
+          previousSeqID = self.lastSeqID
+          try:
+               self.fbt = _all_thread_data.func(self.dataFB)
+               nextSeqID = self.fbt.get("last_seq_id")
+               if self._set_last_seq_id(nextSeqID, "graphql sync_sequence_id", allow_reset=True):
+                    pass
+               elif previousSeqID is not None:
+                    print(f"[{datetime.datetime.now()}]last_seq_id unavailable, keep previous: {previousSeqID}")
+                    self.lastSeqID = previousSeqID
+               else:
+                    self.lastSeqID = None
+          except Exception as err:
+               if previousSeqID is not None:
+                    print(f"[{datetime.datetime.now()}]failed refreshing last_seq_id, keep previous: {err}")
+                    self.lastSeqID = previousSeqID
+               else:
+                    print(f"[{datetime.datetime.now()}]failed refreshing last_seq_id: {err}")
+                    self.lastSeqID = None
           print(f"[{datetime.datetime.now()}]last_seq_id: {self.lastSeqID}")
           return 
                
@@ -87,8 +134,18 @@ class listeningEvent:
           
                     
           def _messenger_queue_publish(client: mqtt.Client, userdata, flags, rc):
-               # Gọi get_last_seq_id trước mỗi publish để fresh ID
-               self.get_last_seq_id()
+               # GraphQL sync_sequence_id chỉ dùng để tạo queue mới.
+               # Khi đã có syncToken, lastSeqID phải đi theo MQTT lastIssuedSeqId/firstDeltaSeqId.
+               if self.syncToken is None:
+                    self.get_last_seq_id()
+               elif self.lastSeqID is None:
+                    print("syncToken exists but last_seq_id is missing; recreate Messenger sync queue.")
+                    self.syncToken = None
+                    self.get_last_seq_id()
+               if self.lastSeqID is None:
+                    print("ERR last_seq_id is None; cannot create Messenger sync queue. Refresh Facebook cookie and restart.")
+                    client.disconnect()
+                    return
                
                topics = None
                queue = {
@@ -138,20 +195,51 @@ class listeningEvent:
                                         self.bodyResults["attachments"]["id"] = "Unable to retrieve attachment ID"
                     if "syncToken" in j and "firstDeltaSeqId" in j:
                          self.syncToken = j["syncToken"]
-                         self.lastSeqID = j["firstDeltaSeqId"]
+                         self._set_last_seq_id(j.get("lastIssuedSeqId") or j.get("firstDeltaSeqId"), "mqtt first/last seq_id")
+                         self.retry_count = 0
                          return
                     if "lastIssuedSeqId" in j:
-                         self.lastSeqID = j["lastIssuedSeqId"]
+                         self._set_last_seq_id(j["lastIssuedSeqId"], "mqtt lastIssuedSeqId")
                     if "errorCode" in j:
                          error = j["errorCode"]
                          print(f"ERR {error}")
                          
-                         if error == 100:  # ERROR_QUEUE_OVERFLOW
+                         is_queue_overflow = error == 100 or str(error).upper() == "ERROR_QUEUE_OVERFLOW"
+                         if is_queue_overflow:  # ERROR_QUEUE_OVERFLOW
                               print("Queue overflow - resetting and retrying...")
                               self.syncToken = None
                               self.retry_count += 1
 
                               self.get_last_seq_id()  # Fresh seq ID
+                              if self.lastSeqID is None:
+                                   print("Cannot recover queue: last_seq_id is still None. Refresh Facebook cookie and restart.")
+                                   self.mqtt.disconnect()
+                                   return
+                              if self.retry_count > self.max_retries:
+                                   print("Max queue-overflow retries reached - full reconnect")
+                                   self.retry_count = 0
+                                   self.mqtt.disconnect()
+                                   time.sleep(10)
+                                   self.connect_mqtt()
+                                   return
+
+                              queue = {
+                                   "sync_api_version": 10,
+                                   "max_deltas_able_to_process": 1000,
+                                   "delta_batch_size": 500,
+                                   "encoding": "JSON",
+                                   "entity_fbid": self.dataFB['FacebookID'],
+                                   "initial_titan_sequence_id": self.lastSeqID,
+                                   "device_params": None,
+                                   "orca_version": "1.2.0"
+                              }
+                              print(f"Publishing to /messenger_sync_create_queue with seq_id: {self.lastSeqID}")
+                              client.publish(
+                                   "/messenger_sync_create_queue",
+                                   json_minimal(queue),
+                                   qos=1,
+                                   retain=False,
+                              )
                          else:
                             print("Max retries reached - full reconnect")
                             self.retry_count = 0

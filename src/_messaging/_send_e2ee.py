@@ -180,7 +180,8 @@ class api:
     # ------------------------------------------------------------------
     def send(self, chat_jid: str, contentSend: str,
              replyMessage: str = "",
-             replySenderJid: str = "") -> dict[str, Any]:
+             replySenderJid: str = "",
+             timeout: float = 180.0) -> dict[str, Any]:
         """Gửi 1 tin nhắn E2EE text.
 
         :param chat_jid: JID đích, ví dụ ``"100012345678@s.whatsapp.net"`` (DM)
@@ -211,7 +212,7 @@ class api:
                 "text": self.content,
                 "replyToId": self.replyToId,
                 "replyToSenderJid": self.replyToSenderJid,
-            })
+            }, timeout=timeout)
         except BridgeError as exc:
             self.results = {
                 "error": 1,

@@ -153,7 +153,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 // Connect connects to Messenger
 func (c *Client) Connect() (*UserInfo, *InitialData, error) {
 	// Load messages page
-	currentUser, initialTable, err := c.Messagix.LoadMessagesPage(c.ctx)
+	currentUser, _, err := c.Messagix.LoadMessagesPage(c.ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -171,18 +171,7 @@ func (c *Client) Connect() (*UserInfo, *InitialData, error) {
 		return nil, nil, err
 	}
 
-	// Extract initial data
-	initialData := &InitialData{}
-	if initialTable != nil {
-		for _, t := range initialTable.LSDeleteThenInsertThread {
-			initialData.Threads = append(initialData.Threads, convertThread(t))
-		}
-		for _, m := range initialTable.LSUpsertMessage {
-			initialData.Messages = append(initialData.Messages, convertMessage(m))
-		}
-	}
-
-	return userInfo, initialData, nil
+	return userInfo, nil, nil
 }
 
 // ConnectE2EE sets up and connects the E2EE client

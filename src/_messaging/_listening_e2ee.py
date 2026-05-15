@@ -46,9 +46,6 @@ from typing import Any, Callable, Optional
 
 from _core._session import dataGetHome
 
-from _features._thread import _all_thread_data
-
-
 # ---------------------------------------------------------------------------
 # Binary discovery
 # ---------------------------------------------------------------------------
@@ -257,9 +254,10 @@ class listeningE2EEEvent:
         self.bodyResults = self._fresh_body()
         self.e2eeBodyResults: dict[str, Any] = {"chatJid": None, "senderJid": None}
 
-        # Compat fields
-        self.fbt = _all_thread_data.func(dataFB)
-        self.lastSeqID = self.fbt.get("last_seq_id")
+        # Compat fields. Do not fetch the full inbox/thread list here: it can
+        # block bridge startup for a long time and is not needed by the E2EE RPC listener.
+        self.fbt: dict[str, Any] = {}
+        self.lastSeqID = None
         self.syncToken = None
 
     # ------------------------------------------------------------------

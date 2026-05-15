@@ -1,6 +1,72 @@
 import requests, random, time, json
 from _core._utils import formAll, mainRequests
 
+GRAPHQLBATCH_TIMEOUT = (10, 60)
+GRAPHQLBATCH_RETRIES = 2
+
+
+def _parse_graphqlbatch_response(text):
+    """Facebook GraphQL batch trả nhiều JSON object nối nhau, không nên cắt chuỗi bằng split."""
+    text = (text or "").strip()
+    if text.startswith("for (;;);"):
+        text = text.split("for (;;);", 1)[1].lstrip()
+
+    decoder = json.JSONDecoder()
+    idx = 0
+    objects = []
+    while idx < len(text):
+        while idx < len(text) and text[idx].isspace():
+            idx += 1
+        if idx >= len(text):
+            break
+        obj, end = decoder.raw_decode(text, idx)
+        objects.append(obj)
+        idx = end
+
+    for obj in objects:
+        if isinstance(obj, dict) and "o0" in obj:
+            return obj
+
+    raise ValueError("Không tìm thấy object o0 trong response GraphQL batch.")
+
+
+def _normalize_seq_id(value):
+    try:
+        seq_id = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+    if seq_id < 0:
+        return None
+    return seq_id
+
+
+def _post_graphqlbatch(dataForm, dataFB):
+    request_args = mainRequests(
+        "https://www.facebook.com/api/graphqlbatch/",
+        dataForm,
+        dataFB["cookieFacebook"],
+    )
+    request_args["timeout"] = GRAPHQLBATCH_TIMEOUT
+
+    last_error = None
+    for attempt in range(GRAPHQLBATCH_RETRIES + 1):
+        try:
+            response = requests.post(**request_args)
+            response.raise_for_status()
+            return response
+        except requests.Timeout as err:
+            last_error = err
+            if attempt < GRAPHQLBATCH_RETRIES:
+                continue
+        except requests.RequestException as err:
+            last_error = err
+            if attempt < GRAPHQLBATCH_RETRIES:
+                continue
+            raise
+
+    raise last_error
+
 def func(dataFB): # Lấy dữ liệu những thành phần tin nhắn ở INBOX
      
     randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
@@ -20,16 +86,19 @@ def func(dataFB): # Lấy dữ liệu những thành phần tin nhắn ở INBOX
         }
     })
     
-    sendRequests = requests.post(**mainRequests("https://www.facebook.com/api/graphqlbatch/", dataForm, dataFB["cookieFacebook"]))
-    # return sendRequests.text.split("{\"successful_results\"")[0]
-    dataGet = sendRequests.text.split('{"successful_results"')[0]
+    sendRequests = _post_graphqlbatch(dataForm, dataFB)
+    parsedBatch = _parse_graphqlbatch_response(sendRequests.text)
+    dataGet = json.dumps(parsedBatch, ensure_ascii=False)
     ProcessingTime = sendRequests.elapsed.total_seconds()
-    last_seq_id = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["sync_sequence_id"]
+    message_threads = parsedBatch["o0"]["data"]["viewer"]["message_threads"]
+    last_seq_id = _normalize_seq_id(message_threads.get("sync_sequence_id"))
+    if last_seq_id is None:
+        raise ValueError(f"sync_sequence_id không hợp lệ: {message_threads.get('sync_sequence_id')}")
     try:
         threadIDList = []
         threadNameList = []
         
-        getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
+        getData = message_threads["nodes"]
         # print(getData)
         for getThreadID in getData:
             if (getThreadID["thread_key"]["thread_fbid"] != None):

@@ -16,7 +16,8 @@
 //     {"event": {"type": "<name>", "data": {...}, "timestamp": <ms>}}
 //
 // Methods: newClient, connect, connectE2EE, isConnected, disconnect,
-// sendMessage, sendE2EEMessage.
+// sendMessage, sendReaction, sendE2EEMessage, sendE2EEReaction,
+// sendImage, sendFile, sendE2EESticker, sendE2EEVideo, sendE2EEDocument.
 //
 // Build:
 //     go mod tidy
@@ -52,7 +53,7 @@ type eventEnvelope struct {
 }
 
 var (
-	client *bridge.Client
+	client   *bridge.Client
 	stdoutMu sync.Mutex
 )
 
@@ -108,14 +109,13 @@ func handle(req *request) {
 			fail(req.ID, fmt.Errorf("client not initialised"))
 			return
 		}
-		user, initial, err := client.Connect()
+		user, _, err := client.Connect()
 		if err != nil {
 			fail(req.ID, err)
 			return
 		}
 		ok(req.ID, map[string]interface{}{
-			"user":        user,
-			"initialData": initial,
+			"user": user,
 		})
 
 	case "connectE2EE":
@@ -156,6 +156,60 @@ func handle(req *request) {
 		}
 		ok(req.ID, res)
 
+	case "sendReaction":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			ThreadID  int64  `json:"threadId"`
+			MessageID string `json:"messageId"`
+			Emoji     string `json:"emoji"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		if err := client.SendReaction(p.ThreadID, p.MessageID, p.Emoji); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{})
+
+	case "sendImage":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var opts bridge.SendImageOptions
+		if err := json.Unmarshal(req.Params, &opts); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		res, err := client.SendImage(&opts)
+		if err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, res)
+
+	case "sendFile":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var opts bridge.SendFileOptions
+		if err := json.Unmarshal(req.Params, &opts); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		res, err := client.SendFile(&opts)
+		if err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, res)
+
 	case "sendE2EEMessage":
 		if client == nil {
 			fail(req.ID, fmt.Errorf("client not initialised"))
@@ -178,6 +232,78 @@ func handle(req *request) {
 			E2EEReplyToID:        p.ReplyToID,
 			E2EEReplyToSenderJID: p.ReplyToSenderJID,
 		})
+		if err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, res)
+
+	case "sendE2EEReaction":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			ChatJID   string `json:"chatJid"`
+			MessageID string `json:"messageId"`
+			SenderJID string `json:"senderJid"`
+			Emoji     string `json:"emoji"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		if err := client.SendE2EEReaction(p.ChatJID, p.MessageID, p.SenderJID, p.Emoji); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{})
+
+	case "sendE2EESticker":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var opts bridge.SendE2EEStickerOptions
+		if err := json.Unmarshal(req.Params, &opts); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		res, err := client.SendE2EESticker(&opts)
+		if err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, res)
+
+	case "sendE2EEVideo":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var opts bridge.SendE2EEVideoOptions
+		if err := json.Unmarshal(req.Params, &opts); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		res, err := client.SendE2EEVideo(&opts)
+		if err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, res)
+
+	case "sendE2EEDocument":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var opts bridge.SendE2EEDocumentOptions
+		if err := json.Unmarshal(req.Params, &opts); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		res, err := client.SendE2EEDocument(&opts)
 		if err != nil {
 			fail(req.ID, err)
 			return

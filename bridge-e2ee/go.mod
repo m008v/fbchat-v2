@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/rs/zerolog v1.35.1
 	go.mau.fi/mautrix-meta v0.0.0
-	go.mau.fi/util v0.9.9-0.20260505143909-8e67f0d355e0
+	go.mau.fi/util v0.9.9-0.20260511124621-9241e81bdf25
 	go.mau.fi/whatsmeow v0.0.0-20260416104156-3ff20cd3462a
 	google.golang.org/protobuf v1.36.11
 )
@@ -39,7 +39,7 @@ require (
 	golang.org/x/text v0.36.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	maunium.net/go/mautrix v0.27.1-0.20260507135742-7ec18e08eac3 // indirect
+	maunium.net/go/mautrix v0.27.1-0.20260513120123-5fba7e3afae4 // indirect
 )
 
 // E2EE Messenger requires a forked mautrix-meta. Clone it next to bridge-e2ee:
