@@ -381,16 +381,30 @@ When updating user-facing docs, update **both** `website/index.html` (preferred,
 
 ---
 
-## Roadmap (as of 2026-05)
+## Current release status (as of 2026-05-18)
 
-- [x] **E2EE listener for Secret Conversations** (via Go bridge) — shipped 2026-03-24.
-- [x] **Regular Messenger edit + thread theme helpers** (MQTT LS tasks) — shipped 2026-05-18.
-- [ ] Expose remaining bridge methods (`sendReaction`, `editMessage`, `markRead`, …) in `main.go`.
-- [ ] Auto-respawn `_BridgeProcess` on subprocess crash.
-- [ ] Full `async`/`await` API for the Python side.
-- [ ] Type hints across the entire public API.
-- [ ] Pluggable session storage backend.
-- [ ] Integration tests & CI.
+Use this as orientation only. Do **not** start backlog work unless the user asks
+for that specific item.
+
+### Shipped
+
+- **E2EE listener for Secret Conversations** (via Go bridge) — shipped 2026-03-24.
+- **E2EE sender for Secret Conversations** (via Go bridge) — shipped 2026-05-18.
+- **Messenger Notes** (`_createNotes.py`) — shipped 2026-05-15.
+- **Regular Messenger edit + thread theme helpers** (`_editMessage.py`, `_changeTheme.py`) — shipped 2026-05-18.
+- **PyPI package sync** — `fbchat-v2==2.1.5` published with edit/theme helpers and top-level `editMessage` / `changeTheme` exports.
+
+### Deferred backlog
+
+These are known larger tracks, not unfinished work for ordinary docs/release
+tasks:
+
+- Bridge JSON-RPC surface: expose `sendReaction`, `editMessage`, `unsendMessage`, `sendTyping`, `markRead`, and media download only after checking `bridge-e2ee/bridge/` signatures and adding Python wrapper tests.
+- `_BridgeProcess` resilience: auto-respawn on subprocess crash and replay connection state safely.
+- Native `async` / `await` API for the Python side.
+- Type hints across the public API.
+- Pluggable session storage backend.
+- Integration tests & CI.
 
 ---
 

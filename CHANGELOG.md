@@ -45,9 +45,9 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 - `DOCS.md`: thêm **§8 Editing a sent message** và
   **§10 Changing a thread theme / background**; renumber các mục sau thành
   §11–§16; thêm FAQ cho edit/theme.
-- `CLAUDE.md`: cập nhật cây thư mục, bảng Layer 3, dependencies, roadmap và
-  ghi chú phân biệt `_editMessage.py` thường với `editMessage` của bridge E2EE
-  chưa expose qua JSON-RPC.
+- `CLAUDE.md`: cập nhật cây thư mục, bảng Layer 3, dependencies, trạng thái
+  release/backlog cho agent và ghi chú phân biệt `_editMessage.py` thường với
+  `editMessage` của bridge E2EE chưa expose qua JSON-RPC.
 - `FLOWCHART.md`, `mindmap-mermaid.md`: thêm node `_editMessage.py` và
   `_changeTheme.py`; runtime flow thể hiện LS task publish qua MQTT.
 - `src/_messaging/README.md` + `README_EN.md`: đã có module reference, ví dụ,
