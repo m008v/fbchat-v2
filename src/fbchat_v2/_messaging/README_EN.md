@@ -1,6 +1,6 @@
 # `_messaging` — Messaging Layer
 
-> Every direct Messenger operation: send, realtime listen, upload, react, unsend, message requests.
+> Every direct Messenger operation: send, edit, realtime listen, upload, react, change themes, unsend, message requests.
 
 [![Layer](https://img.shields.io/badge/layer-messaging-EC4899)](.)
 [![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
@@ -17,10 +17,12 @@
 - [The `dataFB` Contract](#-the-datafb-contract)
 - [Module Reference](#-module-reference)
   - [`_send.py`](#sendpy)
+  - [`_editMessage.py`](#editmessagepy)
   - [`_listening.py`](#listeningpy)
   - [`_listening_e2ee.py`](#listening_e2eepy)
   - [`_attachments.py`](#attachmentspy)
   - [`_reactions.py`](#reactionspy)
+  - [`_changeTheme.py`](#changethemepy)
   - [`_unsend.py`](#unsendpy)
   - [`_message_requests.py`](#message_requestspy)
 - [Dependency Map](#-dependency-map)
@@ -34,11 +36,14 @@
 `_messaging` wraps Messenger endpoints into ergonomic Python functions/classes. It does **not** manage session/token concerns (that's `_core`):
 
 - 📤 Send text messages to a user or a thread.
+- ✏️ Edit sent messages through MQTT LS tasks.
 - 📎 Upload attachments for Messenger sending.
 - 📡 Listen to realtime events through **MQTT over WebSocket**.
 - ❤️ Add / remove reactions.
+- 🎨 Change a Messenger thread theme / background.
 - ↩️ Unsend messages.
 - 📥 Fetch **Message Requests** (pending messages).
+- 📝 Manage **Messenger Notes** (24h status-style notes).
 
 ---
 
@@ -50,8 +55,8 @@
 
 | Package | Used by | Notes |
 |---|---|---|
-| `requests` | `_send` · `_attachments` · `_reactions` · `_unsend` · `_message_requests` | HTTP client |
-| `paho-mqtt` | `_listening` | MQTT over WebSocket |
+| `requests` | `_send` · `_attachments` · `_reactions` · `_unsend` · `_message_requests` · `_createNotes` · `_changeTheme` | HTTP client |
+| `paho-mqtt` | `_listening` · `_editMessage` · `_changeTheme` | MQTT over WebSocket / LS task |
 | `attrs` | `_listening` | Decorator class |
 
 Quick install if you only want `_messaging`:
@@ -96,11 +101,15 @@ Full setup walkthrough (clone, venv, Go toolchain, smoke test): see [the root RE
 src/_messaging/
 ├── __init__.py
 ├── _attachments.py        # Upload file → attachmentID
+├── _changeTheme.py        # Change Messenger thread theme / background
+├── _createNotes.py        # Messenger Notes (24h status): check/create/delete/recreate
+├── _editMessage.py        # Edit sent messages through MQTT LS task
 ├── _listening.py          # MQTT realtime listener (group messages)
 ├── _listening_e2ee.py     # Go bridge — E2EE listener (1-on-1 messages)
 ├── _message_requests.py   # Pending messages
 ├── _reactions.py          # Add / remove reactions
 ├── _send.py               # Send messages (HTTP)
+├── _send_e2ee.py          # Go bridge — E2EE sender (1-on-1 Secret Conversations)
 ├── _unsend.py             # Unsend messages
 ├── README.md
 └── README_EN.md           # ← you are here
@@ -113,8 +122,9 @@ src/_messaging/
 ```python
 # src/_messaging/__init__.py
 __all__ = [
-    "_attachments", "_listening", "_reactions",
-    "_send", "_unsend", "_message_requests",
+    "_attachments", "_changeTheme", "_createNotes", "_editMessage",
+    "_listening", "_listening_e2ee", "_reactions", "_send",
+    "_send_e2ee", "_unsend", "_message_requests",
 ]
 ```
 
@@ -168,6 +178,31 @@ api().send(
 - ❌ `{ "error": 1, "payload": { "error-decription": ..., "error-code": ... } }`
 
 > 📝 The module auto-generates `offline_threading_id`, `message_id`, `threading_id`. Responses from `/messaging/send/` carry a `for (;;);` prefix — already stripped.
+
+---
+
+### `_editMessage.py`
+
+Edit a sent message by publishing an MQTT LS task with
+`queue_name="edit_message"`.
+
+```python
+from fbchat_v2 import editMessage
+
+editMessage.editMessage(dataFB, messageID="mid.$abc...", newText="Edited content")
+editMessage.func(dataFB, "mid.$abc...", "Edited content")
+```
+
+| Function | Description |
+|---|---|
+| `editMessage(dataFB, messageID, newText, timeout=20)` | Publishes the LS task that edits a message. |
+| `func(dataFB, messageID, newText, timeout=20)` | Alias matching the fbchat-v2 module style. |
+
+- ✅ `{ "success": 1, "messages": "...", "data": {...} }`
+- ❌ `{ "error": 1, "messages": "...", "payload": {...} }`
+
+> Success means the LS task was published to `/ls_req`; Messenger can still
+> reject old messages or messages the current account does not own.
 
 ---
 
@@ -267,6 +302,29 @@ Add / remove a reaction on a message.
 
 ---
 
+### `_changeTheme.py`
+
+List Messenger themes and change a thread theme / background through GraphQL +
+MQTT LS tasks.
+
+```python
+from fbchat_v2 import changeTheme
+
+changeTheme.listThemes(dataFB)
+changeTheme.findTheme(dataFB, "love")
+changeTheme.changeTheme(dataFB, threadID="1234567890", themeName="love")
+changeTheme.func(dataFB, action="list")
+```
+
+| Function | Description |
+|---|---|
+| `listThemes(dataFB)` | Fetches available themes via `MWPThreadThemeQuery_AllThemesQuery`. |
+| `findTheme(dataFB, themeName)` | Matches by ID, exact label, or partial keyword. |
+| `changeTheme(dataFB, threadID, themeName, initiatorID=None, timeout=20)` | Publishes 4 LS tasks that update the thread theme. |
+| `func(dataFB, threadID=None, themeName=None, action="set", **kwargs)` | Unified entry point: `list` / `find` / `set`. |
+
+---
+
 ### `_unsend.py`
 
 ```python
@@ -348,6 +406,23 @@ resp = func(dataFB, "add", "mid.$abc...", "👍")
 print(resp.status_code, resp.text)
 ```
 
+### Edit a sent message
+
+```python
+from fbchat_v2 import editMessage
+
+print(editMessage.editMessage(dataFB, "mid.$abc...", "Edited content"))
+```
+
+### Change a thread theme / background
+
+```python
+from fbchat_v2 import changeTheme
+
+print(changeTheme.func(dataFB, action="list"))
+print(changeTheme.changeTheme(dataFB, "1234567890", "love"))
+```
+
 ### Unsend a message
 
 ```python
@@ -398,6 +473,7 @@ threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 |---|---|
 | Sending fails | Check cookies & `dataFB`; verify `threadID`/`userID`; ensure `typeAttachment` matches the uploaded file. |
 | Upload fails | Verify path exists & is readable; inspect upload response (Facebook may rename keys). |
+| `editMessage` / `changeTheme` times out while publishing | Check the cookie, WebSocket access to `edge-chat.facebook.com`, and your permission in the thread. |
 | Listener disconnects / receives no events | Run in a dedicated thread (`loop_forever()` is blocking); inspect MQTT `errorCode`; mind `errorCode == 100` (queue overflow). |
 | JSON parse errors | Strip the `for (;;);` prefix before `json.loads`. |
 | `FileNotFoundError` from `_listening_e2ee` | Build the `fbchat-bridge-e2ee` binary (see `bridge-e2ee/README.md`) or set the `FBCHAT_E2EE_BIN` env var. |

@@ -36,7 +36,9 @@ Since November 2024, all 1-on-1 Messenger chats are End-to-End Encrypted by defa
 - 🔒 **E2EE listener** for 1-on-1 Messenger chats (Secret Conversations / Labyrinth) via Go bridge
 - 📤 Send text, **attachments**, **stickers**, **user mentions**
 - 🔍 Search messages and threads
-- ↩️ Reactions, unsend, message-request handling
+- ✏️ Edit sent messages, reactions, unsend, message-request handling
+- 🎨 Change Messenger thread themes / backgrounds
+- 📝 Messenger Notes (24h status): check / create / delete / recreate
 - 📡 Real-time event listener
 
 ### Threads & Groups
@@ -334,13 +336,72 @@ Case-insensitive, normalised at request time:
 
 ---
 
+### Edit messages and thread themes *(new in 2.1.5)*
+
+`editMessage` and `changeTheme` expose Messenger's Lightspeed task flows from
+Python. Both helpers use the same `dataFB` session object returned by
+`dataGetHome(...)`.
+
+```python
+from fbchat_v2 import dataGetHome, editMessage, changeTheme
+
+dataFB = dataGetHome(COOKIE)
+
+# Edit a sent message (usually only messages sent by the current account)
+print(editMessage.editMessage(dataFB, "mid.$abc...", "Edited content"))
+
+# List available Messenger themes
+themes = changeTheme.listThemes(dataFB)
+print(themes["total_count"])
+
+# Match by theme id, exact label, or partial keyword and change a thread theme
+print(changeTheme.findTheme(dataFB, "love"))
+print(changeTheme.changeTheme(dataFB, "1234567890", "love"))
+
+# Unified dispatcher
+changeTheme.func(dataFB, action="list")
+changeTheme.func(dataFB, "1234567890", "default")
+```
+
+#### `editMessage` reference
+
+| Function | Purpose |
+|---|---|
+| `editMessage.editMessage(dataFB, messageID, newText, timeout=20)` | Publishes the MQTT LS task `queue_name="edit_message"`. |
+| `editMessage.func(dataFB, messageID, newText, timeout=20)` | Alias to `editMessage(...)`. |
+
+#### `changeTheme` reference
+
+| Function | Purpose |
+|---|---|
+| `changeTheme.listThemes(dataFB)` | Fetches themes through GraphQL `MWPThreadThemeQuery_AllThemesQuery`. |
+| `changeTheme.findTheme(dataFB, themeName)` | Finds a theme by ID, exact label, or partial keyword. |
+| `changeTheme.changeTheme(dataFB, threadID, themeName, initiatorID=None, timeout=20)` | Publishes the LS theme-update tasks for a thread. |
+| `changeTheme.func(dataFB, threadID=None, themeName=None, action="set", **kwargs)` | Dispatcher for `list`, `find`, and `set`. |
+
+#### Return shape
+
+```python
+# success
+{'success': 1, 'messages': '...', 'data': {...}}
+
+# failure
+{'error': 1, 'messages': '...', 'payload'|'details'|'raw': ...}
+```
+
+> These modules report that the LS task was published successfully. Messenger
+> can still reject an edit/theme change server-side if the account lacks
+> permission, the message is too old, or the thread disallows the operation.
+
+---
+
 ## 📂 Package Layout
 
 Installed Python package (importable as `fbchat_v2`):
 
 ```text
 fbchat_v2/
-├── __init__.py                 # Re-exports: dataGetHome, listeningEvent, listeningE2EEEvent
+├── __init__.py                 # Re-exports: dataGetHome, listeners, E2EE sender, edit/theme/notes helpers
 ├── py.typed                    # PEP 561 marker
 ├── _core/                      # Session, login, low-level helpers
 │   ├── _facebookLogin.py
@@ -365,7 +426,9 @@ fbchat_v2/
 │       └── _changeNickname.py
 └── _messaging/
     ├── _attachments.py
+    ├── _changeTheme.py         # Thread theme/background changes (new in 2.1.5)
     ├── _createNotes.py         # Messenger Notes — 24h status (new in 2.1.4)
+    ├── _editMessage.py         # Edit sent messages via MQTT LS task (new in 2.1.5)
     ├── _listening.py           # MQTT — group messages
     ├── _listening_e2ee.py      # Go bridge — 1-on-1 E2EE listener
     ├── _message_requests.py
@@ -385,6 +448,8 @@ The top-level `fbchat_v2` namespace re-exports the most common entry points:
 | `listeningEvent` | `fbchat_v2._messaging._listening` | MQTT listener for **group** messages |
 | `listeningE2EEEvent` | `fbchat_v2._messaging._listening_e2ee` | E2EE listener for **1-on-1** messages |
 | `sendingE2EEEvent` | `fbchat_v2._messaging._send_e2ee` | E2EE **sender** for 1-on-1 messages *(new in 2.1.3)* |
+| `editMessage` | `fbchat_v2._messaging._editMessage` | Edit sent Messenger messages via MQTT LS task *(new in 2.1.5)* |
+| `changeTheme` | `fbchat_v2._messaging._changeTheme` | List/change Messenger thread themes/backgrounds *(new in 2.1.5)* |
 | `createNotes` | `fbchat_v2._messaging._createNotes` | Messenger Notes — 24h status (`checkNote` / `createNote` / `deleteNote` / `recreateNote` / `func`) *(new in 2.1.4)* |
 | `__version__` | `fbchat_v2` | Package version string |
 
@@ -420,7 +485,7 @@ pyotp      >= 2.9.0    # 2FA TOTP for username/password login
 flowchart LR
     A[Your bot / app] --> B[fbchat_v2._core<br/>session • login • utils]
     B --> C[fbchat_v2._features<br/>facebook • thread]
-    B --> D[fbchat_v2._messaging<br/>send • listen • reactions]
+    B --> D[fbchat_v2._messaging<br/>send • edit • theme • notes • listen]
     D -.spawns.-> E[fbchat-bridge-e2ee<br/><i>Go subprocess, optional</i>]
     C --> F[(Facebook<br/>internal endpoints)]
     D --> F
@@ -433,7 +498,7 @@ Three clear layers:
 |---|---|---|
 | **Core** | `fbchat_v2._core` | Session management, login, request helpers, low-level utilities |
 | **Features** | `fbchat_v2._features` | Facebook & thread business logic (posts, groups, profile, …) |
-| **Messaging** | `fbchat_v2._messaging` | Send / receive / react / listen / unsend |
+| **Messaging** | `fbchat_v2._messaging` | Send / edit / theme / notes / receive / react / listen / unsend |
 
 Full request flow diagrams live in [FLOWCHART.md](https://github.com/MinhHuyDev/fbchat-v2/blob/main/FLOWCHART.md).
 
@@ -442,6 +507,9 @@ Full request flow diagrams live in [FLOWCHART.md](https://github.com/MinhHuyDev/
 ## 🗺 Roadmap
 
 - [x] E2EE decryption for 1-on-1 Messenger chats *(v2.1.0 — Go bridge)*
+- [x] E2EE sending for 1-on-1 Messenger chats *(v2.1.3 — Go bridge)*
+- [x] Messenger Notes CRUD *(v2.1.4)*
+- [x] Edit sent messages + thread theme changes *(v2.1.5)*
 - [ ] Native `async` / `await` API
 - [ ] Prebuilt bridge binaries published on GitHub Releases (auto-download)
 - [ ] Full type hints across the public API

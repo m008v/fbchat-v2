@@ -1,6 +1,6 @@
 # `_messaging` — Tầng nhắn tin
 
-> Mọi thao tác Messenger trực tiếp: gửi, nhận realtime, upload tệp, react, thu hồi, message requests.
+> Mọi thao tác Messenger trực tiếp: gửi, sửa, nhận realtime, upload tệp, react, đổi theme, thu hồi, message requests.
 
 [![Layer](https://img.shields.io/badge/layer-messaging-EC4899)](.)
 [![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
@@ -17,10 +17,12 @@
 - [Hợp đồng `dataFB`](#-hợp-đồng-datafb)
 - [Tham chiếu module](#-tham-chiếu-module)
   - [`_send.py`](#sendpy)
+  - [`_editMessage.py`](#editmessagepy)
   - [`_listening.py`](#listeningpy)
   - [`_listening_e2ee.py`](#listening_e2eepy)
   - [`_attachments.py`](#attachmentspy)
   - [`_reactions.py`](#reactionspy)
+  - [`_changeTheme.py`](#changethemepy)
   - [`_unsend.py`](#unsendpy)
   - [`_message_requests.py`](#message_requestspy)
 - [Sơ đồ phụ thuộc](#-sơ-đồ-phụ-thuộc)
@@ -34,11 +36,14 @@
 `_messaging` đóng gói các endpoint Messenger thành hàm/class Python dễ dùng. Tầng này **không** xử lý session/token (đã có `_core`):
 
 - 📤 Gửi tin văn bản tới user hoặc thread.
+- ✏️ Sửa tin nhắn đã gửi qua MQTT LS task.
 - 📎 Upload tệp đính kèm để gửi qua Messenger.
 - 📡 Lắng nghe sự kiện realtime qua **MQTT over WebSocket**.
 - ❤️ Thêm / xoá reaction.
+- 🎨 Đổi theme / nền của thread Messenger.
 - ↩️ Thu hồi tin nhắn đã gửi.
 - 📥 Lấy danh sách **Message Requests** (tin nhắn chờ).
+- 📝 Quản lý **Messenger Notes** (note 24h dạng status).
 
 ---
 
@@ -50,8 +55,8 @@
 
 | Package | Dùng cho | Ghi chú |
 |---|---|---|
-| `requests` | `_send` · `_attachments` · `_reactions` · `_unsend` · `_message_requests` | HTTP client |
-| `paho-mqtt` | `_listening` | MQTT over WebSocket |
+| `requests` | `_send` · `_attachments` · `_reactions` · `_unsend` · `_message_requests` · `_createNotes` · `_changeTheme` | HTTP client |
+| `paho-mqtt` | `_listening` · `_editMessage` · `_changeTheme` | MQTT over WebSocket / LS task |
 | `attrs` | `_listening` | Decorator class |
 
 Cài nhanh nếu chỉ muốn dùng riêng `_messaging`:
@@ -96,7 +101,9 @@ Hướng dẫn cài đặt đầy đủ (clone, venv, Go toolchain, smoke test):
 src/_messaging/
 ├── __init__.py
 ├── _attachments.py        # Upload tệp → attachmentID
+├── _changeTheme.py        # Đổi theme / nền thread Messenger
 ├── _createNotes.py        # Messenger Notes (24h status): check/create/delete/recreate
+├── _editMessage.py        # Sửa tin nhắn đã gửi qua MQTT LS task
 ├── _listening.py          # MQTT realtime listener (tin nhắn nhóm)
 ├── _listening_e2ee.py     # Bridge Go — listener E2EE (tin nhắn 1-1)
 ├── _message_requests.py   # Tin nhắn chờ
@@ -115,8 +122,9 @@ src/_messaging/
 ```python
 # src/_messaging/__init__.py
 __all__ = [
-    "_attachments", "_listening", "_listening_e2ee", "_reactions",
-    "_send", "_send_e2ee", "_unsend", "_message_requests", "_createNotes",
+    "_attachments", "_changeTheme", "_createNotes", "_editMessage",
+    "_listening", "_listening_e2ee", "_reactions", "_send",
+    "_send_e2ee", "_unsend", "_message_requests",
 ]
 ```
 
@@ -170,6 +178,30 @@ api().send(
 - ❌ `{ "error": 1, "payload": { "error-decription": ..., "error-code": ... } }`
 
 > 📝 Module tự sinh `offline_threading_id`, `message_id`, `threading_id`. Response `/messaging/send/` có tiền tố `for (;;);` — đã được tách sẵn.
+
+---
+
+### `_editMessage.py`
+
+Sửa nội dung tin nhắn đã gửi bằng MQTT LS task `queue_name="edit_message"`.
+
+```python
+from fbchat_v2 import editMessage
+
+editMessage.editMessage(dataFB, messageID="mid.$abc...", newText="Nội dung mới")
+editMessage.func(dataFB, "mid.$abc...", "Nội dung mới")
+```
+
+| Hàm | Mô tả |
+|---|---|
+| `editMessage(dataFB, messageID, newText, timeout=20)` | Publish LS task sửa tin nhắn. |
+| `func(dataFB, messageID, newText, timeout=20)` | Alias theo style module fbchat-v2. |
+
+- ✅ `{ "success": 1, "messages": "...", "data": {...} }`
+- ❌ `{ "error": 1, "messages": "...", "payload": {...} }`
+
+> Success nghĩa là task đã publish lên `/ls_req`; Messenger vẫn có thể từ chối
+> nếu message quá cũ hoặc tài khoản hiện tại không có quyền sửa.
 
 ---
 
@@ -269,6 +301,29 @@ Thêm / xoá reaction trên tin nhắn.
 
 ---
 
+### `_changeTheme.py`
+
+Lấy danh sách theme Messenger và đổi theme / nền của một thread bằng GraphQL +
+MQTT LS tasks.
+
+```python
+from fbchat_v2 import changeTheme
+
+changeTheme.listThemes(dataFB)
+changeTheme.findTheme(dataFB, "love")
+changeTheme.changeTheme(dataFB, threadID="1234567890", themeName="love")
+changeTheme.func(dataFB, action="list")
+```
+
+| Hàm | Mô tả |
+|---|---|
+| `listThemes(dataFB)` | Lấy danh sách theme qua `MWPThreadThemeQuery_AllThemesQuery`. |
+| `findTheme(dataFB, themeName)` | Match theo ID, tên chính xác, hoặc keyword. |
+| `changeTheme(dataFB, threadID, themeName, initiatorID=None, timeout=20)` | Publish 4 LS task đổi theme cho thread. |
+| `func(dataFB, threadID=None, themeName=None, action="set", **kwargs)` | Entry point chung: `list` / `find` / `set`. |
+
+---
+
 ### `_unsend.py`
 
 ```python
@@ -350,6 +405,23 @@ resp = func(dataFB, "add", "mid.$abc...", "👍")
 print(resp.status_code, resp.text)
 ```
 
+### Sửa tin nhắn đã gửi
+
+```python
+from fbchat_v2 import editMessage
+
+print(editMessage.editMessage(dataFB, "mid.$abc...", "Nội dung mới"))
+```
+
+### Đổi theme / nền thread
+
+```python
+from fbchat_v2 import changeTheme
+
+print(changeTheme.func(dataFB, action="list"))
+print(changeTheme.changeTheme(dataFB, "1234567890", "love"))
+```
+
 ### Thu hồi tin nhắn
 
 ```python
@@ -400,6 +472,7 @@ threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 |---|---|
 | Gửi tin nhắn thất bại | Kiểm tra cookie & `dataFB` còn hợp lệ; verify `threadID`/`userID`; `typeAttachment` khớp với file đã upload. |
 | Upload tệp lỗi | Verify đường dẫn tồn tại + quyền đọc; kiểm tra metadata response (Facebook có thể đổi key). |
+| `editMessage` / `changeTheme` timeout khi publish | Kiểm tra cookie còn sống, mạng WebSocket tới `edge-chat.facebook.com`, và quyền thao tác trong thread. |
 | Listener tự ngắt / không nhận event | Chạy trong thread riêng (`loop_forever()` blocking); theo dõi `errorCode` trong MQTT payload; quan tâm `errorCode == 100` (queue overflow). |
 | Lỗi parse JSON | Loại tiền tố `for (;;);` trước `json.loads`. |
 | `FileNotFoundError` ở `_listening_e2ee` | Build binary `fbchat-bridge-e2ee` (xem `bridge-e2ee/README.md`) hoặc set env `FBCHAT_E2EE_BIN`. |

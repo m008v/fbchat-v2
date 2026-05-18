@@ -6,6 +6,62 @@ Tất cả thay đổi đáng chú ý của `fbchat-v2` sẽ được ghi lại 
 phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
+## [2.1.5] — 2026-05-18
+
+### ✨ Added
+
+- **`_messaging/_editMessage.py`** — module mới cho phép **sửa tin nhắn đã gửi**
+  bằng MQTT Lightspeed task `queue_name="edit_message"` publish lên `/ls_req`.
+  - API chính: `editMessage(dataFB, messageID, newText, timeout=20)`.
+  - Alias theo style fbchat-v2: `func(dataFB, messageID, newText, timeout=20)`.
+  - Tự mở kết nối MQTT WebSocket ngắn hạn tới `edge-chat.facebook.com`, publish
+    task rồi đóng client.
+  - Schema return: ✅ `{"success": 1, "messages": "...", "data": {...}}`
+    / ❌ `{"error": 1, "messages": "...", "payload": {...}}`.
+
+- **`_messaging/_changeTheme.py`** — module mới để **lấy danh sách theme và đổi
+  nền / theme thread Messenger**.
+  - `listThemes(dataFB)` gọi GraphQL
+    `MWPThreadThemeQuery_AllThemesQuery` (`doc_id=24474714052117636`).
+  - `findTheme(dataFB, themeName)` match theo theme ID, tên chính xác, hoặc
+    keyword không phân biệt hoa thường.
+  - `changeTheme(dataFB, threadID, themeName, initiatorID=None, timeout=20)`
+    publish 4 LS queues: `ai_generated_theme`, `msgr_custom_thread_theme`,
+    `thread_theme_writer`, `thread_theme`.
+  - `func(dataFB, threadID=None, themeName=None, action="set", **kwargs)` hỗ trợ
+    `action="list"`, `action="find"`, và set theme mặc định.
+
+- **`fbchat_v2.__init__`**: re-export `editMessage` và `changeTheme` ở top-level
+  (`from fbchat_v2 import editMessage, changeTheme`).
+
+### 📝 Documentation
+
+- README PyPI: thêm section **"Edit messages and thread themes"** với ví dụ,
+  bảng function reference, return shape và lưu ý quyền thao tác server-side.
+- README PyPI: cập nhật feature list, cây thư mục `_messaging/`, bảng Public API,
+  Architecture và Roadmap.
+- Sub-README `_messaging/` VI/EN: cập nhật tree, `__all__`, dependency map,
+  module reference, ví dụ và troubleshooting cho `editMessage` / `changeTheme`.
+
+### 🛠 Changed
+
+- Bump `__version__` → `2.1.5`.
+- `pyproject.toml` → `version = "2.1.5"`.
+- `_messaging/__init__.py`: `__all__` thêm `_editMessage`, `_changeTheme`.
+
+### 📦 Dependencies
+
+- Không thay đổi. Hai module mới dùng lại `requests` và `paho-mqtt` đã có sẵn.
+
+### ⚠️ Lưu ý nâng cấp
+
+```bash
+pip install --upgrade fbchat-v2
+```
+
+Không có breaking change so với 2.1.4; mọi import cũ vẫn hoạt động bình thường.
+
+---
 ## [2.1.4] — 2026-05-15
 
 ### ✨ Added
