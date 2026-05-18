@@ -21,13 +21,15 @@
    - [6.1 Plain messages — `_send.api`](#61-plain-messages--_sendapi)
    - [6.2 E2EE messages — `_send_e2ee.api`](#62-e2ee-messages--_send_e2eeapi)
 7. [Attachments — upload & send](#7-attachments--upload--send)
-8. [Reactions](#8-reactions)
-9. [Unsending a message](#9-unsending-a-message)
-10. [Messenger Notes (24h status)](#10-messenger-notes-24h-status)
-11. [Building the E2EE Go bridge](#11-building-the-e2ee-go-bridge)
-12. [Reference: the `dataFB` dictionary](#12-reference-the-datafb-dictionary)
-13. [FAQ](#13-faq)
-14. [Author's note](#14-authors-note)
+8. [Editing a sent message](#8-editing-a-sent-message)
+9. [Reactions](#9-reactions)
+10. [Changing a thread theme / background](#10-changing-a-thread-theme--background)
+11. [Unsending a message](#11-unsending-a-message)
+12. [Messenger Notes (24h status)](#12-messenger-notes-24h-status)
+13. [Building the E2EE Go bridge](#13-building-the-e2ee-go-bridge)
+14. [Reference: the `dataFB` dictionary](#14-reference-the-datafb-dictionary)
+15. [FAQ](#15-faq)
+16. [Author's note](#16-authors-note)
 
 ---
 
@@ -59,11 +61,13 @@ fbchat-v2/
 │   ├── _features/                    # Layer 2 — actions on FB & threads
 │   │   ├── _facebook/                # post, bio, search, blocking, …
 │   │   └── _thread/                  # admin, nickname, emoji, all-thread-data
-│   └── _messaging/                   # Layer 3 — send / listen / react
+│   └── _messaging/                   # Layer 3 — send / edit / theme / listen / react
 │       ├── _send.py                  # class api  (plain)
 │       ├── _send_e2ee.py             # class api  (E2EE)
 │       ├── _attachments.py
-│       ├── _createNotes.py        # Messenger Notes (24h status)
+│       ├── _changeTheme.py           # change Messenger thread theme/background
+│       ├── _createNotes.py           # Messenger Notes (24h status)
+│       ├── _editMessage.py           # edit sent messages through MQTT LS task
 │       ├── _reactions.py
 │       ├── _message_requests.py
 │       ├── _unsend.py
@@ -90,7 +94,7 @@ main.py → _core → _features  ↘
 pip install fbchat-v2
 ```
 
-This pulls `requests`, `paho-mqtt`, `attrs`, `pyotp`. The MQTT group-chat listener works out of the box. **For E2EE 1-on-1 chats** you must also build the Go bridge — see [§10](#10-building-the-e2ee-go-bridge).
+This pulls `requests`, `paho-mqtt`, `attrs`, `pyotp`. The MQTT group-chat listener works out of the box. **For E2EE 1-on-1 chats** you must also build the Go bridge — see [§13](#13-building-the-e2ee-go-bridge).
 
 ### From source
 
@@ -379,7 +383,54 @@ E2EE media (`SendE2EEImage`, `SendE2EEVideo`, `SendE2EEAudio`) is implemented in
 
 ---
 
-## 8. Reactions
+## 8. Editing a sent message
+
+[`_messaging/_editMessage.py`](src/_messaging/_editMessage.py) edits a sent
+Messenger message by publishing a Lightspeed/MQTT task to `/ls_req` with
+`queue_name="edit_message"`.
+
+```python
+from _messaging import _editMessage
+
+result = _editMessage.editMessage(
+        dataFB,
+        messageID="mid.$cAABa-wot0daSn4Obo2Mbj5L5njhO",
+        newText="Edited content",
+)
+print(result)
+
+# Alias following the fbchat-v2 module convention:
+_editMessage.func(dataFB, "mid.$...", "Edited content")
+```
+
+**Function reference:**
+
+| Function | Purpose |
+|---|---|
+| `editMessage(dataFB, messageID, newText, timeout=20)` | Publishes the LS task that edits a message. |
+| `func(dataFB, messageID, newText, timeout=20)` | Alias to `editMessage(...)`. |
+
+**Return shape:**
+
+```python
+# success: LS task was published
+{'success': 1, 'messages': '...', 'data': {'messageID': 'mid.$...', 'text': '...'}}
+
+# failure: MQTT connect/publish failed, timed out, or input was invalid
+{'error': 1, 'messages': '...', 'payload': {...}}
+```
+
+**Important behavior:**
+
+- Facebook usually only lets you edit messages sent by the current account.
+- A success response means the task was published to `/ls_req`; Messenger can
+    still reject the edit server-side if the message is too old or not editable.
+- The helper opens a short-lived MQTT WebSocket connection to
+    `edge-chat.facebook.com`, publishes the task, then closes it.
+
+---
+
+## 9. Reactions
 
 ```python
 from _messaging import _reactions
@@ -394,7 +445,61 @@ For E2EE reactions, the Go bridge exposes `SendE2EEReaction` but the Python wrap
 
 ---
 
-## 9. Unsending a message
+## 10. Changing a thread theme / background
+
+[`_messaging/_changeTheme.py`](src/_messaging/_changeTheme.py) lists Messenger
+themes through GraphQL, then changes a thread theme/background by publishing
+the same set of LS tasks used by the Messenger web client.
+
+```python
+from _messaging import _changeTheme
+
+# List available Messenger themes
+themes = _changeTheme.listThemes(dataFB)
+print(themes["total_count"])
+
+# Match by theme id, exact name, or partial keyword
+print(_changeTheme.findTheme(dataFB, "love"))
+
+# Change a group/thread theme
+print(_changeTheme.changeTheme(dataFB, threadID="4805171782880318", themeName="love"))
+
+# Unified entry point
+_changeTheme.func(dataFB, action="list")
+_changeTheme.func(dataFB, "4805171782880318", "default")
+```
+
+**Function reference:**
+
+| Function | Purpose |
+|---|---|
+| `listThemes(dataFB)` | Fetches available themes via `MWPThreadThemeQuery_AllThemesQuery`. |
+| `findTheme(dataFB, themeName)` | Matches by ID, exact label, or partial case-insensitive keyword. |
+| `changeTheme(dataFB, threadID, themeName, initiatorID=None, timeout=20)` | Publishes the LS tasks that update the thread theme. |
+| `func(dataFB, threadID=None, themeName=None, action="set", **kwargs)` | Dispatcher for `list`, `find`, and `set`. |
+
+**Return shape:**
+
+```python
+# success
+{'success': 1, 'messages': '...', 'data': {'threadID': '...', 'themeID': '...', 'themeName': '...'}}
+
+# failure
+{'error': 1, 'messages': '...', 'details'|'payload'|'raw': ...}
+```
+
+**Internals worth knowing:**
+
+- `listThemes` calls GraphQL `doc_id=24474714052117636` with
+    `friendly_name="MWPThreadThemeQuery_AllThemesQuery"`.
+- `changeTheme` publishes four LS queues: `ai_generated_theme`,
+    `msgr_custom_thread_theme`, `thread_theme_writer`, and `thread_theme`.
+- Like `_editMessage.py`, success means the LS tasks were published; Messenger
+    can still reject the change if the account lacks permission in that thread.
+
+---
+
+## 11. Unsending a message
 
 ```python
 from _messaging import _unsend
@@ -406,7 +511,7 @@ print(_unsend.func(messageID, dataFB))
 
 ---
 
-## 10. Messenger Notes (24h status)
+## 12. Messenger Notes (24h status)
 
 Messenger Notes are the short status-style entries shown at the top of the
 inbox; they auto-expire after 24 hours. fbchat-v2 ≥ 2.1.4 ships
@@ -485,7 +590,7 @@ _createNotes.func(dataFB, action="recreate", oldNoteID="<id>", newText="...")
 ---
 
 
-## 11. Building the E2EE Go bridge
+## 13. Building the E2EE Go bridge
 
 Required only if you intend to use `listeningE2EEEvent` or `_send_e2ee.api`.
 
@@ -509,7 +614,7 @@ $env:FBCHAT_E2EE_BIN = "D:\bin\fbchat-bridge-e2ee.exe"
 
 ---
 
-## 12. Reference: the `dataFB` dictionary
+## 14. Reference: the `dataFB` dictionary
 
 `dataGetHome(setCookies)` returns this dict, which is the **first argument to almost every function** in the codebase:
 
@@ -528,7 +633,7 @@ Treat it as opaque state — don't mutate keys.
 
 ---
 
-## 13. FAQ
+## 15. FAQ
 
 ### General
 
@@ -558,7 +663,7 @@ Yes. The seq ID is what tells Messenger where to resume the inbox feed.
 ### E2EE listener / sender
 
 **Q: `BridgeError: bridge binary not found`.**
-Build it ([§10](#10-building-the-e2ee-go-bridge)) or set `FBCHAT_E2EE_BIN`.
+Build it ([§13](#13-building-the-e2ee-go-bridge)) or set `FBCHAT_E2EE_BIN`.
 
 **Q: `*DeviceStore does not implement EventBuffer (missing method AddOutgoingEvent)` when I `go build`.**
 You picked up a newer `whatsmeow` that extended the interface. Add three no-op stubs (`GetOutgoingEvent`, `AddOutgoingEvent`, `DeleteOldOutgoingEvents`) to `bridge-e2ee/bridge/store.go`, or pin `whatsmeow` in `go.mod`.
@@ -588,6 +693,21 @@ Either the file path is wrong or Facebook rejected the upload (size limit, conte
 
 **Q: I uploaded an image and sent it as `typeAttachment="file"`. Now Messenger shows a broken icon.**
 Always match `typeAttachment` to the actual extension — see [§7](#7-attachments--upload--send).
+
+### Edit message & thread themes
+
+**Q: `_editMessage.editMessage(...)` returns success but the message did not change.**
+The wrapper reports that the LS task was published to `/ls_req`. Messenger can
+still reject the edit if the message is too old, not sent by the current
+account, or the conversation no longer allows edits.
+
+**Q: `_changeTheme.changeTheme(...)` times out while publishing.**
+Check that the cookie is still valid, the machine can open WebSocket traffic to
+`edge-chat.facebook.com`, and the account has permission to change the thread.
+
+**Q: How do I know which `themeName` to pass?**
+Call `listThemes(dataFB)` first. `changeTheme` accepts the theme ID, exact
+theme label, or a partial case-insensitive keyword.
 
 ### Messenger Notes
 
@@ -624,14 +744,14 @@ Either `set PYTHONPATH=src` first, or `pip install fbchat-v2` and use `from fbch
 
 **Q: Where do I add a new feature?**
 - Pure HTTP action against a Facebook endpoint → `src/_features/_facebook/` or `src/_features/_thread/`.
-- Send / receive / react / upload → `src/_messaging/`.
+- Send / receive / react / upload / edit / theme → `src/_messaging/`.
 - Session / login / low-level → `src/_core/`.
 
 Each new module should expose a single `def func(dataFB, ...)` (or a `class api` with a single verb method) and return either `{"success": 1, "payload": {...}}` or `{"error": 1, "payload": {...}}`.
 
 ---
 
-## 14. Author's note
+## 16. Author's note
 
 > I'm in a serious relationship with laziness, but if you're feeling adventurous and want to be a contributor, **shoot me a message**! 😝
 >

@@ -30,12 +30,14 @@ fbchat-v2/
 │   │   ├── _facebook/                # Profile-level actions
 │   │   └── _thread/                  # Group/inbox actions
 │   │       └── _all_thread_data.py   # Inbox + last_seq_id (needed by listener)
-│   └── _messaging/                   # L3: send / listen / react
+│   └── _messaging/                   # L3: send / edit / theme / listen / react
 │       ├── _send.py                  # class api().send(...)
 │       ├── _send_e2ee.py             # class api().send(...) for E2EE (drives Go bridge)
 │       ├── _unsend.py
 │       ├── _attachments.py
-│       ├── _createNotes.py        # Messenger Notes (24h status)
+│       ├── _changeTheme.py           # thread theme/background via GraphQL + MQTT LS tasks
+│       ├── _createNotes.py           # Messenger Notes (24h status)
+│       ├── _editMessage.py           # edit sent messages via MQTT LS task
 │       ├── _reactions.py
 │       ├── _message_requests.py
 │       ├── _listening.py             # Plain MQTT listener
@@ -67,7 +69,7 @@ main.py
   │     └─ _thread/
   │
   └─→ _messaging       (imports _core + _features as needed)
-        ├─ _send / _unsend / _attachments / _reactions / _message_requests / _createNotes
+        ├─ _send / _editMessage / _changeTheme / _unsend / _attachments / _reactions / _message_requests / _createNotes
         ├─ _listening
         └─ _listening_e2ee  ──────► subprocess: build/fbchat-bridge-e2ee.exe
 ```
@@ -138,6 +140,8 @@ Return shape contract:
 |------------------------|--------------------------------------------------|----------------------------------------------------|
 | `_send.py`             | `class api`, `.send(dataFB, content, threadID)`  | POST `/messaging/send/`                            |
 | `_send_e2ee.py`        | `class api`, `.send(chat_jid, content, ...)`     | E2EE sender; reuses `_listening_e2ee` Go bridge    |
+| `_editMessage.py`      | `editMessage(dataFB, messageID, newText)` / `func(...)` | Publishes MQTT LS task `queue_name="edit_message"` |
+| `_changeTheme.py`      | `listThemes / findTheme / changeTheme / func(...)` | GraphQL theme list + MQTT LS theme update tasks    |
 | `_unsend.py`           | `func(messageID, dataFB)`                        | POST `/messaging/unsend_message/`                  |
 | `_attachments.py`      | `func(...)`                                      | Upload first, returns attachmentID                 |
 | `_reactions.py`        | `func(...)`                                      | Add/remove reaction                                |
@@ -215,6 +219,25 @@ Return shape mirrors `_send.api.send` exactly:
 
 **Do NOT instantiate twice**: passing both `listener=` and `dataFB=` raises `ValueError`. Reuse mode is strongly preferred — each standalone process must re-pair with Meta and pops a "new device" alert on the peer.
 
+### MQTT LS task helpers (`_editMessage.py`, `_changeTheme.py`)
+
+These modules open a short-lived MQTT WebSocket connection to
+`edge-chat.facebook.com`, publish one or more tasks to `/ls_req`, then close
+the client. They are **regular Messenger** helpers, not E2EE bridge RPCs.
+
+```python
+from _messaging import _editMessage, _changeTheme
+
+_editMessage.editMessage(dataFB, "mid.$...", "new text")
+
+_changeTheme.listThemes(dataFB)
+_changeTheme.changeTheme(dataFB, threadID="1234567890", themeName="love")
+```
+
+Important distinction: success from these helpers means the LS task was
+published. Facebook/Messenger can still reject the operation server-side if
+the message/thread is not editable by the current account.
+
 ---
 
 ## E2EE bridge (`bridge-e2ee/`)
@@ -239,6 +262,10 @@ go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .
 **Methods currently exposed in `main.go`:** `newClient`, `connect`, `connectE2EE`, `isConnected`, `sendMessage`, `sendE2EEMessage`, `disconnect`.
 
 **Not yet wired** (present in `bridge/` Go code but not exposed): `sendReaction`, `editMessage`, `unsendMessage`, `sendTyping`, `markRead`, `MxDownloadE2EEMedia`. To expose: add a `case "..."` to `handle(req)` in `main.go` and recompile.
+
+> Note: regular `_messaging/_editMessage.py` already exists and uses MQTT LS
+> tasks. The "not yet wired" `editMessage` above refers only to the E2EE bridge
+> JSON-RPC surface.
 
 > ⚠️ Code in `bridge-e2ee/bridge/*.go` originates from `meta-messenger.js` / Yumi Team and is **AGPL-3.0**. The Python wrapper does **not** statically link it — they run as separate processes — but be careful when copying snippets out.
 
@@ -301,7 +328,7 @@ Standalone test driver for the E2EE listener. Reads cookie from env `FBCHAT_COOK
 | Package      | Used for                                          |
 |--------------|---------------------------------------------------|
 | `requests`   | All HTTP                                          |
-| `paho-mqtt`  | Real-time listener WSS                            |
+| `paho-mqtt`  | Real-time listener WSS + LS task publish helpers  |
 | `attrs`      | `attr.ib` counter in `formAll`, listener classes  |
 | `pyotp`      | TOTP for 2FA login                                |
 
@@ -319,7 +346,7 @@ Standalone test driver for the E2EE listener. Reads cookie from env `FBCHAT_COOK
 
 1. **Pick the layer**:
    - Pure HTTP action against an FB endpoint → `_features/_facebook/` or `_features/_thread/`.
-   - Send / receive / react → `_messaging/`.
+  - Send / receive / react / edit / theme → `_messaging/`.
    - Session, login, low-level → `_core/`.
 2. **Create `_myFeature.py`** in that subdirectory.
 3. **Define `def func(dataFB, ...) -> dict:`** following the return-shape contract.
@@ -357,6 +384,7 @@ When updating user-facing docs, update **both** `website/index.html` (preferred,
 ## Roadmap (as of 2026-05)
 
 - [x] **E2EE listener for Secret Conversations** (via Go bridge) — shipped 2026-03-24.
+- [x] **Regular Messenger edit + thread theme helpers** (MQTT LS tasks) — shipped 2026-05-18.
 - [ ] Expose remaining bridge methods (`sendReaction`, `editMessage`, `markRead`, …) in `main.go`.
 - [ ] Auto-respawn `_BridgeProcess` on subprocess crash.
 - [ ] Full `async`/`await` API for the Python side.

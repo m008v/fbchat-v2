@@ -63,7 +63,9 @@ mindmap
       _messaging/
         __init__.py
         _attachments.py
+        _changeTheme.py
         _createNotes.py
+        _editMessage.py
         _listening.py
         _listening_e2ee.py
         _message_requests.py

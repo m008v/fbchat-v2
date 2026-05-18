@@ -7,6 +7,70 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
+## [2.1.3] — 2026-05-18
+
+### ✨ Added
+
+- **`_messaging/_editMessage.py`** — module mới cho phép **sửa tin nhắn đã gửi**
+  bằng MQTT Lightspeed task `queue_name="edit_message"` publish lên `/ls_req`.
+  - API chính: `editMessage(dataFB, messageID, newText, timeout=20)`.
+  - Alias theo style fbchat-v2: `func(dataFB, messageID, newText, timeout=20)`.
+  - Tự mở kết nối MQTT WebSocket ngắn hạn tới `edge-chat.facebook.com`, publish
+    task rồi đóng client.
+  - Schema return:
+    - ✅ `{"success": 1, "messages": "...", "data": {"messageID": str, "text": str, ...}}`
+    - ❌ `{"error": 1, "messages": "...", "payload": {...}}`
+  - Lưu ý: success nghĩa là task đã publish thành công; Messenger vẫn có thể
+    từ chối nếu tin nhắn quá cũ, không thuộc tài khoản hiện tại, hoặc không còn
+    được phép sửa.
+
+- **`_messaging/_changeTheme.py`** — module mới để **lấy danh sách theme và đổi
+  nền / theme thread Messenger**.
+  - `listThemes(dataFB)` gọi GraphQL
+    `MWPThreadThemeQuery_AllThemesQuery` (`doc_id=24474714052117636`).
+  - `findTheme(dataFB, themeName)` match theo theme ID, tên chính xác, hoặc
+    keyword không phân biệt hoa thường.
+  - `changeTheme(dataFB, threadID, themeName, initiatorID=None, timeout=20)`
+    publish 4 LS queues: `ai_generated_theme`, `msgr_custom_thread_theme`,
+    `thread_theme_writer`, `thread_theme`.
+  - `func(dataFB, threadID=None, themeName=None, action="set", **kwargs)` hỗ trợ
+    `action="list"`, `action="find"`, và set theme mặc định.
+  - Return shape theo chuẩn `success/error` của fbchat-v2.
+
+### 📝 Documentation
+
+- README VI/EN gốc: cập nhật feature list, kiến trúc Messaging, cây thư mục,
+  mindmap nhúng, Quick Start cho `_editMessage`, `_changeTheme`, `_createNotes`,
+  và roadmap.
+- `DOCS.md`: thêm **§8 Editing a sent message** và
+  **§10 Changing a thread theme / background**; renumber các mục sau thành
+  §11–§16; thêm FAQ cho edit/theme.
+- `CLAUDE.md`: cập nhật cây thư mục, bảng Layer 3, dependencies, roadmap và
+  ghi chú phân biệt `_editMessage.py` thường với `editMessage` của bridge E2EE
+  chưa expose qua JSON-RPC.
+- `FLOWCHART.md`, `mindmap-mermaid.md`: thêm node `_editMessage.py` và
+  `_changeTheme.py`; runtime flow thể hiện LS task publish qua MQTT.
+- `src/_messaging/README.md` + `README_EN.md`: đã có module reference, ví dụ,
+  dependency map và troubleshooting cho hai module mới.
+
+### 🛠 Changed
+
+- `_messaging/__init__.py`: `__all__` thêm `_editMessage`, `_changeTheme`, đồng
+  thời giữ `_listening_e2ee` và `_send_e2ee` trong danh sách public module nội bộ.
+
+### 📦 Dependencies
+
+- Không thêm package mới. Hai module mới dùng lại `requests` và `paho-mqtt`
+  đã có trong `requirements.txt`.
+
+### ⚠️ Lưu ý nâng cấp từ 2.1.2b
+
+- **Không có breaking change.** Các module hiện có vẫn giữ nguyên import/API.
+- `_editMessage.py` và `_changeTheme.py` dùng MQTT LS task; cần cookie còn sống
+  và mạng không chặn WebSocket tới `edge-chat.facebook.com`.
+
+---
+
 ## [2.1.2b] — 2026-05-15
 
 ### ✨ Added

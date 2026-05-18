@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.mau.fi/whatsmeow"
@@ -147,6 +148,12 @@ func (c *Client) sendE2EEMessage(opts *SendMessageOptions) (*SendMessageResult, 
 	msgID := strconv.FormatInt(time.Now().UnixNano(), 10)
 	resp, err := c.E2EE.SendFBMessage(c.ctx, chatJID, waMsg, metadata, whatsmeow.SendRequestExtra{ID: msgID})
 	if err != nil {
+		if isE2EESendResponseTimeout(err) {
+			return &SendMessageResult{
+				MessageID:   msgID,
+				TimestampMs: time.Now().UnixMilli(),
+			}, nil
+		}
 		return nil, err
 	}
 
@@ -154,6 +161,13 @@ func (c *Client) sendE2EEMessage(opts *SendMessageOptions) (*SendMessageResult, 
 		MessageID:   msgID,
 		TimestampMs: resp.Timestamp.UnixMilli(),
 	}, nil
+}
+
+func isE2EESendResponseTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "timed out waiting for message send response")
 }
 
 // SendReaction sends a reaction to a message

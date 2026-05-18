@@ -271,6 +271,7 @@ class listeningE2EEEvent:
             "replyToID": 0,
             "type": None,
             "attachments": {"id": 0, "url": None},
+            "mentions": [],
         }
 
     def on_message(self, fn: Callable[[dict], None]) -> Callable[[dict], None]:
@@ -383,6 +384,7 @@ class listeningE2EEEvent:
         body["messageID"] = msg.get("id")
         body["replyToID"] = msg.get("threadId", 0)
         body["type"] = "thread"
+        body["mentions"] = msg.get("mentions", [])
 
         atts = msg.get("attachments") or []
         if atts:
@@ -401,6 +403,7 @@ class listeningE2EEEvent:
         body["messageID"] = msg.get("id")
         body["replyToID"] = msg.get("threadId", 0)
         body["type"] = "e2ee"
+        body["mentions"] = msg.get("mentions", [])
 
         atts = msg.get("attachments") or []
         if atts:

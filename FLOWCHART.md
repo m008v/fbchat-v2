@@ -87,7 +87,9 @@ flowchart TD
     SRC --> MSG[src/_messaging/]
     MSG --> MSG_INIT[__init__.py]
     MSG --> MSG_ATTACH[_attachments.py]
+    MSG --> MSG_THEME[_changeTheme.py]
     MSG --> MSG_NOTES[_createNotes.py]
+    MSG --> MSG_EDIT[_editMessage.py]
     MSG --> MSG_LISTEN[_listening.py]
     MSG --> MSG_LISTEN_E2EE[_listening_e2ee.py]
     MSG --> MSG_REQ[_message_requests.py]
@@ -134,6 +136,9 @@ flowchart LR
     LISTENER --> MQTT[wss://edge-chat.facebook.com via MQTT]
 
     REACT[_messaging._reactions] --> FB_API
+    EDIT[_messaging._editMessage] --> MQTT
+    THEME[_messaging._changeTheme] --> FB_API
+    THEME --> MQTT
     UNSEND[_messaging._unsend] --> FB_API
     MSG_REQ[_messaging._message_requests] --> FB_API
     NOTES[_messaging._createNotes] --> FB_API

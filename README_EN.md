@@ -67,10 +67,11 @@ There are still rough edges and inconsistencies left to polish. If you spot any,
 
 ### Messaging
 - 📥 Read messages from both **users** and **group chats (threads)**
-- � **E2EE listener** for direct Messenger messages (Secret Conversations / Labyrinth) via a Go bridge
-- �📤 Send text, **files**, **stickers**, and **mentions**
+- 🔐 **E2EE listener** for direct Messenger messages (Secret Conversations / Labyrinth) via a Go bridge
+- 📤 Send text, **files**, **stickers**, and **mentions**
 - 🔍 Search messages and conversation threads
-- ↩️ React, unsend, and handle message requests
+- ✏️ Edit sent messages, react, unsend, and handle message requests
+- 🎨 Change Messenger thread themes / backgrounds and manage **Messenger Notes**
 - 📡 Real-time **listener** for instant command-driven replies
 
 ### Threads & Groups
@@ -98,13 +99,13 @@ The codebase is intentionally split into **three clean layers**:
 |---|---|---|
 | **Core** | `src/_core/` | Session, login, request helpers, low-level utilities |
 | **Features** | `src/_features/` | Facebook & thread business logic (posts, groups, profile, …) |
-| **Messaging** | `src/_messaging/` | Send / receive / react / listen / unsend — everything chat-related |
+| **Messaging** | `src/_messaging/` | Send / edit / receive / react / theme / notes / unsend — everything chat-related |
 
 ```mermaid
 flowchart LR
     A[main.py] --> B[_core<br/>session • login • utils]
     B --> C[_features<br/>facebook • thread]
-    B --> D[_messaging<br/>send • listen • reactions]
+    B --> D[_messaging<br/>send • edit • theme • notes • listen]
     C --> E[(Facebook<br/>internal endpoints)]
     D --> E
 ```
@@ -143,12 +144,15 @@ fbchat-v2/
 │   │       └── _changeNickname.py
 │   └── _messaging/                      # ── Messaging layer ──
 │       ├── _attachments.py
+│       ├── _changeTheme.py              # Change Messenger thread theme / background
 │       ├── _createNotes.py              # Messenger Notes (24h status)
+│       ├── _editMessage.py              # Edit sent messages through MQTT LS task
 │       ├── _listening.py                # MQTT — group messages
 │       ├── _listening_e2ee.py           # Go bridge — 1-on-1 E2EE messages
 │       ├── _message_requests.py
 │       ├── _reactions.py
 │       ├── _send.py
+│       ├── _send_e2ee.py                # Go bridge — send 1-on-1 E2EE messages
 │       └── _unsend.py
 ├── bridge-e2ee/                         # ── Go bridge for E2EE ──
 │   ├── main.go
@@ -206,12 +210,15 @@ mindmap
           _changeNickname.py
       _messaging
         _attachments.py
+        _changeTheme.py
         _createNotes.py
+        _editMessage.py
         _listening.py
         _listening_e2ee.py
         _message_requests.py
         _reactions.py
         _send.py
+        _send_e2ee.py
         _unsend.py
     E2EE bridge
       bridge-e2ee/main.go
@@ -427,6 +434,30 @@ Full build & RPC docs: [`bridge-e2ee/README.md`](bridge-e2ee/README.md).
 
 ---
 
+### Edit messages, change themes, and Messenger Notes
+
+The extra Messenger actions live in `_messaging` and share the same `dataFB`
+object returned by `_core._session.dataGetHome(...)`:
+
+```python
+from _messaging import _editMessage, _changeTheme, _createNotes
+
+# Edit a sent message (usually only messages sent by the current account)
+_editMessage.editMessage(dataFB, "mid.$abc...", "Edited content")
+
+# List themes and change a thread theme/background
+themes = _changeTheme.listThemes(dataFB)
+_changeTheme.changeTheme(dataFB, "1234567890", "love")
+
+# Create a 24-hour Messenger Note
+_createNotes.createNote(dataFB, "Coding fbchat-v2", privacy="FRIENDS")
+```
+
+Full API details: [`src/_messaging/README_EN.md`](src/_messaging/README_EN.md)
+and [DOCS.md](DOCS.md).
+
+---
+
 ## ⚙️ Configuration
 
 `src/config.json` is the single source of truth for runtime settings.
@@ -458,6 +489,7 @@ For the cross-cutting design and end-to-end request flow, read [DOCS.md](DOCS.md
 ## 🗺 Roadmap
 
 - [x] Messenger **E2EE** direct-message decryption *(v2.x — Go bridge)*
+- [x] Edit sent messages, change thread themes, and Messenger Notes *(v2.1.x)*
 - [ ] Native `async` / `await` API
 - [ ] Ship the E2EE bridge as pre-built binaries with each release
 - [ ] Type hints across the entire public surface
