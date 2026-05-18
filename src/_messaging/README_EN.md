@@ -241,7 +241,8 @@ sender.connect()             # blocking pairing — only for standalone
 
 | Method | Description |
 |---|---|
-| `send(chat_jid, contentSend, replyMessage="", replySenderJid="")` | Send one E2EE text message. `chat_jid` is a Signal JID like `<id>@s.whatsapp.net` — copy from `evt["data"]["chatJid"]`, do **not** construct it from a numeric `threadID`. |
+| `send(chat_jid, contentSend, replyMessage="", replySenderJid="")` | Send one E2EE text message. `chat_jid` can be a Messenger JID `<facebook_id>@msgr` or just the Facebook numeric user ID; the module normalizes it to `@msgr`. Do **not** pass a group `threadID`. |
+| `send_to_user(user_id, contentSend, replyMessage="", replySenderJid="")` | Proactively send by Facebook numeric ID, for example `send_to_user("100012345678", "hello")`. |
 | `reply(evt_data, contentSend)` | Helper that pulls `chatJid`, `id`, `senderJid` from a listener event and quote-replies in one call. |
 | `connect(*, enable_e2ee=True, timeout=120)` | Standalone-only. Calls `newClient` → `connect` → `connectE2EE` on the bridge. |
 | `close()` | Standalone-only. Stops the owned bridge subprocess. |
@@ -629,9 +630,10 @@ from _messaging._send_e2ee import api as E2EESender
 
 with E2EESender(dataFB=dataFB, log_level="warn") as sender:
     sender.send(
-        chat_jid    = "100012345678@s.whatsapp.net",
+        chat_jid    = "100012345678",
         contentSend = "hello E2EE",
     )
+    sender.send_to_user("100012345678", "proactive hello")
 ```
 
 ---
@@ -644,6 +646,8 @@ with E2EESender(dataFB=dataFB, log_level="warn") as sender:
 | Upload fails | Verify path exists & is readable; inspect upload response (Facebook may rename keys). |
 | `_editMessage` / `_changeTheme` times out while publishing | Check the cookie, WebSocket access to `edge-chat.facebook.com`, and your permission in the thread. |
 | `_send_e2ee.api` returns `{"error": 1, ..., "error-code": "not_connected"}` | Standalone mode forgot `sender.connect()`; reuse mode means the listener's `connect_mqtt()` thread hasn't reached the `e2eeConnected` event yet. |
+| `_send_e2ee.api` returns `{"error": 1, ..., "error-code": "invalid_chat_jid"}` | Invalid target. Use a full JID `<facebook_id>@msgr` or a Facebook numeric user ID; do not pass a group `threadID` / username. |
+| Bridge logs `can't encrypt message for device: no signal session established` | Use the rebuilt bridge binary; it now runs the encrypted-DM create task and reports missing sessions correctly so `whatsmeow` can fetch prekeys before sending. For repeated tests, add `--persist-device --device-path ./e2ee_device.json` to keep Signal state. |
 | `_send_e2ee.api` returns `{"error": 1, ..., "error-code": "bridge_error"}` | The Go bridge subprocess died or the JSON-RPC call failed — turn on `log_level="debug"` to see bridge stderr. |
 | `ValueError: Phải truyền 'listener=' (reuse) HOẶC 'dataFB=' (standalone)` | Pass exactly one of `listener=` or `dataFB=` to `_send_e2ee.api(...)`. |
 | Listener disconnects / receives no events | Run in a dedicated thread (`loop_forever()` is blocking); inspect MQTT `errorCode`; mind `errorCode == 100` (queue overflow). |

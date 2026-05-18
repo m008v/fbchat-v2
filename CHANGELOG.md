@@ -7,9 +7,50 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
+## [2.1.3b] — 2026-05-18
+
+### 🛠 Changed
+
+- `_messaging/_send_e2ee.py`: tiếp tục hoàn thiện flow gửi chủ động bằng
+  Facebook numeric ID.
+  - `normalize_chat_jid(...)` / `chat_jid_from_user_id(...)` vẫn normalize
+    `100012345678` → `100012345678@msgr`.
+  - `api.send(...)` chấp nhận cả JID đầy đủ lẫn user ID; input sai trả
+    `invalid_chat_jid` rõ ràng hơn.
+  - `api.send_to_user(...)` là entry point tiện dụng cho flow chủ động.
+- `src/_e2ee_send_test.py`: test script giờ tự resolve `--device-path` relative
+  về root `fbchat-v2`, nên không còn phụ thuộc cwd hiện tại khi spawn bridge.
+- `bridge-e2ee`: fix gốc cho proactive E2EE send.
+  - `Client.sendE2EEMessage(...)` sẽ ensure encrypted DM thread trước khi gửi.
+  - `DeviceStore.GetManySessions()` trả đủ session address được hỏi để
+    `whatsmeow` nhận ra device chưa có session và tự fetch prekey.
+  - `NewDeviceStore(...)` tạo luôn thư mục cha của file device nếu chưa tồn tại,
+    giúp path như `./src/e2ee_device.json` không bị fail khi lưu mới.
+
+### 📝 Documentation
+
+- `DOCS.md`, `src/_messaging/README.md`, `src/_messaging/README_EN.md`:
+  cập nhật troubleshooting cho lỗi `can't encrypt message for device: no signal
+  session established` và cách dùng binary bridge mới.
+
+### ⚠️ Lưu ý nâng cấp từ 2.1.3
+
+- Nếu bạn dùng `--persist-device`, nên để bridge binary mới nhất ở
+  `build/fbchat-bridge-e2ee.exe` để các fix session/prekey có hiệu lực.
+- Không có breaking change cho API Python hiện có.
+
 ## [2.1.3] — 2026-05-18
 
 ### ✨ Added
+
+- **`src/_e2ee_send_test.py`** — script test riêng cho `_messaging/_send_e2ee.py`.
+  - Chạy không tham số sẽ hỏi interactive `UID/JID người nhận` và `nội dung cần gửi`.
+  - `--dry-run` kiểm tra normalize Facebook numeric ID → `<id>@msgr` mà không
+    cần cookie/bridge.
+  - Chế độ gửi thật đọc cookie từ `FBCHAT_COOKIE` hoặc `src/config.json`, tự
+    `dataGetHome(...)`, connect bridge và gọi `send_to_user(...)` / `send(...)`.
+  - Hỗ trợ `--reply-message`, `--reply-sender-jid`, `--persist-device`,
+    `--device-path`, `--binary-path`, timeout connect/send.
 
 - **`_messaging/_editMessage.py`** — module mới cho phép **sửa tin nhắn đã gửi**
   bằng MQTT Lightspeed task `queue_name="edit_message"` publish lên `/ls_req`.
@@ -55,6 +96,21 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ### 🛠 Changed
 
+- `_messaging/_send_e2ee.py`: hỗ trợ gửi chủ động bằng Facebook numeric ID.
+  - Thêm `normalize_chat_jid(target)` / `chat_jid_from_user_id(user_id)` để đổi
+    `100012345678` → `100012345678@msgr`.
+  - `api.send(...)` giờ nhận được cả JID đầy đủ `<facebook_id>@msgr` lẫn
+    Facebook numeric ID; input sai trả `error-code="invalid_chat_jid"`.
+  - Thêm `api.send_to_user(user_id, contentSend, ...)` cho flow chủ động nhắn
+    khi chưa có event chứa `chatJid`.
+- `bridge-e2ee`: trước khi gửi E2EE DM chủ động tới `<facebook_id>@msgr`, bridge
+  tự chạy `CreateWhatsAppThreadTask` (`ENCRYPTED_OVER_WA_ONE_TO_ONE`) và các
+  subtask server trả về để tránh lỗi `can't encrypt message for device: no
+  signal session established`.
+- `bridge-e2ee`: sửa `DeviceStore.GetManySessions()` để trả cả các Signal
+  session address chưa tồn tại bằng giá trị `nil`; nhờ vậy `whatsmeow` nhận ra
+  device thiếu session và tự fetch prekey thay vì bỏ qua rồi báo `no signal
+  session established`.
 - `_messaging/__init__.py`: `__all__` thêm `_editMessage`, `_changeTheme`, đồng
   thời giữ `_listening_e2ee` và `_send_e2ee` trong danh sách public module nội bộ.
 

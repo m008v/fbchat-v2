@@ -240,7 +240,8 @@ sender.connect()             # blocking pairing — chỉ dùng cho standalone
 
 | Method | Mô tả |
 |---|---|
-| `send(chat_jid, contentSend, replyMessage="", replySenderJid="")` | Gửi 1 tin nhắn E2EE text. `chat_jid` là JID Signal dạng `<id>@s.whatsapp.net` — lấy từ `evt["data"]["chatJid"]`, **không** ghi thủ công từ `threadID` số. |
+| `send(chat_jid, contentSend, replyMessage="", replySenderJid="")` | Gửi 1 tin nhắn E2EE text. `chat_jid` có thể là JID Messenger `<facebook_id>@msgr` hoặc chỉ Facebook numeric ID; module tự normalize thành `@msgr`. **Không** truyền group `threadID`. |
+| `send_to_user(user_id, contentSend, replyMessage="", replySenderJid="")` | Gửi chủ động bằng Facebook numeric ID, ví dụ `send_to_user("100012345678", "hello")`. |
 | `reply(evt_data, contentSend)` | Helper: tự bóc `chatJid`, `id`, `senderJid` từ event listener để quote-reply. |
 | `connect(*, enable_e2ee=True, timeout=120)` | Chỉ standalone. Gọi `newClient` → `connect` → `connectE2EE` trên bridge. |
 | `close()` | Chỉ standalone. Đóng bridge subprocess mình sở hữu. |
@@ -628,9 +629,10 @@ from _messaging._send_e2ee import api as E2EESender
 
 with E2EESender(dataFB=dataFB, log_level="warn") as sender:
     sender.send(
-        chat_jid    = "100012345678@s.whatsapp.net",
+        chat_jid    = "100012345678",
         contentSend = "hello E2EE",
     )
+    sender.send_to_user("100012345678", "hello chủ động")
 ```
 
 ---
@@ -643,6 +645,8 @@ with E2EESender(dataFB=dataFB, log_level="warn") as sender:
 | Upload tệp lỗi | Verify đường dẫn tồn tại + quyền đọc; kiểm tra metadata response (Facebook có thể đổi key). |
 | `_editMessage` / `_changeTheme` timeout khi publish | Kiểm tra cookie còn sống, mạng WebSocket tới `edge-chat.facebook.com`, và quyền thao tác trong thread. |
 | `_send_e2ee.api` trả `{"error": 1, ..., "error-code": "not_connected"}` | Standalone quên gọi `sender.connect()`; chế độ reuse đợi `connect_mqtt()` của listener đến event `e2eeConnected`. |
+| `_send_e2ee.api` trả `{"error": 1, ..., "error-code": "invalid_chat_jid"}` | Truyền sai đích gửi. Dùng JID đầy đủ `<facebook_id>@msgr` hoặc Facebook numeric ID; không dùng group `threadID` / username. |
+| Bridge log `can't encrypt message for device: no signal session established` | Dùng bridge binary mới đã rebuild; bridge giờ tự chạy task tạo encrypted DM và báo missing session đúng để `whatsmeow` fetch prekey trước khi send. Khi test nhiều lần, thêm `--persist-device --device-path ./e2ee_device.json` để giữ Signal session. |
 | `_send_e2ee.api` trả `{"error": 1, ..., "error-code": "bridge_error"}` | Bridge Go subprocess chết hoặc JSON-RPC call lỗi — bật `log_level="debug"` để xem stderr của bridge. |
 | `ValueError: Phải truyền 'listener=' (reuse) HOẶC 'dataFB=' (standalone)` | Truyền đúng một trong hai — `listener=` hoặc `dataFB=` — cho `_send_e2ee.api(...)`. |
 | Listener tự ngắt / không nhận event | Chạy trong thread riêng (`loop_forever()` blocking); theo dõi `errorCode` trong MQTT payload; quan tâm `errorCode == 100` (queue overflow). |

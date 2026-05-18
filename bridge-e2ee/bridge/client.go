@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/google/uuid"
@@ -359,6 +360,11 @@ func NewDeviceStore(path string) (*DeviceStore, error) {
 		rand.Read(ds.Device.AdvSecretKey)
 		ds.Device.SignedPreKey = ds.Device.IdentityKey.CreateSignedPreKey(1)
 		ds.Device.FacebookUUID = uuid.New()
+		if dir := filepath.Dir(path); dir != "." && dir != "" {
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				return nil, err
+			}
+		}
 		if err := ds.Save(); err != nil {
 			return nil, err
 		}

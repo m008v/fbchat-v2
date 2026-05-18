@@ -21,13 +21,14 @@ Hai chế độ dùng:
        # ... đợi event "e2eeConnected" ...
 
        sender = E2EESender(listener=listener)
-       sender.send(chat_jid="100012345678@s.whatsapp.net", contentSend="pong")
+         sender.send(chat_jid="100012345678@msgr", contentSend="pong")
+         sender.send_to_user("100012345678", "chủ động nhắn bằng Facebook ID")
 
 2. **Standalone** — tự spawn bridge, tự ``connect()`` + ``connect_e2ee()``::
 
        sender = E2EESender(dataFB=dataFB, log_level="warn")
        sender.connect()           # blocking pairing handshake
-       sender.send(chat_jid="…@s.whatsapp.net", contentSend="hello")
+         sender.send(chat_jid="100012345678", contentSend="hello")  # auto → 100012345678@msgr
        sender.close()
 
 API ``send(...)`` mô phỏng style của ``_send.py`` — trả về dict với
@@ -54,6 +55,52 @@ from _messaging._listening_e2ee import (
 )
 
 
+E2EE_MESSENGER_SERVER = "msgr"
+
+
+def _resolve_device_path(device_path: str | None) -> str | None:
+    if not device_path:
+        return None
+    path = Path(device_path).expanduser()
+    if not path.is_absolute():
+        path = path.resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return str(path)
+
+
+def normalize_chat_jid(target: str | int, *, default_server: str = E2EE_MESSENGER_SERVER) -> str:
+    """Chuẩn hoá Facebook user ID hoặc JID thành Messenger E2EE chat JID.
+
+    Messenger E2EE events trả về ``chatJid`` dạng ``<facebook_id>@msgr``.
+    Khi chủ động gửi, caller thường chỉ có Facebook numeric ID; helper này
+    chuyển ``"100012345678"`` thành ``"100012345678@msgr"``. Nếu caller đã
+    truyền JID đầy đủ như ``"100012345678@msgr"`` thì giữ nguyên.
+    """
+    target_str = str(target or "").strip()
+    if not target_str:
+        raise ValueError("Thiếu chat_jid hoặc Facebook user ID để gửi E2EE.")
+
+    if target_str.lower().startswith(("fbid:", "facebook:")):
+        target_str = target_str.split(":", 1)[1].strip()
+
+    if "@" in target_str:
+        return target_str
+
+    if not target_str.isdigit():
+        raise ValueError(
+            "chat_jid phải là JID đầy đủ (`<id>@msgr`) hoặc Facebook numeric ID. "
+            f"Giá trị nhận được: {target!r}"
+        )
+
+    server = (default_server or E2EE_MESSENGER_SERVER).strip().lstrip("@")
+    return f"{target_str}@{server}"
+
+
+def chat_jid_from_user_id(user_id: str | int) -> str:
+    """Alias rõ nghĩa cho ``normalize_chat_jid(user_id)``."""
+    return normalize_chat_jid(user_id)
+
+
 # ---------------------------------------------------------------------------
 # Public sender
 # ---------------------------------------------------------------------------
@@ -71,11 +118,12 @@ class api:
 
         sender = api(listener=listener)
         result = sender.send(
-            chat_jid="100012345678@s.whatsapp.net",
+            chat_jid="100012345678",
             contentSend="pong",
             replyMessage="3EB0...",                      # tuỳ chọn
-            replySenderJid="100087...@s.whatsapp.net",   # tuỳ chọn (nếu reply)
+            replySenderJid="100087...@msgr",             # tuỳ chọn (nếu reply)
         )
+        sender.send_to_user("100012345678", "chủ động nhắn")
         # → {"success": 1, "payload": {"messageID": "...", "timestamp": ...}}
         # hoặc {"error": 1, "payload": {"error-decription": "...", "error-code": "..."}}
     """
@@ -165,8 +213,9 @@ class api:
             "logLevel": self.log_level,
             "e2eeMemoryOnly": self.e2ee_memory_only,
         }
-        if self.device_path:
-            cfg["devicePath"] = self.device_path
+        device_path = _resolve_device_path(self.device_path)
+        if device_path:
+            cfg["devicePath"] = device_path
 
         self._bridge.call("newClient", cfg)
         info = self._bridge.call("connect", timeout=timeout)
@@ -178,15 +227,17 @@ class api:
         return info
 
     # ------------------------------------------------------------------
-    def send(self, chat_jid: str, contentSend: str,
+    def send(self, chat_jid: str | int, contentSend: str,
              replyMessage: str = "",
-             replySenderJid: str = "",
+             replySenderJid: str | int = "",
              timeout: float = 180.0) -> dict[str, Any]:
         """Gửi 1 tin nhắn E2EE text.
 
-        :param chat_jid: JID đích, ví dụ ``"100012345678@s.whatsapp.net"`` (DM)
-                         hoặc ``"...@g.us"`` (group E2EE — hiếm).
-                         Lấy từ ``evt["data"]["chatJid"]`` của listener.
+        :param chat_jid: JID đích, ví dụ Messenger JID
+                 ``"100012345678@msgr"``.
+                         Có thể truyền thẳng Facebook numeric ID
+                         ``"100012345678"``; module sẽ tự đổi thành
+                         ``"100012345678@msgr"``.
         :param contentSend: Nội dung text.
         :param replyMessage: ID message cần reply (tuỳ chọn).
         :param replySenderJid: JID người gửi message gốc (bắt buộc nếu reply).
@@ -200,11 +251,26 @@ class api:
                     {"error": 1,
                      "payload": {"error-decription": str, "error-code": str}}
         """
+        try:
+            normalized_chat_jid = normalize_chat_jid(chat_jid)
+            normalized_reply_sender_jid = (
+                normalize_chat_jid(replySenderJid) if replySenderJid else ""
+            )
+        except ValueError as exc:
+            self.results = {
+                "error": 1,
+                "payload": {
+                    "error-decription": str(exc),
+                    "error-code": "invalid_chat_jid",
+                },
+            }
+            return self.results
+
         # Lưu vào instance để debug/log như _send.api
-        self.chat_jid = chat_jid
+        self.chat_jid = normalized_chat_jid
         self.content = str(contentSend)
         self.replyToId = replyMessage or ""
-        self.replyToSenderJid = replySenderJid or ""
+        self.replyToSenderJid = normalized_reply_sender_jid
 
         try:
             data = self.bridge.call("sendE2EEMessage", {
@@ -241,6 +307,24 @@ class api:
             },
         }
         return self.results
+
+    # ------------------------------------------------------------------
+    def send_to_user(self, user_id: str | int, contentSend: str,
+                     replyMessage: str = "",
+                     replySenderJid: str | int = "",
+                     timeout: float = 180.0) -> dict[str, Any]:
+        """Gửi chủ động tới Facebook numeric ID.
+
+        ``user_id="100012345678"`` sẽ được chuyển thành
+        ``chat_jid="100012345678@msgr"`` trước khi gọi bridge.
+        """
+        return self.send(
+            chat_jid=chat_jid_from_user_id(user_id),
+            contentSend=contentSend,
+            replyMessage=replyMessage,
+            replySenderJid=replySenderJid,
+            timeout=timeout,
+        )
 
     # ------------------------------------------------------------------
     def reply(self, evt_data: dict, contentSend: str) -> dict[str, Any]:

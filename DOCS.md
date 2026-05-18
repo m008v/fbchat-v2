@@ -331,9 +331,10 @@ from _messaging._send_e2ee import api as E2EESender
 
 with E2EESender(dataFB=dataFB, log_level="warn") as sender:
     sender.send(
-        chat_jid    = "100012345678@s.whatsapp.net",
+        chat_jid    = "100012345678",
         contentSend = "hello E2EE",
     )
+    sender.send_to_user("100012345678", "hello by Facebook ID")
 ```
 
 Both modes return the same shape as `_send.api.send`:
@@ -347,7 +348,7 @@ Both modes return the same shape as `_send.api.send`:
                            'error-code': 'bridge_error'}}
 ```
 
-> 🔑 `chat_jid` is **not** a numeric thread ID — it is a Signal-style JID like `<id>@s.whatsapp.net`. Always copy it from `evt["data"]["chatJid"]` rather than constructing it yourself.
+> 🔑 For Messenger E2EE, `chat_jid` is usually `<facebook_id>@msgr`. You can pass either the full JID from `evt["data"]["chatJid"]` or just a Facebook numeric user ID such as `100012345678`; `_send_e2ee.api` normalizes it to `100012345678@msgr`. Do **not** pass a group `threadID` here.
 
 ---
 
@@ -678,10 +679,20 @@ Pass `e2ee_memory_only=False, device_path="./device.json"` so the bridge persist
 Yes — that is exactly what *Mode A* in [§6.2](#62-e2ee-messages--_send_e2eeapi) does. **Strongly recommended** — pairing handshakes are slow and pop "new device" notifications on the victim user's end.
 
 **Q: What is `chat_jid`? I have a `threadID`, not a JID.**
-The bridge speaks Signal-style JIDs (`<id>@s.whatsapp.net` for DMs, `<id>@g.us` for groups). Always lift it from the listener event:
+The bridge speaks Signal-style JIDs. Messenger E2EE DMs use `<facebook_id>@msgr`. If you have a listener event, lift it directly:
 ```python
 chat_jid = evt["data"]["chatJid"]
 ```
+
+For proactive sending, pass the Facebook numeric ID and let `_send_e2ee.api` normalize it:
+
+```python
+sender.send_to_user("100012345678", "hello")
+# equivalent to: sender.send("100012345678@msgr", "hello")
+```
+
+**Q: I see `can't encrypt message for device: no signal session established`.**
+Use the rebuilt `fbchat-bridge-e2ee` binary from this repo. Proactive sends now run the Messenger encrypted-DM create task before `SendFBMessage`, and the bridge session store correctly reports missing sessions so `whatsmeow` can fetch prekeys for `<facebook_id>@msgr`. For repeated tests, prefer `--persist-device --device-path ./e2ee_device.json` so Signal state is reused across runs.
 
 **Q: Can I send E2EE images / videos / voice notes from Python?**
 Not yet from the wrapper — the Go side has the methods, the wrapper does not surface them. Tracking issue: open one if you need this.

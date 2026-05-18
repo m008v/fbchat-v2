@@ -59,11 +59,9 @@ func (ds *DeviceStore) HasSession(ctx context.Context, address string) (bool, er
 func (ds *DeviceStore) GetManySessions(ctx context.Context, addresses []string) (map[string][]byte, error) {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
-	result := make(map[string][]byte)
+	result := make(map[string][]byte, len(addresses))
 	for _, addr := range addresses {
-		if sess, ok := ds.sessions[addr]; ok {
-			result[addr] = sess
-		}
+		result[addr] = ds.sessions[addr]
 	}
 	return result, nil
 }

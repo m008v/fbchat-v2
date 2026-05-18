@@ -12,6 +12,7 @@ import (
 	"go.mau.fi/whatsmeow/proto/waMsgApplication"
 	waTypes "go.mau.fi/whatsmeow/types"
 
+	"go.mau.fi/mautrix-meta/pkg/messagix/methods"
 	"go.mau.fi/mautrix-meta/pkg/messagix/socket"
 	"go.mau.fi/mautrix-meta/pkg/messagix/table"
 )
@@ -119,6 +120,9 @@ func (c *Client) sendE2EEMessage(opts *SendMessageOptions) (*SendMessageResult, 
 	if err != nil {
 		return nil, err
 	}
+	if err = c.ensureE2EEDM(chatJID); err != nil {
+		return nil, err
+	}
 
 	waMsg := &waConsumerApplication.ConsumerApplication{
 		Payload: &waConsumerApplication.ConsumerApplication_Payload{
@@ -161,6 +165,39 @@ func (c *Client) sendE2EEMessage(opts *SendMessageOptions) (*SendMessageResult, 
 		MessageID:   msgID,
 		TimestampMs: resp.Timestamp.UnixMilli(),
 	}, nil
+}
+
+func (c *Client) ensureE2EEDM(chatJID waTypes.JID) error {
+	if chatJID.Server != waTypes.MessengerServer || chatJID.User == "" {
+		return nil
+	}
+
+	threadID, err := strconv.ParseInt(chatJID.User, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.Messagix.ExecuteTasks(c.ctx, &socket.CreateWhatsAppThreadTask{
+		WAJID:            threadID,
+		OfflineThreadKey: methods.GenerateEpochID(),
+		ThreadType:       table.ENCRYPTED_OVER_WA_ONE_TO_ONE,
+		FolderType:       table.INBOX,
+		BumpTimestampMS:  time.Now().UnixMilli(),
+		TAMThreadSubtype: 0,
+	})
+	if err != nil {
+		return err
+	}
+
+	if resp == nil || len(resp.LSIssueNewTask) == 0 {
+		return nil
+	}
+	tasks := make([]socket.Task, len(resp.LSIssueNewTask))
+	for idx, task := range resp.LSIssueNewTask {
+		tasks[idx] = task
+	}
+	_, err = c.Messagix.ExecuteTasks(c.ctx, tasks...)
+	return err
 }
 
 func isE2EESendResponseTimeout(err error) bool {

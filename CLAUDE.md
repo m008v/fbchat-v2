@@ -139,7 +139,7 @@ Return shape contract:
 | File                   | Public surface                                   | Notes                                              |
 |------------------------|--------------------------------------------------|----------------------------------------------------|
 | `_send.py`             | `class api`, `.send(dataFB, content, threadID)`  | POST `/messaging/send/`                            |
-| `_send_e2ee.py`        | `class api`, `.send(chat_jid, content, ...)`     | E2EE sender; reuses `_listening_e2ee` Go bridge    |
+| `_send_e2ee.py`        | `class api`, `.send(chat_jid, content, ...)`, `.send_to_user(user_id, ...)` | E2EE sender; normalizes Facebook ID → `<id>@msgr`; reuses `_listening_e2ee` Go bridge |
 | `_editMessage.py`      | `editMessage(dataFB, messageID, newText)` / `func(...)` | Publishes MQTT LS task `queue_name="edit_message"` |
 | `_changeTheme.py`      | `listThemes / findTheme / changeTheme / func(...)` | GraphQL theme list + MQTT LS theme update tasks    |
 | `_unsend.py`           | `func(messageID, dataFB)`                        | POST `/messaging/unsend_message/`                  |
@@ -210,7 +210,8 @@ sender.reply(evt["data"], "pong")          # auto-fills chatJid / id / senderJid
 
 # Mode B — standalone (own bridge subprocess)
 with E2EESender(dataFB=dataFB, log_level="warn") as sender:
-    sender.send(chat_jid="...@s.whatsapp.net", contentSend="hi")
+  sender.send(chat_jid="100012345678", contentSend="hi")  # auto-normalizes to 100012345678@msgr
+  sender.send_to_user("100012345678", "hi")
 ```
 
 Return shape mirrors `_send.api.send` exactly:
