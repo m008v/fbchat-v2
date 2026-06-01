@@ -42,3 +42,4 @@ logs/
 *.sqlite3
 *.db
 *.db-journal
+src/config.json

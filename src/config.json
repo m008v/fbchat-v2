@@ -1,7 +1,7 @@
 {
     "botName": "[fbchat-tester] - Raintee.bot",
     "prefix": "!",
-    "cookies": "datr=-cZfaVKhV1X4Vyz8MYNOzcDT; sb=-cZfaXmr3bC0O-Uhcdo_KyXz; ps_l=1; ps_n=1; locale=vi_VN; pas=61583942146559%3AVfN5tgl8z5; vpd=v1%3B866x864x2; wl_cbv=v2%3Bclient_version%3A3161%3Btimestamp%3A1778829826; dpr=1; c_user=61583942146559; wd=1243x945; fr=1KZqZhrN4zUchQaO4.AWfGo76Sn_p9o_gnBGfREw4aPfAAfZ6lvWhrumLz0oXhHXSB1Ao.BqCrWJ..AAA.0.0.BqCrWJ.AWeoZtnq2F02BLYsdcjKMe2MvVU; xs=23%3AAAXhWAJ4sHW_xg%3A2%3A1778834485%3A-1%3A-1%3A%3AAcyAEfl9i1H8AhPCbNQQdyj29XDVXS_fnesNr45F2ts; presence=C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1779086728921%2C%22v%22%3A1%7D",
+    "cookies": "PASTE_YOUR_FACEBOOK_COOKIE_HERE",
     "ownerID": ["9209278"],
     "version": "0.0.1"
 }
