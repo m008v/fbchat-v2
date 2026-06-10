@@ -11,7 +11,7 @@ REQUEST_TIMEOUT = 20
 Written by Nguyen Minh Huy (RainTee)
 Facebook Login V2 - Fixed
 Datetime: 28/12/2022
-Last Update: 15/4/2026 
+Last Update: 10/06/2026 
 """
 
 def jsonResults(dataJson, statusLogin, listExportCookies=None):
@@ -53,9 +53,16 @@ def _build_cookie_export(session_cookies):
      return exported
 
 
-def _post_json(url, data, headers):
+def _post_json(url, data, headers, proxies):
      try:
-          response = requests.post(url, data=data, headers=headers, timeout=REQUEST_TIMEOUT)
+          kwags = {
+               "url": url,
+               "data": data,  
+               "headers": headers,
+               "timeout": REQUEST_TIMEOUT,
+               "proxies": {"http": "http://" + proxies, "https": "https://" + proxies} if proxies else None,
+          }
+          response = requests.post(**kwags)
           return response.json()
      except (requests.RequestException, ValueError) as err:
           return {"error": {"error_user_msg": str(err), "code": -1}}
@@ -67,19 +74,20 @@ def GetToken2FA(key2Fa):
           twoFARequests = pyotp.TOTP(key2Fa.replace(" ", "")).now()
           return str(twoFARequests)
      except (requests.RequestException, ValueError, TypeError):
-          return str(random.randint(100000, 999999))
+          raise ValueError("Invalid 2FA key provided.")
 
 class loginFacebook:
 
 
-     def __init__(self, username, password, AuthenticationGoogleCode=None):
+     def __init__(self, username, password, AuthenticationGoogleCode=None, proxies=None):
           
           self.deviceID = self.adID = self.secureFamilyDeviceID = f"{randStr(8)}-{randStr(4)}-{randStr(4)}-{randStr(4)}-{randStr(12)}"
           self.manchineID = randStr(24)
           self.usernameFacebook = username # IDFB or email/phone number need login (IDFB hoặc email/sđt cần đăng nhập)
           self.passwordFacebook = password # Password of the account (Mật khẩu của tài khoản)
           self.twoTokenAccess = AuthenticationGoogleCode # string of 16 characters (or more) provided by Facebook (một chuỗi gồm 16 kí tụ (hoặc hơn) được cấp bởi Facebook)
-          
+          self.proxies = proxies # Proxy settings for the request (format: ip:port) (Cài đặt proxy cho yêu cầu (định dạng: ip:port))
+
           """
           Note: 
                - English: If you don't have two-factor authentication set up, you can skip it.
@@ -91,7 +99,7 @@ class loginFacebook:
                "Host": "b-graph.facebook.com",
                "Content-Type": "application/x-www-form-urlencoded",
                "X-Fb-Connection-Type": "unknown",
-               "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 7.1.2; SM-G988N Build/NRD90M) [FBAN/FB4A;FBAV/340.0.0.27.113;FBPN/com.facebook.katana;FBLC/vi_VN;FBBV/324485361;FBCR/Viettel Mobile;FBMF/samsung;FBBD/samsung;FBDV/SM-G988N;FBSV/7.1.2;FBCA/x86:armeabi-v7a;FBDM/{density=1.0,width=540,height=960};FB_FW/1;FBRV/0;]",
+               "User-Agent": "Mozilla/5.0 (Linux; Android 16; V2419A Build/BP2A.250605.031.A3_V000L1) [FBAN/FB4A;FBAV/340.0.0.27.113;FBPN/com.facebook.katana;FBLC/vi_VN;FBBV/324485361;FBCR/Viettel Mobile;FBMF/samsung;FBBD/samsung;FBDV/SM-G988N;FBSV/7.1.2;FBCA/x86:armeabi-v7a;FBDM/{density=1.0,width=540,height=960};FB_FW/1;FBRV/0;]",
                "X-Fb-Connection-Quality": "EXCELLENT",
                "Authorization": "OAuth null",
                "X-Fb-Friendly-Name": "authenticate",
@@ -137,7 +145,7 @@ class loginFacebook:
           return data
 
      def _login(self, data_form):
-          return _post_json(FB_AUTH_URL, data_form, self._headers())
+          return _post_json(FB_AUTH_URL, data_form, self._headers(), self.proxies)
           
      def main(self):
           data_form = self._base_form(self.passwordFacebook, "password", 1)
