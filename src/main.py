@@ -149,7 +149,10 @@ class SimpleBot:
 
     def _poll_once(self) -> None:
         """Quét bodyResults; nếu có tin mới chưa xử lý → dispatch."""
-        snap = self.listener.bodyResults
+        get_message = getattr(self.listener, "get_message", None)
+        snap = get_message() if callable(get_message) else self.listener.bodyResults
+        if snap is None:
+            return
         mid = snap.get("messageID")
         body = snap.get("body")
 
@@ -313,4 +316,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
- 

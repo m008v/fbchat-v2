@@ -14,12 +14,13 @@ underlying Go code (Signal Protocol via `whatsmeow`, Meta protocol via
 You need Go ≥ 1.24 installed (https://go.dev/dl/).
 
 ```powershell
-cd fbchat-v2/bridge-e2ee
+cd fbchat-v2
 
-# 1. fetch the mautrix-meta source (referenced by go.mod via `replace`)
-git clone https://github.com/mautrix/meta.git ./meta
+# 1. fetch the mautrix-meta source declared in .gitmodules
+git submodule update --init --recursive bridge-e2ee/meta
 
 # 2. download deps and build
+cd bridge-e2ee
 go mod tidy
 go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .
 ```
@@ -29,6 +30,16 @@ On Linux/macOS:
 ```bash
 go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee .
 ```
+
+If you build from a source archive without `.gitmodules`, create `bridge-e2ee/meta`
+manually before running `go mod tidy`:
+
+```bash
+cd bridge-e2ee
+git clone https://github.com/mautrix/meta.git ./meta
+```
+
+`go.mod` uses `replace go.mau.fi/mautrix-meta => ./meta`.
 
 ## Where Python looks for the binary
 
@@ -56,6 +67,10 @@ Async event (no id):
 ```json
 {"event": {"type": "e2eeMessage", "data": {...}, "timestamp": 1715508423000}}
 ```
+
+Events are emitted with backpressure: the bridge waits for the Python reader
+instead of silently dropping events when the internal channel is full. When the
+client context is closed, pending event emission exits cleanly.
 
 Methods: `newClient`, `connect`, `connectE2EE`, `isConnected`, `sendMessage`,
 `sendE2EEMessage`, `disconnect`.

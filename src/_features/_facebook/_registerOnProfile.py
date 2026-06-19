@@ -20,7 +20,7 @@ def func(dataFB, newName, newUsername): # Tạo một trang cá nhân khác trê
     
     mainRequests = {
         "headers": Headers(dataFB["cookieFacebook"], dataForm),
-        "timeout": 60000,
+        "timeout": 30,
         "url": "https://www.facebook.com/api/graphql/",
         "data": dataForm,
         "cookies": parse_cookie_string(dataFB["cookieFacebook"]),

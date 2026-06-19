@@ -1,0 +1,3 @@
+[submodule "bridge-e2ee/meta"]
+	path = bridge-e2ee/meta
+	url = https://github.com/mautrix/meta.git

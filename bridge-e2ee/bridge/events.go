@@ -769,14 +769,16 @@ func (c *Client) handleE2EEEvent(evt interface{}) {
 
 // emitEvent emits an event to the channel
 func (c *Client) emitEvent(eventType EventType, data interface{}) {
-	select {
-	case c.eventChan <- &Event{
+	event := &Event{
 		Type:      eventType,
 		Data:      data,
 		Timestamp: timeNowMs(),
-	}:
-	default:
-		c.Logger.Warn().Str("type", string(eventType)).Msg("Event channel full, dropping event")
+	}
+
+	select {
+	case c.eventChan <- event:
+	case <-c.ctx.Done():
+		c.Logger.Debug().Str("type", string(eventType)).Msg("Client closed before event could be emitted")
 	}
 }
 

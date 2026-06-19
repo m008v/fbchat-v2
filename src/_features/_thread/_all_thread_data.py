@@ -131,8 +131,12 @@ def features(dataGet, threadID, commandUse):
         except (KeyError, TypeError, json.JSONDecodeError):
             return "Không thể xử lý dữ liệu ThreadList."
     for getNeedIDThread in getData:
-        if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(threadID)):
-            dataThread = getNeedIDThread
+        try:
+            if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(threadID)):
+                dataThread = getNeedIDThread
+        except Exception as errLog:
+            return f"Đã xảy ra lỗi khi tìm kiếm ThreadID: {str(errLog)}"
+
     
     if (dataThread != None):
         match commandUse:

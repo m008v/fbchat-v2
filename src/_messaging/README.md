@@ -172,7 +172,7 @@ api().send(
 | `typeChat` | `"user"` để nhắn 1-1, `None` để nhắn vào thread/group. |
 | `typeAttachment` | `"gif"` · `"image"` · `"video"` · `"file"` · `"audio"`. |
 | `attachmentID` | ID tệp đã upload qua `_attachments`. |
-| `replyMessage` + `messageID` | Dùng cho luồng reply tin nhắn. |
+| `replyMessage` + `messageID` | Dùng cho luồng reply tin nhắn; set `replyMessage=True` và truyền `messageID` gốc. |
 
 **Trả về:**
 
@@ -266,18 +266,22 @@ Lắng nghe sự kiện realtime qua **MQTT over WebSocket** (`wss://edge-chat.f
 | Method | Mô tả |
 |---|---|
 | `get_last_seq_id()` | Lấy & cập nhật `last_seq_id` mới nhất. |
+| `get_message(block=False, timeout=None)` | Lấy từng message event từ queue. Trả `None` nếu queue rỗng. |
 | `connect_mqtt()` | Khởi tạo MQTT client, subscribe sync queue, nhận message delta. **Blocking** (`loop_forever()`). |
 
-**Khi có sự kiện** — `self.bodyResults` chứa:
+**Khi có sự kiện** — listener push từng message vào `self.messageQueue`. Mỗi item có schema:
 
 ```text
 body · timestamp · userID · messageID · replyToID · type
 attachments.id · attachments.url
 ```
 
+`self.bodyResults` vẫn được cập nhật như snapshot cuối để tương thích code cũ, nhưng bot mới nên đọc qua `get_message()` để không mất tin khi nhiều delta về cùng lúc.
+
 **Highlights:**
 
 - Có cơ chế **reconnect** khi disconnect bất thường.
+- Parse toàn bộ `deltas` trong payload MQTT, không chỉ lấy phần tử đầu tiên.
 - Tự xử lý `errorCode == 100` (queue overflow) bằng cách reset queue token.
 - Vì `connect_mqtt()` blocking → nên chạy trong **thread / process riêng**.
 
@@ -583,6 +587,11 @@ from _messaging._listening import listeningEvent
 listener = listeningEvent(dataFB)
 listener.get_last_seq_id()
 threading.Thread(target=listener.connect_mqtt, daemon=True).start()
+
+while True:
+    event = listener.get_message(block=True, timeout=1)
+    if event:
+        print(event["body"])
 ```
 
 ### Lắng nghe E2EE (tin nhắn 1-1)
@@ -650,6 +659,7 @@ with E2EESender(dataFB=dataFB, log_level="warn") as sender:
 | `_send_e2ee.api` trả `{"error": 1, ..., "error-code": "bridge_error"}` | Bridge Go subprocess chết hoặc JSON-RPC call lỗi — bật `log_level="debug"` để xem stderr của bridge. |
 | `ValueError: Phải truyền 'listener=' (reuse) HOẶC 'dataFB=' (standalone)` | Truyền đúng một trong hai — `listener=` hoặc `dataFB=` — cho `_send_e2ee.api(...)`. |
 | Listener tự ngắt / không nhận event | Chạy trong thread riêng (`loop_forever()` blocking); theo dõi `errorCode` trong MQTT payload; quan tâm `errorCode == 100` (queue overflow). |
+| Bot bị mất tin khi nhiều message tới nhanh | Đọc bằng `listener.get_message()` / `messageQueue`; đừng poll mỗi `bodyResults` vì đó chỉ là snapshot cuối. |
 | Lỗi parse JSON | Loại tiền tố `for (;;);` trước `json.loads`. |
 | `FileNotFoundError` ở `_listening_e2ee` | Build binary `fbchat-bridge-e2ee` (xem `bridge-e2ee/README.md`) hoặc set env `FBCHAT_E2EE_BIN`. |
 | Bridge crash khi `connect_mqtt()` | Kiểm tra cookie còn hiệu lực + log stderr (mặc định bật); thử lại sau khi đăng nhập lại Messenger. |

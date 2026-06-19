@@ -33,16 +33,15 @@ def str_base(number, base):
           return str_base(d, base) + digitToChar(m)
      return digitToChar(m)
 
-def parse_cookie_string(cookie_string):
-     cookie_dict = {}
-     cookies = cookie_string.split(";")
-
-     for cookie in cookies:
-          if "=" in cookie:
-               key, value = cookie.split("=")
-               cookie_dict[key] = value 
-
-     return cookie_dict
+def parse_cookie_string(cookie_str: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for part in cookie_str.split(";"):
+        part = part.strip()
+        if not part or "=" not in part:
+            continue
+        k, _, v = part.partition("=")
+        out[k.strip()] = v.strip()
+    return out
 
 def dataSplit(string1, string2, numberSplit1=None, numberSplit2=None, HTML=None, amount=None, string3=None, numberSplit3=None, defaultValue=None):
      if (defaultValue): numberSplit1, numberSplit2 = 1, 0

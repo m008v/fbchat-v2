@@ -172,7 +172,6 @@ class loginFacebook:
           return jsonResults(pass2Fa, 1, _build_cookie_export(pass2Fa.get("session_cookies")))
 
 
-
 """
 ✓Remake by Nguyễn Minh Huy
 ✓Tôn trọng tác giả ❤️

@@ -4,6 +4,7 @@ import time
 import datetime
 import attr
 import paho.mqtt.client as mqtt
+from queue import Empty, Queue
 from urllib.parse import urlparse
 from _core._utils import generate_session_id, generate_client_id, json_minimal
 from _features._thread import *
@@ -31,6 +32,7 @@ class listeningEvent:
                     "url": None, # url attachment
                }
           }
+          self.messageQueue = Queue()
           self.syncToken = None
           self.lastSeqID = None
           self.dataFB = dataFB
@@ -39,6 +41,66 @@ class listeningEvent:
           except Exception as err:
                print(f"[{datetime.datetime.now()}]failed initial thread data fetch: {err}")
                self.fbt = {}
+
+
+     @staticmethod
+     def _fresh_body_results():
+          return {
+               "body": None,
+               "timestamp": 0,
+               "userID": 0,
+               "messageID": None,
+               "replyToID": 0,
+               "type": None,
+               "attachments": {
+                    "id": 0,
+                    "url": None,
+               }
+          }
+
+     def get_message(self, block=False, timeout=None):
+          try:
+               if block:
+                    return self.messageQueue.get(True, timeout)
+               return self.messageQueue.get_nowait()
+          except Empty:
+               return None
+
+     def _publish_body_results(self, body):
+          self.bodyResults = body
+          self.messageQueue.put(body)
+
+     def _body_from_delta(self, delta):
+          if not isinstance(delta, dict):
+               return None
+
+          metadata = delta.get("messageMetadata")
+          if not isinstance(metadata, dict):
+               return None
+
+          thread_key = metadata.get("threadKey") or {}
+          other_user_id = thread_key.get("otherUserFbId")
+          body = self._fresh_body_results()
+          body["body"] = delta.get("body")
+          body["timestamp"] = metadata.get("timestamp", 0)
+          body["userID"] = metadata.get("actorFbId", 0)
+          body["messageID"] = metadata.get("messageId")
+          body["replyToID"] = (
+               other_user_id
+               if other_user_id is not None
+               else thread_key.get("threadFbId", 0)
+          )
+          body["type"] = "user" if other_user_id is not None else "thread"
+
+          attachments = delta.get("attachments") or []
+          if attachments:
+               try:
+                    body["attachments"]["id"] = attachments[0]["fbid"]
+                    body["attachments"]["url"] = attachments[0]["mercury"]["blob_attachment"]["preview"]["uri"]
+               except (KeyError, TypeError, IndexError):
+                    body["attachments"]["id"] = "Unable to retrieve attachment ID"
+
+          return body
 
 
      def _coerce_seq_id(self, value, source="seq_id"):
@@ -178,21 +240,12 @@ class listeningEvent:
           def on_message(client, userdata, msg):
                try:
                     j = json.loads(msg.payload.decode())
-                    if j.get('deltas') is not None:
-                         _ = j["deltas"][0]
-                         if _.get('messageMetadata') is not None:
-                              self.bodyResults["body"] = _.get("body")
-                              self.bodyResults["timestamp"] = _["messageMetadata"]["timestamp"]
-                              self.bodyResults["userID"] = _["messageMetadata"]["actorFbId"]
-                              self.bodyResults["messageID"] = _["messageMetadata"]["messageId"]
-                              self.bodyResults["replyToID"] = _["messageMetadata"]["threadKey"].get("otherUserFbId") if _["messageMetadata"]["threadKey"].get("otherUserFbId") is not None else _["messageMetadata"]["threadKey"].get("threadFbId")
-                              self.bodyResults["type"] = "user" if _["messageMetadata"]["threadKey"].get("otherUserFbId") is not None else "thread"
-                              if len(_["attachments"]) > 0:
-                                   try:
-                                        self.bodyResults["attachments"]["id"] = _["attachments"][0]["fbid"]
-                                        self.bodyResults["attachments"]["url"] = _["attachments"][0]["mercury"]["blob_attachment"]["preview"]["uri"]
-                                   except (KeyError, TypeError, IndexError):
-                                        self.bodyResults["attachments"]["id"] = "Unable to retrieve attachment ID"
+                    deltas = j.get("deltas")
+                    if isinstance(deltas, list):
+                         for delta in deltas:
+                              body = self._body_from_delta(delta)
+                              if body is not None:
+                                   self._publish_body_results(body)
                     if "syncToken" in j and "firstDeltaSeqId" in j:
                          self.syncToken = j["syncToken"]
                          self._set_last_seq_id(j.get("lastIssuedSeqId") or j.get("firstDeltaSeqId"), "mqtt first/last seq_id")
@@ -249,7 +302,7 @@ class listeningEvent:
                           
                          return  # Dừng xử lý error
                
-               except (UnicodeDecodeError):
+               except (UnicodeDecodeError, json.JSONDecodeError):
                     print("ERR Failed parsing MQTT data on /t_ms as JSON")
                
           def on_disconnect(client, userdata, rc):

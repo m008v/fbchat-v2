@@ -26,7 +26,7 @@ class api:
           self.typeAttachment = typeAttachment # --> type attachment send with message (see <key> at self.dictAttachment)
           self.attachmentID = attachmentID # --> ID of attachment uploaded.
           self.typeChat = typeChat # --> type chat with user/thread (If you want to send to user, let its value be "user". If you want to send to a thread, keep the same value (None))
-          self.replyStatus = replyMessage # --> You want to send a message or reply to someone
+          self.replyStatus = replyMessage # --> You want to send a message or reply to someone = Set "true" and set messageID. If you want to send a message normally, keep the same value (None)
           self.messageID = messageID # --> ID of message that you need to answer
           
           self.sendMessage()
@@ -69,7 +69,7 @@ class api:
      
      def replyCheck(self):
           
-          if (self.replyStatus is None):
+          if (self.replyStatus is True and self.messageID != None):
                self.dataForm["replied_to_message_id"] = self.messageID
           
           
@@ -82,7 +82,7 @@ class api:
                if (isinstance(self.ID, list)):
                     for i,threadID in enumerate(self.ID):
                          self.dataForm["specific_to_list[" + str(i)+ "]"] = "fbid:" + threadID
-                    self.dataForm["specific_to_list[" + str(len(threadID)) + "]"] = "fbid:" + self.dataFB["FacebookID"]
+                    self.dataForm["specific_to_list[" + str(len(self.ID)) + "]"] = "fbid:" + self.dataFB["FacebookID"]
                else:
                     self.dataForm["specific_to_list[0]"] = "fbid:" + self.ID
                     self.dataForm["specific_to_list[1]"] = "fbid:" + self.dataFB["FacebookID"]

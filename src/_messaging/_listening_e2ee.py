@@ -44,7 +44,7 @@ from pathlib import Path
 from queue import Empty, Queue
 from typing import Any, Callable, Optional
 
-from _core._session import dataGetHome
+from _core._utils import parse_cookie_string
 
 # ---------------------------------------------------------------------------
 # Binary discovery
@@ -203,18 +203,6 @@ class _BridgeProcess:
 # ---------------------------------------------------------------------------
 
 _REQUIRED_COOKIES = ("c_user", "xs", "datr", "fr")
-
-
-def parse_cookie_string(cookie_str: str) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for part in cookie_str.split(";"):
-        part = part.strip()
-        if not part or "=" not in part:
-            continue
-        k, _, v = part.partition("=")
-        out[k.strip()] = v.strip()
-    return out
-
 
 # ---------------------------------------------------------------------------
 # Public listener — API tương thích với _listening.py

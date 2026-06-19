@@ -155,6 +155,7 @@ func(dataFB, newName, newUsername)
 Tạo **profile phụ** trên cùng tài khoản.
 
 > ⚠️ Chỉ hoạt động trên một số tài khoản đủ điều kiện.
+> Request GraphQL dùng timeout 30 giây để tránh treo process khi Facebook không trả response.
 
 #### `_notification.py`
 
@@ -251,6 +252,7 @@ print(threads["dataAllThread"])
 | Triệu chứng | Hướng xử lý |
 |---|---|
 | Lỗi auth/session ở nhiều feature | Cookie hết hạn → tạo lại `dataFB`. |
+| `_registerOnProfile.py` timeout | Kiểm tra mạng, quyền tạo profile phụ và cookie; request hiện giới hạn 30 giây thay vì treo vô hạn. |
 | API trả lỗi hoặc rỗng dữ liệu | Endpoint / `doc_id` đã đổi; verify `variables` đúng schema mới. |
 | Lỗi parse JSON response | Một số endpoint có tiền tố `for (;;);` — split trước khi `json.loads`. |
 
