@@ -81,7 +81,8 @@ def _make_mqtt_client(dataFB):
           protocol=mqtt.MQTTv31,
           transport="websockets",
      )
-     client.tls_set(certfile=None, keyfile=None, cert_reqs=ssl.CERT_NONE, tls_version=ssl.PROTOCOL_TLSv1_2)
+     client.tls_set(cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS_CLIENT)
+     client.tls_insecure_set(False)
      client.username_pw_set(username=json_minimal(user))
      client.ws_set_options(
           path=f"{parsed_host.path}?{parsed_host.query}",

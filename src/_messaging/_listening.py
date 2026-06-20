@@ -4,7 +4,7 @@ import time
 import datetime
 import attr
 import paho.mqtt.client as mqtt
-from queue import Empty, Queue
+from queue import Empty, Full, Queue
 from urllib.parse import urlparse
 from _core._utils import generate_session_id, generate_client_id, json_minimal
 from _features._thread import *
@@ -16,10 +16,19 @@ Author: MinhHuyDev
 Date: 23:28 Sunday, 10/12/2023
 """
 
-     
+DEFAULT_MESSAGE_QUEUE_MAXSIZE = 1000
+
+
 class listeningEvent:
      _on_message = attr.ib()
-     def __init__(self, dataFB):
+     def __init__(self, dataFB, message_queue_maxsize=DEFAULT_MESSAGE_QUEUE_MAXSIZE):
+          try:
+               queue_size = int(message_queue_maxsize)
+          except (TypeError, ValueError):
+               queue_size = DEFAULT_MESSAGE_QUEUE_MAXSIZE
+          if queue_size < 1:
+               queue_size = DEFAULT_MESSAGE_QUEUE_MAXSIZE
+
           self.bodyResults = {
                "body": None, # Nội dung tin nhắn - content message
                "timestamp": 0, # Thời gian tin nhắn được gửi - The time the message was sent
@@ -29,10 +38,12 @@ class listeningEvent:
                "type": None, # user/thread
                "attachments": { # Tệp đính kèm được gửi - Attachment sent
                     "id": 0, # id attachment
-                    "url": None, # url attachment
-               }
+                     "url": None, # url attachment
+                }
           }
-          self.messageQueue = Queue()
+          self.messageQueueMaxSize = queue_size
+          self.messageQueue = Queue(maxsize=queue_size)
+          self.droppedMessages = 0
           self.syncToken = None
           self.lastSeqID = None
           self.dataFB = dataFB
@@ -68,7 +79,30 @@ class listeningEvent:
 
      def _publish_body_results(self, body):
           self.bodyResults = body
-          self.messageQueue.put(body)
+          try:
+               self.messageQueue.put_nowait(body)
+               return
+          except Full:
+               try:
+                    self.messageQueue.get_nowait()
+               except Empty:
+                    pass
+
+          self.droppedMessages += 1
+          print(
+               f"[{datetime.datetime.now()}] messageQueue full "
+               f"(max={self.messageQueueMaxSize}); dropped oldest message; "
+               f"total_dropped={self.droppedMessages}"
+          )
+
+          try:
+               self.messageQueue.put_nowait(body)
+          except Full:
+               self.droppedMessages += 1
+               print(
+                    f"[{datetime.datetime.now()}] messageQueue still full; "
+                    f"dropped newest message; total_dropped={self.droppedMessages}"
+               )
 
      def _body_from_delta(self, delta):
           if not isinstance(delta, dict):
@@ -328,7 +362,8 @@ class listeningEvent:
                transport="websockets",
           )
           
-          self.mqtt.tls_set(certfile=None, keyfile=None, cert_reqs=ssl.CERT_NONE, tls_version=ssl.PROTOCOL_TLSv1_2)
+          self.mqtt.tls_set(cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS_CLIENT)
+          self.mqtt.tls_insecure_set(False)
           
           self.mqtt.on_connect = _messenger_queue_publish
           self.mqtt.on_message = on_message

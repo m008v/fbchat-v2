@@ -1,6 +1,11 @@
 import requests
 from _core._utils import parse_cookie_string, dataSplit
 
+REQUIRED_SESSION_FIELDS = ("fb_dtsg", "jazoest", "sessionID", "FacebookID", "clientRevision")
+
+def _has_value(value):
+     return value is not None and str(value).strip() != ""
+
 def dataGetHome(setCookies):
      
      mainRequests = {
@@ -48,14 +53,31 @@ def dataGetHome(setCookies):
           ["clientRevision", "client_revision\":", ","]
      ]
      
-     sendRequests = requests.get(**mainRequests).text
+     try:
+          response = requests.get(**mainRequests)
+          response.raise_for_status()
+     except requests.RequestException as err:
+          print(f"[session] Không thể lấy homepage Facebook: {err}")
+          return None
+
+     sendRequests = response.text
      for i in splitDataList:
           nameValue = i[0]
           try:
                exportValue = dataSplit(i[1], i[2], HTML=sendRequests, defaultValue=True)
           except (IndexError, AttributeError, TypeError):
-               exportValue = "Unable to retrieve data for %s. It's possible that they have been deleted or modified." % nameValue
+               exportValue = None
           dictValueSaved[nameValue] = exportValue
      dictValueSaved["cookieFacebook"] = setCookies
-     
+
+     missing = [field for field in REQUIRED_SESSION_FIELDS if not _has_value(dictValueSaved.get(field))]
+     facebook_id = str(dictValueSaved.get("FacebookID") or "").strip()
+     if facebook_id and not facebook_id.isdigit():
+          missing.append("FacebookID")
+
+     if missing:
+          missing_fields = ", ".join(dict.fromkeys(missing))
+          print(f"[session] Thiếu hoặc sai token bắt buộc: {missing_fields}")
+          return None
+
      return dictValueSaved

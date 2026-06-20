@@ -278,9 +278,12 @@ attachments.id · attachments.url
 
 `self.bodyResults` vẫn được cập nhật như snapshot cuối để tương thích code cũ, nhưng bot mới nên đọc qua `get_message()` để không mất tin khi nhiều delta về cùng lúc.
 
+Queue mặc định giới hạn `1000` event. Khi consumer chết hoặc xử lý quá chậm, listener **drop event cũ nhất**, tăng `droppedMessages`, và log rõ ràng thay vì để RAM phình vô hạn.
+
 **Highlights:**
 
 - Có cơ chế **reconnect** khi disconnect bất thường.
+- MQTT WebSocket bật TLS certificate verification; không dùng `ssl.CERT_NONE` khi gửi cookie phiên.
 - Parse toàn bộ `deltas` trong payload MQTT, không chỉ lấy phần tử đầu tiên.
 - Tự xử lý `errorCode == 100` (queue overflow) bằng cách reset queue token.
 - Vì `connect_mqtt()` blocking → nên chạy trong **thread / process riêng**.
@@ -659,7 +662,7 @@ with E2EESender(dataFB=dataFB, log_level="warn") as sender:
 | `_send_e2ee.api` trả `{"error": 1, ..., "error-code": "bridge_error"}` | Bridge Go subprocess chết hoặc JSON-RPC call lỗi — bật `log_level="debug"` để xem stderr của bridge. |
 | `ValueError: Phải truyền 'listener=' (reuse) HOẶC 'dataFB=' (standalone)` | Truyền đúng một trong hai — `listener=` hoặc `dataFB=` — cho `_send_e2ee.api(...)`. |
 | Listener tự ngắt / không nhận event | Chạy trong thread riêng (`loop_forever()` blocking); theo dõi `errorCode` trong MQTT payload; quan tâm `errorCode == 100` (queue overflow). |
-| Bot bị mất tin khi nhiều message tới nhanh | Đọc bằng `listener.get_message()` / `messageQueue`; đừng poll mỗi `bodyResults` vì đó chỉ là snapshot cuối. |
+| Bot bị mất tin khi nhiều message tới nhanh | Đọc bằng `listener.get_message()` / `messageQueue`; đừng poll mỗi `bodyResults` vì đó chỉ là snapshot cuối. Nếu log báo `messageQueue full`, consumer đang chết hoặc xử lý quá chậm. |
 | Lỗi parse JSON | Loại tiền tố `for (;;);` trước `json.loads`. |
 | `FileNotFoundError` ở `_listening_e2ee` | Build binary `fbchat-bridge-e2ee` (xem `bridge-e2ee/README.md`) hoặc set env `FBCHAT_E2EE_BIN`. |
 | Bridge crash khi `connect_mqtt()` | Kiểm tra cookie còn hiệu lực + log stderr (mặc định bật); thử lại sau khi đăng nhập lại Messenger. |

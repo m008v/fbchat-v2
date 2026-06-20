@@ -85,7 +85,7 @@ There are still rough edges and inconsistencies left to polish. If you spot any,
 
 ### Coming Soon
 - ⚡ Native `async` / `await` support
-- � Pre-built E2EE bridge binaries for Windows / Linux / macOS
+- 📦 Pre-built E2EE bridge binaries for Windows / Linux / macOS
 
 > (*) Cookie / credential-based login carries security risk; never share your tokens.
 
@@ -120,7 +120,8 @@ flowchart LR
 fbchat-v2/
 ├── src/
 │   ├── main.py                          # Entry-point demo bot
-│   ├── config.json                      # Cookies + runtime config
+│   ├── config.example.json              # Safe template for runtime config
+│   ├── config.json                      # Local cookies + runtime config (gitignored)
 │   ├── _core/                           # ── Foundation layer ──
 │   │   ├── _facebookLogin.py
 │   │   ├── _session.py
@@ -186,6 +187,7 @@ mindmap
       requirements.txt
     Source (src)
       main.py
+      config.example.json
       config.json
       _core
         _facebookLogin.py
@@ -369,7 +371,7 @@ More details: [`bridge-e2ee/README.md`](bridge-e2ee/README.md).
 
 ### 6. Configure cookies
 
-Open [`src/config.json`](src/config.json) and paste your Facebook session cookies into the `cookies` field. See the [Configuration](#-configuration) section for details.
+Copy [`src/config.example.json`](src/config.example.json) to `src/config.json`, then paste your Facebook session cookies into the `cookies` field. See the [Configuration](#-configuration) section for details.
 
 ### 7. Smoke test
 
@@ -391,7 +393,7 @@ python src/main.py
 
 Before running:
 
-1. Open `src/config.json`.
+1. Copy `src/config.example.json` to `src/config.json`.
 2. Paste your Facebook session cookies into the `cookies` field.
 3. (Optional) tweak any other runtime options exposed by the file.
 
@@ -460,7 +462,7 @@ and [DOCS.md](DOCS.md).
 
 ## ⚙️ Configuration
 
-`src/config.json` is the single source of truth for runtime settings.
+`src/config.example.json` is the committed template. `src/config.json` is the local runtime config and stays gitignored.
 
 | Key | Description |
 |---|---|

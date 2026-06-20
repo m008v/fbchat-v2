@@ -92,7 +92,7 @@ Hits `https://www.facebook.com/` with the supplied cookies and extracts the toke
 |---|---|---|
 | `setCookies` | `str` | Raw cookie string, e.g. `"c_user=...; xs=...; fr=...; datr=...;"` |
 
-**Returns:** a `dict` matching the `dataFB` schema above.
+**Returns:** a `dict` matching the `dataFB` schema above, or `None` when the request fails / required tokens are missing.
 
 **Workflow:**
 
@@ -249,7 +249,7 @@ payload["message_id"] = "mid...."
 | Symptom | Suggested fix |
 |---|---|
 | Many requests fail with auth/session errors | Cookies expired → regenerate `dataFB` via `dataGetHome(...)`. |
-| Parsed field returns a fallback value | Homepage HTML changed → update split markers in `_session.py`. |
+| `dataGetHome(...)` returns `None` | Cookies expired, the homepage request failed, or Facebook changed token markup → refresh cookies and inspect split markers in `_session.py`. |
 | Login hits checkpoint | Switch to cookie-based login; if you must keep the login flow, check IP / 2FA. |
 
 ---

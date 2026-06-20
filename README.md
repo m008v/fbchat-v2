@@ -120,7 +120,8 @@ flowchart LR
 fbchat-v2/
 ├── src/
 │   ├── main.py                          # Bot mẫu — entry point
-│   ├── config.json                      # Cookie + cấu hình runtime
+│   ├── config.example.json              # Template an toàn cho cấu hình runtime
+│   ├── config.json                      # Cookie + cấu hình runtime local (gitignored)
 │   ├── _core/                           # ── Tầng nền tảng ──
 │   │   ├── _facebookLogin.py
 │   │   ├── _session.py
@@ -186,6 +187,7 @@ mindmap
       requirements.txt
     Mã nguồn (src)
       main.py
+      config.example.json
       config.json
       _core
         _facebookLogin.py
@@ -377,7 +379,7 @@ Chi tiết thêm: [`bridge-e2ee/README.md`](bridge-e2ee/README.md).
 
 ### 6. Cấu hình cookie
 
-Mở [`src/config.json`](src/config.json) và dán cookie phiên Facebook vào trường `cookies`. Xem chi tiết ở mục [Cấu hình](#-cấu-hình).
+Sao chép [`src/config.example.json`](src/config.example.json) thành `src/config.json`, rồi dán cookie phiên Facebook vào trường `cookies`. Xem chi tiết ở mục [Cấu hình](#-cấu-hình).
 
 ### 7. Smoke test
 
@@ -399,7 +401,7 @@ python src/main.py
 
 Trước khi chạy:
 
-1. Mở `src/config.json`.
+1. Sao chép `src/config.example.json` thành `src/config.json`.
 2. Dán **cookies** Facebook của bạn vào trường `cookies`.
 3. (Tuỳ chọn) chỉnh các tham số runtime khác trong file.
 
@@ -470,7 +472,7 @@ Chi tiết API: [`src/_messaging/README.md`](src/_messaging/README.md) và
 
 ## ⚙️ Cấu hình
 
-`src/config.json` là nguồn duy nhất cho mọi cấu hình runtime.
+`src/config.example.json` là template được commit. `src/config.json` là cấu hình runtime local và luôn nằm trong `.gitignore`.
 
 | Khoá | Mô tả |
 |---|---|

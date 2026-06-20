@@ -88,6 +88,18 @@ def load_config() -> dict:
     return cfg
 
 
+def is_valid_datafb(dataFB: object) -> bool:
+    if not isinstance(dataFB, dict):
+        return False
+
+    facebook_id = str(dataFB.get("FacebookID") or "").strip()
+    if not facebook_id.isdigit():
+        return False
+
+    required_fields = ("fb_dtsg", "jazoest", "sessionID", "clientRevision", "cookieFacebook")
+    return all(str(dataFB.get(field) or "").strip() for field in required_fields)
+
+
 def log(tag: str, msg: str) -> None:
     print(f"[{datetime.now():%H:%M:%S}] [{tag}] {msg}")
 
@@ -302,8 +314,8 @@ def main() -> None:
     log("boot", "Đang khởi tạo dataFB từ cookie…")
     dataFB = dataGetHome(cfg["cookies"])
 
-    if not dataFB.get("FacebookID"):
-        log("boot", "❌ Không lấy được FacebookID — cookie có thể đã hết hạn.")
+    if not is_valid_datafb(dataFB):
+        log("boot", "❌ Không lấy được dataFB hợp lệ — cookie có thể đã hết hạn hoặc HTML token đã đổi.")
         sys.exit(1)
 
     bot = SimpleBot(

@@ -1,0 +1,9 @@
+{
+  "botName": "fbchat-v2 demo bot",
+  "prefix": "/",
+  "cookies": "PASTE_YOUR_FACEBOOK_COOKIE_HERE",
+  "admins": [
+    "1000xxxxxxxxxx"
+  ],
+  "version": "0.0.1"
+}

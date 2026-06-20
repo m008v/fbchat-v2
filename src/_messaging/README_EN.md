@@ -267,18 +267,25 @@ Listens for realtime events via **MQTT over WebSocket** (`wss://edge-chat.facebo
 | Method | Description |
 |---|---|
 | `get_last_seq_id()` | Fetches & updates the latest `last_seq_id`. |
+| `get_message(block=False, timeout=None)` | Reads one message event from the bounded queue. Returns `None` when empty. |
 | `connect_mqtt()` | Initializes the MQTT client, subscribes to the sync queue, receives deltas. **Blocking** (`loop_forever()`). |
 
-**Event payload** — `self.bodyResults` exposes:
+**Event payload** — the listener pushes each event into `self.messageQueue`. Each item exposes:
 
 ```text
 body · timestamp · userID · messageID · replyToID · type
 attachments.id · attachments.url
 ```
 
+`self.bodyResults` remains the latest-event snapshot for compatibility, but new bots should read through `get_message()` so bursty deltas do not overwrite each other.
+
+The queue defaults to `1000` events. If the consumer dies or becomes too slow, the listener drops the oldest event, increments `droppedMessages`, and logs the drop instead of growing RAM forever.
+
 **Highlights:**
 
 - Built-in **reconnect** on unexpected disconnect.
+- MQTT WebSocket uses TLS certificate verification; session cookies are not sent with `ssl.CERT_NONE`.
+- Parses every `delta` in an MQTT payload, not just the first item.
 - Handles `errorCode == 100` (queue overflow) by resetting sync state.
 - Because `connect_mqtt()` is blocking, run it in a **dedicated thread / process**.
 
@@ -651,6 +658,7 @@ with E2EESender(dataFB=dataFB, log_level="warn") as sender:
 | `_send_e2ee.api` returns `{"error": 1, ..., "error-code": "bridge_error"}` | The Go bridge subprocess died or the JSON-RPC call failed — turn on `log_level="debug"` to see bridge stderr. |
 | `ValueError: Phải truyền 'listener=' (reuse) HOẶC 'dataFB=' (standalone)` | Pass exactly one of `listener=` or `dataFB=` to `_send_e2ee.api(...)`. |
 | Listener disconnects / receives no events | Run in a dedicated thread (`loop_forever()` is blocking); inspect MQTT `errorCode`; mind `errorCode == 100` (queue overflow). |
+| Bot misses messages during traffic bursts | Read with `listener.get_message()` / `messageQueue`; do not poll only `bodyResults`, because it is just the latest snapshot. If logs show `messageQueue full`, the consumer is dead or too slow. |
 | JSON parse errors | Strip the `for (;;);` prefix before `json.loads`. |
 | `FileNotFoundError` from `_listening_e2ee` | Build the `fbchat-bridge-e2ee` binary (see `bridge-e2ee/README.md`) or set the `FBCHAT_E2EE_BIN` env var. |
 | Bridge crashes inside `connect_mqtt()` | Verify cookies are still valid, inspect stderr (logged by default), and retry after re-authenticating to Messenger. |

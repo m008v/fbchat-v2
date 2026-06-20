@@ -122,6 +122,7 @@ def func(dataFB): # Lấy dữ liệu những thành phần tin nhắn ở INBOX
 
 def features(dataGet, threadID, commandUse):
     listData = []
+    dataThread = None
           
     try:
         getData = json.loads(dataGet)["o0"]["data"]["viewer"]["message_threads"]["nodes"]
@@ -134,6 +135,7 @@ def features(dataGet, threadID, commandUse):
         try:
             if (str(getNeedIDThread["thread_key"]["thread_fbid"]) == str(threadID)):
                 dataThread = getNeedIDThread
+                break
         except Exception as errLog:
             return f"Đã xảy ra lỗi khi tìm kiếm ThreadID: {str(errLog)}"
 
