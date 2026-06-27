@@ -15,7 +15,7 @@ def func(dataFB, typeAdded, messageID, emojiChoice):
      
      mainRequests = {
                "headers": Headers(dataFB["cookieFacebook"], dataForm),
-               "timeout": 60000,
+               "timeout": 30,
                "url": "https://www.facebook.com/webgraphql/mutation/",
                "data": dataForm,
                "cookies": parse_cookie_string(dataFB["cookieFacebook"]),

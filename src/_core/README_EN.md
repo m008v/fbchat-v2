@@ -160,7 +160,7 @@ Logs into Facebook with **username / password** (+ optional 2FA).
 | Symbol | Description |
 |---|---|
 | `class loginFacebook(username, password, AuthenticationGoogleCode=None)` | Login class; call `.main()` to execute. |
-| `GetToken2FA(key2Fa)` | Fetches a 2FA OTP via `https://2fa.live/tok/...`. |
+| `GetToken2FA(key2Fa)` | Fetches a 2FA OTP via `https://2fa.live/tok/...`, or accepts a manually entered 6-8 digit code. |
 | `jsonResults(...)` | Normalizes the response shape. |
 
 #### Result shape

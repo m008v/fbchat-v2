@@ -160,7 +160,7 @@ Backbone của hầu hết flow request, hỗ trợ 2 chế độ:
 | Symbol | Mô tả |
 |---|---|
 | `class loginFacebook(username, password, AuthenticationGoogleCode=None)` | Đăng nhập; gọi `.main()` để chạy. |
-| `GetToken2FA(key2Fa)` | Lấy OTP 2FA qua `https://2fa.live/tok/...`. |
+| `GetToken2FA(key2Fa)` | Lấy OTP 2FA qua `https://2fa.live/tok/...`, hoặc nhận thẳng mã 6-8 số đã nhập tay. |
 | `jsonResults(...)` | Chuẩn hoá cấu trúc trả về. |
 
 #### Kết quả

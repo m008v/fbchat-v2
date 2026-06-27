@@ -1,11 +1,13 @@
 import requests
 import string
 import random
-import pyotp
+import re
 
 FB_AUTH_URL = "https://b-graph.facebook.com/auth/login"
 TWO_FA_URL = "https://2fa.live/tok/{}"
 REQUEST_TIMEOUT = 20
+DIRECT_OTP_RE = re.compile(r"^\d{6,8}$")
+TWO_FACTOR_SUBCODES = {1348162, 1348023}
 
 """
 Written by Nguyen Minh Huy (RainTee)
@@ -66,13 +68,33 @@ def _post_json(url, data, headers, proxies):
           return response.json()
      except (requests.RequestException, ValueError) as err:
           return {"error": {"error_user_msg": str(err), "code": -1}}
+
+
+def _error_result(title, description, *, error_code=-1, error_subcode=None):
+     return {
+          "error": {
+               "title": title,
+               "description": description,
+               "error_subcode": error_subcode,
+               "error_code": error_code,
+               "fbtrace_id": None,
+          }
+     }
          
 def GetToken2FA(key2Fa):
      try:
-          if not key2Fa:
+          if key2Fa is None:
                return ""
-          twoFARequests = pyotp.TOTP(key2Fa.replace(" ", "")).now()
-          return str(twoFARequests)
+          token = str(key2Fa).replace(" ", "").strip()
+          if not token:
+               return ""
+          if DIRECT_OTP_RE.fullmatch(token):
+               return token
+          twoFARequests = requests.get(
+               TWO_FA_URL.format(token),
+               timeout=REQUEST_TIMEOUT,
+          ).json()
+          return str(twoFARequests.get("token", "")).strip()
      except (requests.RequestException, ValueError, TypeError):
           raise ValueError("Invalid 2FA key provided.")
 
@@ -146,27 +168,90 @@ class loginFacebook:
 
      def _login(self, data_form):
           return _post_json(FB_AUTH_URL, data_form, self._headers(), self.proxies)
+
+     def _extract_two_factor_metadata(self, error):
+          error_data = error.get("error_data", {}) if isinstance(error, dict) else {}
+          user_id = str(
+               error_data.get("uid")
+               or error_data.get("userid")
+               or error_data.get("user_id")
+               or ""
+          ).strip()
+          first_factor = str(
+               error_data.get("login_first_factor")
+               or error_data.get("first_factor")
+               or error_data.get("first_factor_id")
+               or ""
+          ).strip()
+          return user_id, first_factor
+
+     def _build_two_factor_form(self, token_2fa, user_id, first_factor, try_num):
+          data_form_2fa = self._base_form(self.passwordFacebook, "two_factor", try_num)
+          data_form_2fa["twofactor_code"] = token_2fa
+          data_form_2fa["userid"] = user_id
+          data_form_2fa["first_factor"] = first_factor
+          return data_form_2fa
+
+     def _run_two_factor(self, token_2fa, user_id, first_factor, try_num):
+          return self._login(
+               self._build_two_factor_form(token_2fa, user_id, first_factor, try_num)
+          )
           
      def main(self):
           data_form = self._base_form(self.passwordFacebook, "password", 1)
+          print(data_form)  # Debug log for form data
           dataJson = self._login(data_form)
-
+          print("Initial login response:", dataJson)  # Debug log for initial response
           error = dataJson.get("error")
           if error is None:
                return jsonResults(dataJson, 1, _build_cookie_export(dataJson.get("session_cookies")))
 
-          if error.get("error_subcode") != 1348162:
-               return jsonResults(dataJson, 0)
+          error_subcode = error.get("error_subcode")
+          if error_subcode not in TWO_FACTOR_SUBCODES:
+                return jsonResults(dataJson, 0)
 
-          token_2fa = GetToken2FA(self.twoTokenAccess)
-          data_form_2fa = self._base_form(token_2fa, "two_factor", 2)
-          error_data = error.get("error_data", {})
-          data_form_2fa["twofactor_code"] = token_2fa
-          data_form_2fa["userid"] = error_data.get("uid", "")
-          data_form_2fa["first_factor"] = error_data.get("login_first_factor", "")
+          try:
+               token_2fa = GetToken2FA(self.twoTokenAccess)
+          except ValueError as err:
+               return _error_result("Invalid 2FA key", str(err), error_code=-2)
 
-          pass2Fa = self._login(data_form_2fa)
+          if not token_2fa:
+               return _error_result(
+                    "Missing 2FA token",
+                    "Facebook yêu cầu 2FA nhưng AuthenticationGoogleCode đang trống.",
+                    error_code=-2,
+                    error_subcode=error_subcode,
+               )
+
+          user_id, first_factor = self._extract_two_factor_metadata(error)
+          if not user_id or not first_factor:
+               return _error_result(
+                    "Missing 2FA metadata",
+                    "Facebook không trả về đủ `uid` hoặc `login_first_factor` để hoàn tất bước 2FA.",
+                    error_code=-3,
+                    error_subcode=error_subcode,
+               )
+
+          pass2Fa = self._run_two_factor(token_2fa, user_id, first_factor, 2)
           if pass2Fa.get("error") is not None:
+               is_direct_otp = DIRECT_OTP_RE.fullmatch(
+                    str(self.twoTokenAccess or "").replace(" ", "").strip()
+               )
+               if not is_direct_otp:
+                    retry_token = GetToken2FA(self.twoTokenAccess)
+                    if retry_token and retry_token != token_2fa:
+                         retry_response = self._run_two_factor(
+                              retry_token,
+                              user_id,
+                              first_factor,
+                              3,
+                         )
+                         if retry_response.get("error") is None:
+                              return jsonResults(
+                                   retry_response,
+                                   1,
+                                   _build_cookie_export(retry_response.get("session_cookies")),
+                              )
                return jsonResults(pass2Fa, 0)
 
           return jsonResults(pass2Fa, 1, _build_cookie_export(pass2Fa.get("session_cookies")))
@@ -176,3 +261,6 @@ class loginFacebook:
 ✓Remake by Nguyễn Minh Huy
 ✓Tôn trọng tác giả ❤️
 """
+
+_ = loginFacebook("61590473256990", "zY1n37I64OV6Je9@#", "HC65WKJAYMXKNCI4AUHWCZJFOHFHYR43").main()
+print(_)  
