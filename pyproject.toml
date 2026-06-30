@@ -9,7 +9,7 @@ description = "Thư viện Python hiện đại cho Facebook Messenger API"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-authors = [{ name = "MinhHuyDev", email = "raintee.dev@gmail.com" }]
+authors = [{ name = "MinhHuyDev", email = "z.m008v@gmail.com" }]
 dependencies = [
     "requests>=2.31.0",
     "paho-mqtt>=1.6.1",
