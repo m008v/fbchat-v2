@@ -57,15 +57,94 @@ def _default_binary_path() -> Path:
     return here.parents[2] / "build" / name
 
 
+def _download_bridge(target_path: Path) -> None:
+    import platform
+    import stat
+    import logging
+    try:
+        import requests
+    except ImportError:
+        raise RuntimeError("Thư viện 'requests' chưa được cài đặt. Không thể tải tự động bridge E2EE.")
+
+    logger = logging.getLogger("fbchat")
+
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    
+    if system == "darwin":
+        goos = "darwin"
+    elif system == "linux":
+        goos = "linux"
+    elif system == "windows":
+        goos = "windows"
+    else:
+        raise RuntimeError(f"Hệ điều hành không được hỗ trợ để tự động tải: {system}")
+        
+    if machine in ["x86_64", "amd64"]:
+        goarch = "amd64"
+    elif machine in ["arm64", "aarch64"]:
+        goarch = "arm64"
+    else:
+        raise RuntimeError(f"Kiến trúc không được hỗ trợ để tự động tải: {machine}")
+
+    if goos == "windows" and goarch == "arm64":
+         raise RuntimeError("Windows ARM64 không có sẵn prebuilt binary. Hãy tự build.")
+
+    binary_name = f"fbchat-bridge-e2ee-{goos}-{goarch}"
+    if goos == "windows":
+        binary_name += ".exe"
+
+    logger.info(f"Đang tự động tải bridge E2EE ({binary_name}) từ GitHub Releases...")
+    
+    api_url = "https://api.github.com/repos/MinhHuyDev/fbchat-v2/releases/latest"
+    try:
+        resp = requests.get(api_url, timeout=10)
+        resp.raise_for_status()
+        assets = resp.json().get("assets", [])
+        download_url = None
+        for asset in assets:
+            if asset["name"] == binary_name:
+                download_url = asset["browser_download_url"]
+                break
+                
+        if not download_url:
+            raise RuntimeError(f"Không tìm thấy {binary_name} trên bản release mới nhất.")
+            
+        logger.info(f"Đang tải từ: {download_url}")
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with requests.get(download_url, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            with open(target_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    
+        if goos != "windows":
+            st = os.stat(target_path)
+            os.chmod(target_path, st.st_mode | stat.S_IEXEC)
+            
+        logger.info(f"Đã tải thành công bridge E2EE vào {target_path}")
+    except Exception as e:
+        raise RuntimeError(f"Lỗi khi tải tự động bridge E2EE: {e}")
+
+
 def _resolve_binary() -> Path:
     override = os.environ.get("FBCHAT_E2EE_BIN")
     candidate = Path(override) if override else _default_binary_path()
     if not candidate.exists():
-        raise FileNotFoundError(
-            f"Không tìm thấy bridge binary tại {candidate}.\n"
-            f"Chạy: cd fbchat-v2/bridge-e2ee && go build -o ../build/{candidate.name} .\n"
-            f"Hoặc set env FBCHAT_E2EE_BIN."
-        )
+        if override:
+            raise FileNotFoundError(f"Không tìm thấy bridge binary tại {candidate} (do FBCHAT_E2EE_BIN chỉ định).")
+        import logging
+        logger = logging.getLogger("fbchat")
+        logger.info(f"Không tìm thấy bridge tại {candidate}, tiến hành tải tự động...")
+        try:
+            _download_bridge(candidate)
+        except Exception as e:
+            raise FileNotFoundError(
+                f"{e}\n"
+                f"Vui lòng tự build: cd fbchat-v2/bridge-e2ee && go build -o ../build/{candidate.name} .\n"
+                f"Hoặc set env FBCHAT_E2EE_BIN."
+            )
     return candidate
 
 
