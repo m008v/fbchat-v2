@@ -53,7 +53,7 @@
 
 `_messaging` đi kèm mã nguồn `fbchat-v2` — bạn không cài riêng. Phần này chỉ liệt kê **những gì module này cần** ở cấp runtime.
 
-### 1. Phụ thuộc Python (đã có trong `requirements.txt`)
+### 1. Phụ thuộc Python (đã có trong `pyproject.toml`)
 
 | Package | Dùng cho | Ghi chú |
 |---|---|---|

@@ -101,7 +101,7 @@ This pulls `requests`, `paho-mqtt`, `attrs`, `pyotp`. The MQTT group-chat listen
 ```bash
 git clone https://github.com/MinhHuyDev/fbchat-v2
 cd fbchat-v2
-pip install -r requirements.txt
+pip install -e .
 ```
 
 Then make `src/` importable:

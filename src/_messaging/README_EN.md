@@ -53,7 +53,7 @@
 
 `_messaging` ships as part of the `fbchat-v2` source tree — you do not install it on its own. This section lists **what the module needs** at runtime.
 
-### 1. Python dependencies (already in `requirements.txt`)
+### 1. Python dependencies (already in `pyproject.toml`)
 
 | Package | Used by | Notes |
 |---|---|---|

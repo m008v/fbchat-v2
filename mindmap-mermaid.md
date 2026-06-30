@@ -1,7 +1,7 @@
 mindmap
   root((fbchat-v2))
     Root code
-      requirements.txt
+      pyproject.toml
       .github/
       .gitattributes
       .gitignore

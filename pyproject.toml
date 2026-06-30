@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fbchat-v2"
+version = "2.0.0"
+description = "Thư viện Python hiện đại cho Facebook Messenger API"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "MinhHuyDev", email = "raintee.dev@gmail.com" }]
+dependencies = [
+    "requests>=2.31.0",
+    "paho-mqtt>=1.6.1",
+    "attrs>=23.2.0",
+    "pyotp>=2.9.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/MinhHuyDev/fbchat-v2"
+Repository = "https://github.com/MinhHuyDev/fbchat-v2"
+Issues = "https://github.com/MinhHuyDev/fbchat-v2/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio",
+    "black",
+    "ruff"
+]

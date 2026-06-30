@@ -52,7 +52,7 @@ fbchat-v2/
 ├── docs/                             # Markdown docs
 ├── DOCS.md / FLOWCHART.md / mindmap-mermaid.md
 ├── language/vi_VN.lang               # i18n strings
-└── requirements.txt
+└── pyproject.toml
 ```
 
 ---
@@ -325,7 +325,7 @@ Standalone test driver for the E2EE listener. Reads cookie from env `FBCHAT_COOK
 
 ## Dependencies
 
-### Python (`requirements.txt`)
+### Python (`pyproject.toml`)
 | Package      | Used for                                          |
 |--------------|---------------------------------------------------|
 | `requests`   | All HTTP                                          |

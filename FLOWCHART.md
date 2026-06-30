@@ -16,7 +16,7 @@ flowchart TD
     ROOT --> CLAUDE[CLAUDE.md]
     ROOT --> COC[CODE_OF_CONDUCT.md]
     ROOT --> LICENSE[LICENSE]
-    ROOT --> REQ[requirements.txt]
+    ROOT --> REQ[pyproject.toml]
 
     REPO --> META[Environment and Git]
     META --> GIT[.git/]

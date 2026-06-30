@@ -167,7 +167,7 @@ fbchat-v2/
 ├── FLOWCHART.md
 ├── CODE_OF_CONDUCT.md
 ├── LICENSE
-└── requirements.txt
+└── pyproject.toml
 ```
 
 Mỗi thư mục con đều có sẵn `README.md` (tiếng Việt) và `README_EN.md` (tiếng Anh) mô tả chi tiết từng module.
@@ -184,7 +184,7 @@ mindmap
       FLOWCHART.md
       CODE_OF_CONDUCT.md
       LICENSE
-      requirements.txt
+      pyproject.toml
     Mã nguồn (src)
       main.py
       config.example.json
@@ -245,13 +245,16 @@ mindmap
 | RAM | 256 MB | 1 GB+ | Bridge E2EE chiếm ~80–150 MB khi chạy |
 | Mạng | Kết nối ổn định, không bị chặn `facebook.com` và `edge-chat.facebook.com` | — | — |
 
-Các phụ thuộc Python được khai báo trong [requirements.txt](requirements.txt):
+Các phụ thuộc Python được quản lý qua `pyproject.toml` (PEP 621):
 
-```text
-requests>=2.31.0   # HTTP client
-paho-mqtt>=1.6.1   # MQTT WebSocket cho _listening.py
-attrs>=23.2.0      # Decorator class
-pyotp>=2.9.0       # 2FA TOTP khi login bằng username/password
+```toml
+[project]
+dependencies = [
+    "requests>=2.31.0",   # HTTP client
+    "paho-mqtt>=1.6.1",   # MQTT WebSocket cho _listening.py
+    "attrs>=23.2.0",      # Decorator class
+    "pyotp>=2.9.0"        # 2FA TOTP khi login bằng username/password
+]
 ```
 
 ---
@@ -289,7 +292,7 @@ source .venv/bin/activate
 
 ```bash
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -e .
 ```
 
 Kiểm tra nhanh:

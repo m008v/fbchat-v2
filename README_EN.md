@@ -167,7 +167,7 @@ fbchat-v2/
 ├── FLOWCHART.md
 ├── CODE_OF_CONDUCT.md
 ├── LICENSE
-└── requirements.txt
+└── pyproject.toml
 ```
 
 Each subfolder ships its own `README.md` (Vietnamese) and `README_EN.md` (English) with module-level details.
@@ -184,7 +184,7 @@ mindmap
       FLOWCHART.md
       CODE_OF_CONDUCT.md
       LICENSE
-      requirements.txt
+      pyproject.toml
     Source (src)
       main.py
       config.example.json
@@ -245,13 +245,16 @@ mindmap
 | RAM | 256 MB | 1 GB+ | The E2EE bridge uses ~80–150 MB at runtime |
 | Network | Stable connection, unrestricted access to `facebook.com` and `edge-chat.facebook.com` | — | — |
 
-Python dependencies are pinned in [requirements.txt](requirements.txt):
+Python dependencies are managed via `pyproject.toml` (PEP 621):
 
-```text
-requests>=2.31.0   # HTTP client
-paho-mqtt>=1.6.1   # MQTT WebSocket for _listening.py
-attrs>=23.2.0      # Decorator class
-pyotp>=2.9.0       # 2FA TOTP when logging in with username/password
+```toml
+[project]
+dependencies = [
+    "requests>=2.31.0",   # HTTP client
+    "paho-mqtt>=1.6.1",   # MQTT WebSocket for _listening.py
+    "attrs>=23.2.0",      # Decorator class
+    "pyotp>=2.9.0"        # 2FA TOTP when logging in with username/password
+]
 ```
 
 ---
@@ -289,7 +292,7 @@ source .venv/bin/activate
 
 ```bash
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -e .
 ```
 
 Quick sanity check:
