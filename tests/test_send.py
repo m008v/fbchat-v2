@@ -9,11 +9,10 @@ def test_api_init():
 
 def test_api_send(mock_dataFB):
     sender = api()
-    with patch("requests.post") as mock_post:
+    with patch("httpx.Client.post") as mock_post:
         mock_resp = Mock()
         mock_resp.text = 'for (;;);{"payload": {"actions": [{"message_id": "123456", "timestamp": 123456789}], "success": 1}}'
         mock_post.return_value = mock_resp
-
         
         result = sender.send(mock_dataFB, "Hello", "123456")
         

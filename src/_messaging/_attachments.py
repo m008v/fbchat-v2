@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import random, attr, requests, json
+import random, attr, json, httpx
 from typing import Any
-from _core._utils import str_base,  get_files_from_paths
+from _core._utils import str_base, get_files_from_paths
 
-def func(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[str, Any] | None:
+USER_AGENTS: list[str] = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/601.1.10 (KHTML, like Gecko) Version/8.0.5 Safari/601.1.10", "Mozilla/5.0 (Windows NT 6.3; WOW64; ; NCT50_AAP285C84A1328) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1", "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6"]
 
-     
-     USER_AGENTS: list[str] = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/601.1.10 (KHTML, like Gecko) Version/8.0.5 Safari/601.1.10", "Mozilla/5.0 (Windows NT 6.3; WOW64; ; NCT50_AAP285C84A1328) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1", "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6"]
-     
+def _build_request(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[str, Any]:
      headers: dict[str, str] = {
           "Referer": "https://www.facebook.com",
           "Accept": "text/html",
@@ -29,19 +27,26 @@ def func(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[str, Any] |
           "upload_{}".format(i): f for i, f in enumerate(files)
      }
      
-     resultRequests: str = requests.post("https://upload.facebook.com/ajax/mercury/upload.php", headers=headers, data=dataForm, files=file_dict).text
-     
+     return {
+          "url": "https://upload.facebook.com/ajax/mercury/upload.php",
+          "headers": headers,
+          "data": dataForm,
+          "files": file_dict,
+     }
+
+def _parse_response(resultRequests: str) -> dict[str, Any] | None:
      try: 
-          resultRequests = json.loads(resultRequests.replace("for (;;);", ""))["payload"]
+          parsed = json.loads(resultRequests.replace("for (;;);", ""))["payload"]
      except (json.JSONDecodeError, KeyError, TypeError): 
-          return print("ERROR-UPLOADED: " + str(resultRequests))
+          print("ERROR-UPLOADED: " + str(resultRequests))
+          return None
      dataList: list[Any] = []
      try:
-          for data in resultRequests["metadata"][0].values():
+          for data in parsed["metadata"][0].values():
                dataList.append(data)
      except (KeyError, TypeError):
           try:
-               for data in resultRequests["metadata"]['0'].values():
+               for data in parsed["metadata"]['0'].values():
                     dataList.append(data)
           except (KeyError, TypeError):
                print("ERROR-UPLOADED (metadata fallback failed): " + str(resultRequests))
@@ -51,10 +56,21 @@ def func(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[str, Any] |
      return {
           "attachmentID": dataList[0],
           "attachmentUrl": attachmentUrl,
-          "attachmentType": dataList[2],
-          "attachmentDataSend": None# resultData
+          "videoDuration": dataList[2],
+          "typeAttachment": dataList[4]
      }
 
+def func(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[str, Any] | None:
+     req = _build_request(filenames, dataFB)
+     with httpx.Client(timeout=30) as client:
+          res = client.post(**req)
+     return _parse_response(res.text)
+
+async def func_async(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[str, Any] | None:
+     req = _build_request(filenames, dataFB)
+     async with httpx.AsyncClient(timeout=30) as client:
+          res = await client.post(**req)
+     return _parse_response(res.text)
 
 # func("file-name.jpg", dataFB)
 # from _core._session import dataGetHome

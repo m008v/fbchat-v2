@@ -17,8 +17,6 @@ def Headers(dataForm: dict[str, Any] | str | None = None, Host: str = 'www.faceb
      headers: dict[str, str] = {}
      headers["Host"] = Host
      headers["Connection"] = "keep-alive"
-     if (dataForm is not None):
-          headers["Content-Length"] = str(len(dataForm))
      headers["User-Agent"] = random.choice(_USER_AGENTS)
      headers["Accept"] = "*/*"
      headers["Origin"] = "https://" + Host
@@ -87,15 +85,46 @@ def clearHTML(text: str) -> str:
      regex = re.compile(r'<[^>]+>')
      return regex.sub('', text)
      
+import httpx
+
 def mainRequests(urlRequests: str, dataForm: dict[str, Any], setCookies: str) -> dict[str, Any]:
      return {
           "headers": Headers(dataForm, 'www.facebook.com'),
           "timeout": 5,
-          "url": urlRequests, # "https://www.facebook.com/api/graphql/",
+          "url": urlRequests,
           "data": dataForm,
           "cookies": parse_cookie_string(setCookies),
           "verify": True
      }
+
+def send_request(req_kwargs: dict[str, Any]) -> httpx.Response:
+     verify = req_kwargs.pop('verify', True)
+     timeout = req_kwargs.pop('timeout', 5)
+     req_kwargs.pop('proxies', None)
+     with httpx.Client(verify=verify, timeout=timeout) as client:
+          return client.post(**req_kwargs)
+
+async def send_request_async(req_kwargs: dict[str, Any]) -> httpx.Response:
+     verify = req_kwargs.pop('verify', True)
+     timeout = req_kwargs.pop('timeout', 5)
+     req_kwargs.pop('proxies', None)
+     async with httpx.AsyncClient(verify=verify, timeout=timeout) as client:
+          return await client.post(**req_kwargs)
+
+def send_get_request(req_kwargs: dict[str, Any]) -> httpx.Response:
+     verify = req_kwargs.pop('verify', True)
+     timeout = req_kwargs.pop('timeout', 5)
+     req_kwargs.pop('proxies', None)
+     with httpx.Client(verify=verify, timeout=timeout) as client:
+          return client.get(**req_kwargs)
+
+async def send_get_request_async(req_kwargs: dict[str, Any]) -> httpx.Response:
+     verify = req_kwargs.pop('verify', True)
+     timeout = req_kwargs.pop('timeout', 5)
+     req_kwargs.pop('proxies', None)
+     async with httpx.AsyncClient(verify=verify, timeout=timeout) as client:
+          return await client.get(**req_kwargs)
+
      
 def generate_session_id() -> int:
 

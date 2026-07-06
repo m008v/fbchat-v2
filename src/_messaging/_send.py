@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import json, random, requests, time
+import json, random, time
 from typing import Any
-from _core._utils import gen_threading_id, mainRequests, formAll
+from _core._utils import gen_threading_id, mainRequests, formAll, send_request, send_request_async
      
 class api:
      
@@ -41,9 +41,24 @@ class api:
           self.attachmentID = attachmentID # --> ID of attachment uploaded.
           self.typeChat = typeChat # --> type chat with user/thread (If you want to send to user, let its value be "user". If you want to send to a thread, keep the same value (None))
           self.replyStatus = replyMessage # --> You want to send a message or reply to someone = Set "true" and set messageID. If you want to send a message normally, keep the same value (None)
-          self.messageID = messageID # --> ID of message that you need to answer
+          self.messageID = messageID
           
           self.sendMessage()
+          self.removeValueToInputed()
+          
+          return self.results
+          
+     async def send_async(self, dataFB: dict[str, Any], contentSend: str | int, threadID: str | list[str], typeAttachment: str | None = None, attachmentID: str | int | list[str | int] | None = None, typeChat: str | None = None, replyMessage: bool | None = None, messageID: str | None = None) -> dict[str, Any]:
+          self.dataFB = dataFB
+          self.content = str(contentSend)
+          self.ID = threadID
+          self.typeAttachment = typeAttachment
+          self.attachmentID = attachmentID
+          self.typeChat = typeChat
+          self.replyStatus = replyMessage
+          self.messageID = messageID
+          
+          await self.sendMessage_async()
           self.removeValueToInputed()
           
           return self.results
@@ -92,21 +107,24 @@ class api:
           
           self.dataForm = formAll(self.dataFB, requireGraphql=False)
           
+          self.attributeValues()
+          
+          self.dataForm["action_type"] = "ma-type:user-generated-message"
+          self.dataForm["timestamp"] = int(time.time() * 1000)
+          self.dataForm["source"] = "source:chat:web"
+          
           if (self.typeChat == "user"):
-               if (isinstance(self.ID, list)):
-                    for i,threadID in enumerate(self.ID):
-                         self.dataForm["specific_to_list[" + str(i)+ "]"] = "fbid:" + threadID
-                    self.dataForm["specific_to_list[" + str(len(self.ID)) + "]"] = "fbid:" + self.dataFB["FacebookID"]
-               else:
-                    self.dataForm["specific_to_list[0]"] = "fbid:" + self.ID
-                    self.dataForm["specific_to_list[1]"] = "fbid:" + self.dataFB["FacebookID"]
+               if (isinstance(self.ID, str) or isinstance(self.ID, int)):
+                    self.dataForm["specific_to_list[0]"] = "fbid:" + str(self.ID)
+                    self.dataForm["specific_to_list[1]"] = "fbid:" + str(self.dataFB["FacebookID"])
                     self.dataForm["other_user_fbid"] = self.ID
+               elif isinstance(self.ID, list):
+                    for i in range(len(self.ID)):
+                         self.dataForm[f"specific_to_list[{i}]"] = "fbid:" + str(self.ID[i])
+                    self.dataForm[f"specific_to_list[{len(self.ID)}]"] = "fbid:" + str(self.dataFB["FacebookID"])
           else:
                self.dataForm["thread_fbid"] = self.ID
-
-          self.attributeValues()
-          self.dataForm["action_type"] = "ma-type:user-generated-message"
-          self.dataForm["client"] = "mercury"
+          
           self.dataForm["body"] = self.content
           self.dataForm["author"] = "fbid:" + self.dataFB["FacebookID"]
           self.dataForm["timestamp"] =  int(time.time() * 1000)
@@ -126,11 +144,43 @@ class api:
           self.sendRequests()
           self.removeDataAttachmentCheck()
 
-     def sendRequests(self) -> None:
-     
-          _main = mainRequests("https://www.facebook.com/messaging/send/", self.dataForm, self.dataFB["cookieFacebook"])
-          sendRequests = requests.post(**_main).text
-          sendRequests = json.loads(sendRequests.split("for (;;);")[1])
+     async def sendMessage_async(self) -> None:
+          self.dataForm = formAll(self.dataFB, requireGraphql=False)
+          self.attributeValues()
+          self.dataForm["action_type"] = "ma-type:user-generated-message"
+          self.dataForm["timestamp"] = int(time.time() * 1000)
+          self.dataForm["source"] = "source:chat:web"
+          if (self.typeChat == "user"):
+               if (isinstance(self.ID, str) or isinstance(self.ID, int)):
+                    self.dataForm["specific_to_list[0]"] = "fbid:" + str(self.ID)
+                    self.dataForm["specific_to_list[1]"] = "fbid:" + str(self.dataFB["FacebookID"])
+                    self.dataForm["other_user_fbid"] = self.ID
+               elif isinstance(self.ID, list):
+                    for i in range(len(self.ID)):
+                         self.dataForm[f"specific_to_list[{i}]"] = "fbid:" + str(self.ID[i])
+                    self.dataForm[f"specific_to_list[{len(self.ID)}]"] = "fbid:" + str(self.dataFB["FacebookID"])
+          else:
+               self.dataForm["thread_fbid"] = self.ID
+          self.dataForm["body"] = self.content
+          self.dataForm["author"] = "fbid:" + self.dataFB["FacebookID"]
+          self.dataForm["timestamp"] =  int(time.time() * 1000)
+          self.dataForm["timestamp_absolute"] = "Today"
+          self.dataForm["source"] = "source:chat:web"
+          self.dataForm["source_tags[0]"] = "source:chat"
+          self.dataForm["client_thread_id"] = "root:" + gen_threading_id()
+          self.dataForm["offline_threading_id"] = gen_threading_id()
+          self.dataForm["message_id"] = gen_threading_id()
+          self.dataForm["threading_id"] = "<{}:{}-{}@mail.projektitan.com>".format(int(time.time() * 1000), int(random.random() * 4294967295), hex(int(random.random() * 2 ** 31))[2:])
+          self.dataForm["ephemeral_ttl_mode"] = "0"
+          self.dataForm["manual_retry_cnt"] = "0"
+          self.dataForm["ui_push_phase"] = "V3"
+          self.replyCheck()
+          self.attachmentCheck()
+          await self.sendRequests_async()
+          self.removeDataAttachmentCheck()
+
+     def _parse_response(self, text: str) -> None:
+          sendRequests = json.loads(text.split("for (;;);")[1])
           if sendRequests.get('payload'):
                _ = sendRequests["payload"]["actions"][0]
                self.results = {
@@ -144,13 +194,21 @@ class api:
           self.results = {
                "error": 1,
                "payload": {
-                    "error-decription": sendRequests["errorDescription"],
-                    "error-code": sendRequests["error"]
+                    "error-decription": sendRequests.get("errorDescription"),
+                    "error-code": sendRequests.get("error")
                }
           }
           return
-          
-          # Thread(target=sendRequests, args=()).start()
+
+     def sendRequests(self) -> None:
+          _main = mainRequests("https://www.facebook.com/messaging/send/", self.dataForm, self.dataFB["cookieFacebook"])
+          res = send_request(_main)
+          self._parse_response(res.text)
+
+     async def sendRequests_async(self) -> None:
+          _main = mainRequests("https://www.facebook.com/messaging/send/", self.dataForm, self.dataFB["cookieFacebook"])
+          res = await send_request_async(_main)
+          self._parse_response(res.text)
      
 
 # _ = api()

@@ -34,6 +34,7 @@ Author: MinhHuyDev
 from __future__ import annotations
 
 import datetime
+import time
 import itertools
 import json
 import os
@@ -405,16 +406,72 @@ class listeningE2EEEvent:
     # ------------------------------------------------------------------
     def _poll_loop(self) -> None:
         assert self._bridge is not None
+        backoff_steps = [2, 4, 8, 16, 32]
+        respawn_count = 0
+
         try:
             while not self._stop.is_set():
                 try:
-                    evt = self._bridge.events.get(timeout=1.0)
-                except Empty:
-                    continue
-                if evt.get("type") == "closed":
-                    print(f"[{datetime.datetime.now()}] bridge closed")
-                    break
-                self._dispatch(evt)
+                    while not self._stop.is_set():
+                        try:
+                            evt = self._bridge.events.get(timeout=1.0)
+                        except Empty:
+                            if self._bridge._closed:
+                                break
+                            continue
+                        if evt.get("type") == "closed":
+                            print(f"[{datetime.datetime.now()}] bridge closed")
+                            break
+                        self._dispatch(evt)
+                        # reset backoff on successful event dispatch
+                        respawn_count = 0
+                    
+                    if self._stop.is_set():
+                        break
+                        
+                    if respawn_count >= len(backoff_steps):
+                        print(f"[{datetime.datetime.now()}] Max respawn attempts reached. Stopping.")
+                        break
+                        
+                    wait_time = backoff_steps[respawn_count]
+                    print(f"[{datetime.datetime.now()}] Bridge disconnected. Respawning in {wait_time}s... (Attempt {respawn_count + 1})")
+                    time.sleep(wait_time)
+                    respawn_count += 1
+                    
+                    # Cleanup old bridge
+                    try:
+                        self._bridge.close()
+                    except Exception:
+                        pass
+                        
+                    # Reconnect
+                    binary = (
+                        Path(self._binary_path_override)
+                        if self._binary_path_override else _resolve_binary()
+                    )
+                    self._bridge = _BridgeProcess(binary)
+                    
+                    cfg: dict[str, Any] = {
+                        "cookies": self._build_cookie_dict(),
+                        "platform": "facebook",
+                        "logLevel": self.log_level,
+                        "e2eeMemoryOnly": self.e2ee_memory_only,
+                    }
+                    if self.device_path:
+                        cfg["devicePath"] = self.device_path
+
+                    self._bridge.call("newClient", cfg)
+                    self._bridge.call("connect", timeout=120)
+                    
+                    if self.enable_e2ee:
+                        self._bridge.call("connectE2EE", timeout=60)
+                        
+                    print(f"[{datetime.datetime.now()}] Respawn successful.")
+                    
+                except Exception as e:
+                    print(f"[{datetime.datetime.now()}] Respawn or poll failed: {e}")
+                    # Will retry at next loop iteration if backoff not maxed
+                    
         finally:
             self.stop()
 

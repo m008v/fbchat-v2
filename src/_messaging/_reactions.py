@@ -1,22 +1,21 @@
 from __future__ import annotations
 
-import requests, json
+import httpx, json
 from typing import Any
-from _core._utils import Headers, parse_cookie_string, formAll
+from _core._utils import Headers, parse_cookie_string, formAll, send_request, send_request_async
      
-def func(dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoice: str) -> requests.Response:
-
+def _build_request(dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoice: str) -> dict[str, Any]:
      dataForm: dict[str, Any] = formAll(dataFB, docID=1491398900900362)
      dataForm["variables"] = json.dumps({"data": {
           "action": "ADD_REACTION" if (typeAdded == "add") else "REMOVE_REACTION",
           "client_mutation_id": "1",
           "actor_id": dataFB["FacebookID"],
           "message_id": str(messageID),
-          "reaction": emojiChoice # random.choice(["🥺","😏", "✅","😎","😭", "🫥", "✈️", "✅", "🌚", "😵", "😮‍💨", "😷", "🥹", "😒", "🐧", "💩", "🍦", "👀", "💀", "🐣", "💔", "🫶🏻", "🪐", "🙈", "🐈‍⬛", "🦆", "🔪", "⚙️", "🧭", "📡", "💌", "⁉️", "💀"])
+          "reaction": emojiChoice
      }})
      dataForm["dpr"] = 1
      
-     mainRequests: dict[str, Any] = {
+     return {
                "headers": Headers(dataFB["cookieFacebook"], dataForm),
                "timeout": 30,
                "url": "https://www.facebook.com/webgraphql/mutation/",
@@ -24,9 +23,14 @@ def func(dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoi
                "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
                "verify": True
      }
-               
-     sendRequests: requests.Response = requests.post(**mainRequests)
-     return sendRequests
+
+def func(dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoice: str) -> httpx.Response:
+     req = _build_request(dataFB, typeAdded, messageID, emojiChoice)
+     return send_request(req)
+
+async def func_async(dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoice: str) -> httpx.Response:
+     req = _build_request(dataFB, typeAdded, messageID, emojiChoice)
+     return await send_request_async(req)
      
 
 """ Hướng dẫn sử dụng (Tutorial)
