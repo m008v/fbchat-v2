@@ -262,5 +262,13 @@ class loginFacebook:
 ✓Tôn trọng tác giả ❤️
 """
 
-_ = loginFacebook("61590473256990", "zY1n37I64OV6Je9@#", "HC65WKJAYMXKNCI4AUHWCZJFOHFHYR43").main()
-print(_)  
+if __name__ == "__main__":
+    import os
+    # Usage: FBCHAT_USER=xxx FBCHAT_PASS=xxx FBCHAT_2FA=xxx python _facebookLogin.py
+    user = os.environ.get("FBCHAT_USER")
+    pwd = os.environ.get("FBCHAT_PASS")
+    code = os.environ.get("FBCHAT_2FA")
+    if not all([user, pwd]):
+        print("Set FBCHAT_USER and FBCHAT_PASS env vars")
+        raise SystemExit(1)
+    print(loginFacebook(user, pwd, code).main())
