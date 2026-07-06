@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import random, attr, requests, json
+from typing import Any
 from _core._utils import str_base,  get_files_from_paths
 
-def func(filenames, dataFB):
+def func(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[str, Any] | None:
 
      
-     USER_AGENTS = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/601.1.10 (KHTML, like Gecko) Version/8.0.5 Safari/601.1.10", "Mozilla/5.0 (Windows NT 6.3; WOW64; ; NCT50_AAP285C84A1328) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1", "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6"]
+     USER_AGENTS: list[str] = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/601.1.10 (KHTML, like Gecko) Version/8.0.5 Safari/601.1.10", "Mozilla/5.0 (Windows NT 6.3; WOW64; ; NCT50_AAP285C84A1328) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1", "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6"]
      
-     headers = {
+     headers: dict[str, str] = {
           "Referer": "https://www.facebook.com",
           "Accept": "text/html",
           "User-Agent": random.choice(USER_AGENTS),
@@ -16,23 +19,23 @@ def func(filenames, dataFB):
      files = get_files_from_paths(filenames)
      __reg = attr.ib(0).counter
      __reg += 1
-     dataForm = {} 
+     dataForm: dict[str, Any] = {} 
      dataForm["voice_clip"] = False
      dataForm["__a"] = 1
      dataForm["__req"] = str_base(__reg, 36) 
      dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
 
-     file_dict = {
+     file_dict: dict[str, Any] = {
           "upload_{}".format(i): f for i, f in enumerate(files)
      }
      
-     resultRequests = requests.post("https://upload.facebook.com/ajax/mercury/upload.php", headers=headers, data=dataForm, files=file_dict).text
+     resultRequests: str = requests.post("https://upload.facebook.com/ajax/mercury/upload.php", headers=headers, data=dataForm, files=file_dict).text
      
      try: 
           resultRequests = json.loads(resultRequests.replace("for (;;);", ""))["payload"]
      except (json.JSONDecodeError, KeyError, TypeError): 
           return print("ERROR-UPLOADED: " + str(resultRequests))
-     dataList = []
+     dataList: list[Any] = []
      try:
           for data in resultRequests["metadata"][0].values():
                dataList.append(data)
@@ -43,7 +46,7 @@ def func(filenames, dataFB):
           except (KeyError, TypeError):
                print("ERROR-UPLOADED (metadata fallback failed): " + str(resultRequests))
                return None
-     try: attachmentUrl = dataList[3]
+     try: attachmentUrl: str | None = dataList[3]
      except IndexError: attachmentUrl = None
      return {
           "attachmentID": dataList[0],

@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import requests, json
+from typing import Any
 from _core._utils import Headers, parse_cookie_string, formAll
      
-def func(dataFB, typeAdded, messageID, emojiChoice):
+def func(dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoice: str) -> requests.Response:
 
-     dataForm = formAll(dataFB, docID=1491398900900362)
+     dataForm: dict[str, Any] = formAll(dataFB, docID=1491398900900362)
      dataForm["variables"] = json.dumps({"data": {
           "action": "ADD_REACTION" if (typeAdded == "add") else "REMOVE_REACTION",
           "client_mutation_id": "1",
@@ -13,7 +16,7 @@ def func(dataFB, typeAdded, messageID, emojiChoice):
      }})
      dataForm["dpr"] = 1
      
-     mainRequests = {
+     mainRequests: dict[str, Any] = {
                "headers": Headers(dataFB["cookieFacebook"], dataForm),
                "timeout": 30,
                "url": "https://www.facebook.com/webgraphql/mutation/",
@@ -22,7 +25,7 @@ def func(dataFB, typeAdded, messageID, emojiChoice):
                "verify": True
      }
                
-     sendRequests = requests.post(**mainRequests)
+     sendRequests: requests.Response = requests.post(**mainRequests)
      return sendRequests
      
 

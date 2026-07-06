@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import attr, re, json, random, string, time
+from io import BufferedReader
 from mimetypes import guess_type
+from typing import Any, Generator
 
 # User-Agent pool — xoay ngẫu nhiên để giảm fingerprint detection từ Facebook
 _USER_AGENTS: list[str] = [
@@ -9,8 +13,8 @@ _USER_AGENTS: list[str] = [
 ]
 _SEC_CH_UA = '"Chromium";v="137", "Not;A=Brand";v="24", "Google Chrome";v="137"'
 
-def Headers(dataForm=None, Host='www.facebook.com'):
-     headers = {}
+def Headers(dataForm: dict[str, Any] | str | None = None, Host: str = 'www.facebook.com') -> dict[str, str]:
+     headers: dict[str, str] = {}
      headers["Host"] = Host
      headers["Connection"] = "keep-alive"
      if (dataForm is not None):
@@ -28,12 +32,12 @@ def Headers(dataForm=None, Host='www.facebook.com'):
      headers["Accept-Language"] = "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
      return headers
      
-def digitToChar(digit):
+def digitToChar(digit: int) -> str:
           if digit < 10:
                return str(digit)
           return chr(ord("a") + digit - 10)
 
-def str_base(number, base):
+def str_base(number: int, base: int) -> str:
      if number < 0:
           return "-" + str_base(-number, base)
      (d, m) = divmod(number, base)
@@ -51,17 +55,17 @@ def parse_cookie_string(cookie_str: str) -> dict[str, str]:
         out[k.strip()] = v.strip()
     return out
 
-def dataSplit(string1, string2, numberSplit1=None, numberSplit2=None, HTML=None, amount=None, string3=None, numberSplit3=None, defaultValue=None):
+def dataSplit(string1: str, string2: str, numberSplit1: int | None = None, numberSplit2: int | None = None, HTML: str | None = None, amount: int | None = None, string3: str | None = None, numberSplit3: int | None = None, defaultValue: bool | None = None) -> str | None:
      if (defaultValue): numberSplit1, numberSplit2 = 1, 0
      if (amount == None):
           return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2]
      elif (amount == 3):
           return HTML.split(string1)[numberSplit1].split(string2)[numberSplit2].split(string3)[numberSplit3]
      
-def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=True):
+def formAll(dataFB: dict[str, Any], FBApiReqFriendlyName: str | None = None, docID: str | int | None = None, requireGraphql: bool = True) -> dict[str, Any]:
      __reg = attr.ib(0).counter
      __reg += 1 
-     dataForm = {
+     dataForm: dict[str, Any] = {
           "fb_dtsg": dataFB["fb_dtsg"],
           "jazoest": dataFB["jazoest"],
           "__a": 1,
@@ -79,11 +83,11 @@ def formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=True):
 
      return dataForm
      
-def clearHTML(text):
+def clearHTML(text: str) -> str:
      regex = re.compile(r'<[^>]+>')
      return regex.sub('', text)
      
-def mainRequests(urlRequests, dataForm, setCookies):
+def mainRequests(urlRequests: str, dataForm: dict[str, Any], setCookies: str) -> dict[str, Any]:
      return {
           "headers": Headers(dataForm, 'www.facebook.com'),
           "timeout": 5,
@@ -93,27 +97,27 @@ def mainRequests(urlRequests, dataForm, setCookies):
           "verify": True
      }
      
-def generate_session_id():
+def generate_session_id() -> int:
 
      """Generate a random session ID between 1 and 9007199254740991."""
      return random.randint(1, 2 ** 53)  
 
-def generate_client_id():
+def generate_client_id() -> str:
      
-     def gen(length):
+     def gen(length: int) -> str:
           return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
      return gen(8) + '-' + gen(4) + '-' + gen(4) + '-' + gen(4) + '-' + gen(12)
      
-def json_minimal(data):
+def json_minimal(data: Any) -> str:
 
      """Get JSON data in minimal form."""
      return json.dumps(data, separators=(",", ":"))
 
-def _set_chat_on(value):
+def _set_chat_on(value: Any) -> str:
 
      return json_minimal(value)
 
-def gen_threading_id():
+def gen_threading_id() -> str:
 
      return str(
           int(format(int(time.time() * 1000), "b") + 
@@ -122,21 +126,21 @@ def gen_threading_id():
           [-22:], 2)
      )
 
-def require_list(list_):
+def require_list(list_: list[Any] | Any) -> set[Any]:
      if isinstance(list_, list):
           return set(list_)
      else:
           return set([list_])
-def get_files_from_paths(filenames):
+def get_files_from_paths(filenames: str) -> Generator[list[str | BufferedReader | str | None], None, None]:
      
-     files = [filenames, open(filenames, "rb"), guess_type(filenames)[0]]
+     files: list[str | BufferedReader | str | None] = [filenames, open(filenames, "rb"), guess_type(filenames)[0]]
      yield files
      
-def formatResults(type, text):
+def formatResults(type: str, text: str) -> dict[str, str]:
      return {
           "status": type,
           "message": text
      }
 
-def randStr(length):
+def randStr(length: int) -> str:
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))

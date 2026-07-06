@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import json
 import ssl
 from threading import Event
+from typing import Any
 from urllib.parse import urlparse
 
 import paho.mqtt.client as mqtt
@@ -15,18 +18,18 @@ _DEFAULT_TIMEOUT = 20
 _MISSING = object()
 
 
-def _json(data):
+def _json(data: Any) -> str:
      return json.dumps(data, separators=(",", ":"), ensure_ascii=False)
 
 
-def _rc_success(rc):
+def _rc_success(rc: Any) -> bool:
      try:
           return int(rc) == 0
      except (TypeError, ValueError):
           return str(rc).lower() in ("0", "success", "normal disconnection")
 
 
-def _error_response(message, payload=None):
+def _error_response(message: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
      return {
           "error": 1,
           "messages": message,
@@ -34,7 +37,7 @@ def _error_response(message, payload=None):
      }
 
 
-def _build_ls_context(tasks, request_id=1, app_id=APP_ID, version_id=EDIT_MESSAGE_VERSION_ID, data_trace_id=_MISSING):
+def _build_ls_context(tasks: list[dict[str, Any]], request_id: int = 1, app_id: str = APP_ID, version_id: str = EDIT_MESSAGE_VERSION_ID, data_trace_id: Any = _MISSING) -> dict[str, Any]:
      payload = {
           "epoch_id": int(gen_threading_id()),
           "tasks": tasks,
@@ -51,7 +54,7 @@ def _build_ls_context(tasks, request_id=1, app_id=APP_ID, version_id=EDIT_MESSAG
      }
 
 
-def _make_mqtt_client(dataFB):
+def _make_mqtt_client(dataFB: dict[str, Any]) -> mqtt.Client:
      session_id = generate_session_id()
      chat_on = json_minimal(True)
      user = {
@@ -97,7 +100,7 @@ def _make_mqtt_client(dataFB):
      return client
 
 
-def _publish_ls_requests(dataFB, contexts, timeout=_DEFAULT_TIMEOUT):
+def _publish_ls_requests(dataFB: dict[str, Any], contexts: dict[str, Any] | list[dict[str, Any]], timeout: int = _DEFAULT_TIMEOUT) -> dict[str, Any]:
      if isinstance(contexts, dict):
           contexts = [contexts]
      if not contexts:
@@ -111,7 +114,7 @@ def _publish_ls_requests(dataFB, contexts, timeout=_DEFAULT_TIMEOUT):
      }
      client = _make_mqtt_client(dataFB)
 
-     def on_connect(client, userdata, flags, rc, properties=None):
+     def on_connect(client: mqtt.Client, userdata: Any, flags: Any, rc: Any, properties: Any = None) -> None:
           if not _rc_success(rc):
                state["errors"].append(f"MQTT connect failed: {rc}")
                connected.set()
@@ -126,12 +129,12 @@ def _publish_ls_requests(dataFB, contexts, timeout=_DEFAULT_TIMEOUT):
           if state["errors"]:
                published.set()
 
-     def on_publish(client, userdata, mid, reason_code=None, properties=None):
+     def on_publish(client: mqtt.Client, userdata: Any, mid: int, reason_code: Any = None, properties: Any = None) -> None:
           state["published"] += 1
           if state["published"] >= len(contexts):
                published.set()
 
-     def on_disconnect(client, userdata, rc, *args):
+     def on_disconnect(client: mqtt.Client, userdata: Any, rc: Any, *args: Any) -> None:
           reason = args[0] if args else rc
           if not _rc_success(reason) and not published.is_set():
                state["errors"].append(f"MQTT disconnected before publish: {reason}")
@@ -179,7 +182,7 @@ def _publish_ls_requests(dataFB, contexts, timeout=_DEFAULT_TIMEOUT):
                pass
 
 
-def _build_edit_context(messageID, newText):
+def _build_edit_context(messageID: str, newText: str) -> dict[str, Any]:
      queryPayload = {
           "message_id": str(messageID),
           "text": str(newText),
@@ -194,7 +197,7 @@ def _build_edit_context(messageID, newText):
      return _build_ls_context([query], request_id=1, version_id=EDIT_MESSAGE_VERSION_ID, data_trace_id=None)
 
 
-def editMessage(dataFB, messageID, newText, timeout=_DEFAULT_TIMEOUT):
+def editMessage(dataFB: dict[str, Any], messageID: str, newText: str, timeout: int = _DEFAULT_TIMEOUT) -> dict[str, Any]:
      if not messageID:
           return _error_response("messageID is required.")
      if newText is None or str(newText) == "":
@@ -216,7 +219,7 @@ def editMessage(dataFB, messageID, newText, timeout=_DEFAULT_TIMEOUT):
      }
 
 
-def func(dataFB, messageID, newText, timeout=_DEFAULT_TIMEOUT):
+def func(dataFB: dict[str, Any], messageID: str, newText: str, timeout: int = _DEFAULT_TIMEOUT) -> dict[str, Any]:
      return editMessage(dataFB, messageID, newText, timeout=timeout)
 
 

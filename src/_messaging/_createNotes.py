@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import requests, json, random
+from typing import Any
 from _core._utils import formAll, mainRequests, generate_client_id
 
 # =====================================================================
@@ -14,11 +17,11 @@ GRAPHQL_TIMEOUT = (10, 45)  # (connect timeout, read timeout) tính bằng giây
 GRAPHQL_RETRIES = 2
 
 
-def _normalize_privacy(privacy):
+def _normalize_privacy(privacy: str | None) -> str:
      return PRIVACY_ALIASES.get(str(privacy or "FRIENDS").upper(), str(privacy or "FRIENDS").upper())
 
 
-def _error_response(resData):
+def _error_response(resData: dict[str, Any]) -> dict[str, Any]:
      error = (resData.get("errors") or [{}])[0]
      return {
           "error": 1,
@@ -27,7 +30,7 @@ def _error_response(resData):
      }
 
 
-def _request_error(message, exc=None, friendly_name=None, doc_id=None):
+def _request_error(message: str, exc: Exception | None = None, friendly_name: str | None = None, doc_id: int | str | None = None) -> dict[str, Any]:
      error = {
           "message": message,
           "friendly_name": friendly_name,
@@ -38,7 +41,7 @@ def _request_error(message, exc=None, friendly_name=None, doc_id=None):
      return {"errors": [error]}
 
 
-def _post_graphql(dataFB, friendly_name, doc_id, variables, timeout=GRAPHQL_TIMEOUT, retries=GRAPHQL_RETRIES):
+def _post_graphql(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any], timeout: tuple[int, int] = GRAPHQL_TIMEOUT, retries: int = GRAPHQL_RETRIES) -> dict[str, Any]:
      """Gửi 1 GraphQL request và trả về JSON đã parse."""
      dataForm = formAll(dataFB, friendly_name, doc_id)
      dataForm["variables"] = json.dumps(variables)
@@ -84,7 +87,7 @@ def _post_graphql(dataFB, friendly_name, doc_id, variables, timeout=GRAPHQL_TIME
 # ---------------------------------------------------------------------
 # CHECK
 # ---------------------------------------------------------------------
-def checkNote(dataFB):
+def checkNote(dataFB: dict[str, Any]) -> dict[str, Any]:
      """Kiểm tra note hiện tại của tài khoản đang đăng nhập."""
      variables = {"scale": 2}
      resData = _post_graphql(
@@ -112,7 +115,7 @@ def checkNote(dataFB):
 # ---------------------------------------------------------------------
 # CREATE
 # ---------------------------------------------------------------------
-def createNote(dataFB, text, privacy="FRIENDS"):
+def createNote(dataFB: dict[str, Any], text: str, privacy: str = "FRIENDS") -> dict[str, Any]:
      """Tạo một note mới (mặc định tồn tại 24 giờ)."""
      variables = {
           "input": {
@@ -157,7 +160,7 @@ def createNote(dataFB, text, privacy="FRIENDS"):
 # ---------------------------------------------------------------------
 # DELETE
 # ---------------------------------------------------------------------
-def deleteNote(dataFB, noteID):
+def deleteNote(dataFB: dict[str, Any], noteID: str, ) -> dict[str, Any]:
      """Xoá note theo ID."""
      variables = {
           "input": {
@@ -198,7 +201,7 @@ def deleteNote(dataFB, noteID):
 # ---------------------------------------------------------------------
 # RECREATE (delete + create)
 # ---------------------------------------------------------------------
-def recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS"):
+def recreateNote(dataFB: dict[str, Any], oldNoteID: str, newText: str, privacy: str = "FRIENDS") -> dict[str, Any]:
      """Xoá note cũ rồi tạo note mới."""
      deleted = deleteNote(dataFB, oldNoteID)
      if deleted.get("error"):
@@ -221,7 +224,7 @@ def recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS"):
 # ---------------------------------------------------------------------
 # Default entry point (theo style fbchat-v2): func(dataFB, action, ...)
 # ---------------------------------------------------------------------
-def func(dataFB, action="check", **kwargs):
+def func(dataFB: dict[str, Any], action: str = "check", **kwargs: Any) -> dict[str, Any]:
      """
      Args:
           dataFB: dict trả về từ _core._session.dataGetHome(setCookies)

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import json
 import time
+from typing import Any
 
 import requests
 
@@ -14,7 +17,7 @@ GRAPHQL_RETRIES = 2
 _DEFAULT_TIMEOUT = 20
 
 
-def _request_error(message, exc=None, friendly_name=None, doc_id=None):
+def _request_error(message: str, exc: Exception | None = None, friendly_name: str | None = None, doc_id: int | str | None = None) -> dict[str, Any]:
      error = {
           "message": message,
           "friendly_name": friendly_name,
@@ -25,7 +28,7 @@ def _request_error(message, exc=None, friendly_name=None, doc_id=None):
      return {"errors": [error]}
 
 
-def _graphql_error_response(resData):
+def _graphql_error_response(resData: dict[str, Any]) -> dict[str, Any]:
      error = (resData.get("errors") or [{}])[0]
      return {
           "error": 1,
@@ -34,7 +37,7 @@ def _graphql_error_response(resData):
      }
 
 
-def _post_graphql(dataFB, friendly_name, doc_id, variables, timeout=GRAPHQL_TIMEOUT, retries=GRAPHQL_RETRIES):
+def _post_graphql(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any], timeout: tuple[int, int] = GRAPHQL_TIMEOUT, retries: int = GRAPHQL_RETRIES) -> dict[str, Any]:
      dataForm = formAll(dataFB, friendly_name, doc_id)
      dataForm["variables"] = json.dumps(variables, separators=(",", ":"), ensure_ascii=False)
 
@@ -76,7 +79,7 @@ def _post_graphql(dataFB, friendly_name, doc_id, variables, timeout=GRAPHQL_TIME
      return _request_error("Facebook GraphQL request failed after retry.", last_error, friendly_name, doc_id)
 
 
-def _normalize_theme(themeData):
+def _normalize_theme(themeData: dict[str, Any]) -> dict[str, Any] | None:
      if not themeData or not themeData.get("id"):
           return None
      return {
@@ -108,7 +111,7 @@ def _normalize_theme(themeData):
      }
 
 
-def listThemes(dataFB):
+def listThemes(dataFB: dict[str, Any]) -> dict[str, Any]:
      resData = _post_graphql(
           dataFB,
           THEME_LIST_FRIENDLY_NAME,
@@ -138,7 +141,7 @@ def listThemes(dataFB):
      }
 
 
-def _match_theme(themes, themeName):
+def _match_theme(themes: list[dict[str, Any]], themeName: str) -> dict[str, Any] | None:
      normalized = str(themeName).strip().lower()
      if not normalized:
           return None
@@ -155,7 +158,7 @@ def _match_theme(themes, themeName):
      return next((theme for theme in themes if normalized in str(theme.get("name") or "").lower()), None)
 
 
-def findTheme(dataFB, themeName):
+def findTheme(dataFB: dict[str, Any], themeName: str) -> dict[str, Any]:
      listed = listThemes(dataFB)
      if listed.get("error"):
           return listed
@@ -174,7 +177,7 @@ def findTheme(dataFB, themeName):
      }
 
 
-def _theme_query(threadID, themeID, label, queueName, taskID, payload=None):
+def _theme_query(threadID: str, themeID: str, label: str, queueName: str, taskID: int, payload: dict[str, Any] | None = None) -> dict[str, Any]:
      queryPayload = {
           "thread_key": str(threadID),
           "theme_fbid": str(themeID),
@@ -192,7 +195,7 @@ def _theme_query(threadID, themeID, label, queueName, taskID, payload=None):
      }
 
 
-def _build_theme_contexts(threadID, themeID):
+def _build_theme_contexts(threadID: str, themeID: str) -> list[dict[str, Any]]:
      tasks = [
           ("1013", "ai_generated_theme", {}),
           ("1037", "msgr_custom_thread_theme", {}),
@@ -213,7 +216,7 @@ def _build_theme_contexts(threadID, themeID):
      return contexts
 
 
-def changeTheme(dataFB, threadID, themeName, initiatorID=None, timeout=_DEFAULT_TIMEOUT):
+def changeTheme(dataFB: dict[str, Any], threadID: str, themeName: str, initiatorID: str | None = None, timeout: int = _DEFAULT_TIMEOUT) -> dict[str, Any]:
      if not threadID:
           return _error_response("threadID is required.")
      if not themeName:
@@ -248,7 +251,7 @@ def changeTheme(dataFB, threadID, themeName, initiatorID=None, timeout=_DEFAULT_
      }
 
 
-def func(dataFB, threadID=None, themeName=None, action="set", **kwargs):
+def func(dataFB: dict[str, Any], threadID: str | None = None, themeName: str | None = None, action: str = "set", **kwargs: Any) -> dict[str, Any]:
      action = (action or "set").lower()
      if str(threadID or "").strip().lower() == "list" and themeName is None:
           return listThemes(dataFB)

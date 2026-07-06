@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 import requests
+from typing import Any
+
 from _core._utils import parse_cookie_string, dataSplit
 
-REQUIRED_SESSION_FIELDS = ("fb_dtsg", "jazoest", "sessionID", "FacebookID", "clientRevision")
+REQUIRED_SESSION_FIELDS: tuple[str, ...] = ("fb_dtsg", "jazoest", "sessionID", "FacebookID", "clientRevision")
 
-def _has_value(value):
+def _has_value(value: Any) -> bool:
      return value is not None and str(value).strip() != ""
 
-def dataGetHome(setCookies):
+def dataGetHome(setCookies: str) -> dict[str, Any] | None:
      
      mainRequests = {
           "headers": {

@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import requests, json
+from typing import Any
 from _core._utils import formAll, mainRequests
  
-def func(messageID, dataFB):
+def func(messageID: str, dataFB: dict[str, Any]) -> dict[str, Any] | Exception:
 
-     dataForm = formAll(dataFB, requireGraphql=False)
+     dataForm: dict[str, Any] = formAll(dataFB, requireGraphql=False)
      dataForm["message_id"] = messageID
 
-     sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/messaging/unsend_message/", dataForm, dataFB["cookieFacebook"])).text.split("for (;;);")[1])
+     sendRequests: dict[str, Any] = json.loads(requests.post(**mainRequests("https://www.facebook.com/messaging/unsend_message/", dataForm, dataFB["cookieFacebook"])).text.split("for (;;);")[1])
 
      if (sendRequests.get("error")):
           return Exception({"error": str(sendRequests)})

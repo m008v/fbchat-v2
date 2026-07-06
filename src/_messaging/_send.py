@@ -1,13 +1,24 @@
+from __future__ import annotations
+
 import json, random, requests, time
+from typing import Any
 from _core._utils import gen_threading_id, mainRequests, formAll
      
 class api:
      
-     def __init__(self):
+     def __init__(self) -> None:
      
+          self.dataFB: dict[str, Any] | None
+          self.content: str | None
+          self.ID: str | list[str] | None
+          self.typeAttachment: str | None
+          self.attachmentID: str | int | list[str | int] | None
+          self.typeChat: str | None
+          self.replyStatus: bool | None
+          self.messageID: str | None
           self.dataFB, self.content, self.ID, self.typeAttachment, self.attachmentID, self.typeChat, self.replyStatus, self.messageID = [None] * 8
-          self.properties = ["is_unread", "is_cleared", "is_forward", "is_filtered_content", "is_filtered_content_bh", "is_filtered_content_account", "is_filtered_content_quasar", "is_filtered_content_invalid_app", "is_spoof_warning"]
-          self.dictAttachment = {
+          self.properties: list[str] = ["is_unread", "is_cleared", "is_forward", "is_filtered_content", "is_filtered_content_bh", "is_filtered_content_account", "is_filtered_content_quasar", "is_filtered_content_invalid_app", "is_spoof_warning"]
+          self.dictAttachment: dict[str | None, str] = {
                # key: value
                "gif": "gif_ids",
                "image": "image_ids",
@@ -16,9 +27,12 @@ class api:
                "audio": "audio_ids",
                None: "this is not a Attachment we requested, try again later (đây không phải là Tệp đính kèm mà chúng tôi đã yêu cầu, hãy thử lại sau)"
           }
+          self.results: dict[str, Any] = {}
+          self.dataForm: dict[str, Any] = {}
+          self.dictItemAttachment: str = ""
           
           
-     def send(self, dataFB, contentSend, threadID, typeAttachment=None, attachmentID=None, typeChat=None, replyMessage=None, messageID=None):
+     def send(self, dataFB: dict[str, Any], contentSend: str | int, threadID: str | list[str], typeAttachment: str | None = None, attachmentID: str | int | list[str | int] | None = None, typeChat: str | None = None, replyMessage: bool | None = None, messageID: str | None = None) -> dict[str, Any]:
           
           self.dataFB = dataFB # --> data from home Facebook
           self.content = str(contentSend) # --> contents message
@@ -34,16 +48,16 @@ class api:
           
           return self.results
      
-     def removeValueToInputed(self):
+     def removeValueToInputed(self) -> None:
           self.typeAttachment, self.attachmentID, self.typeChat, self.replyStatus, self.messageID = [None] * 5
      
-     def attributeValues(self):
+     def attributeValues(self) -> None:
      
           for properties in self.properties:
                if self.dataForm.get(properties) is None:
                     self.dataForm[properties] = False
                
-     def attachmentCheck(self):
+     def attachmentCheck(self) -> None:
           
           if (self.typeAttachment != None and self.attachmentID != None):
                self.dataForm["has_attachment"] = True
@@ -55,7 +69,7 @@ class api:
                     if (isinstance(self.attachmentID, str) or isinstance(self.attachmentID, int)):
                          self.dataForm[f"{self.dictItemAttachment}[0]"] = self.attachmentID
      
-     def removeDataAttachmentCheck(self):
+     def removeDataAttachmentCheck(self) -> None:
      
           if self.dataForm.get('has_attachment'):
                if (isinstance(self.attachmentID, list)):
@@ -67,14 +81,14 @@ class api:
                return
                
      
-     def replyCheck(self):
+     def replyCheck(self) -> None:
           
           if (self.replyStatus is True and self.messageID != None):
                self.dataForm["replied_to_message_id"] = self.messageID
           
           
 
-     def sendMessage(self):
+     def sendMessage(self) -> None:
           
           self.dataForm = formAll(self.dataFB, requireGraphql=False)
           
@@ -112,7 +126,7 @@ class api:
           self.sendRequests()
           self.removeDataAttachmentCheck()
 
-     def sendRequests(self):
+     def sendRequests(self) -> None:
      
           _main = mainRequests("https://www.facebook.com/messaging/send/", self.dataForm, self.dataFB["cookieFacebook"])
           sendRequests = requests.post(**_main).text

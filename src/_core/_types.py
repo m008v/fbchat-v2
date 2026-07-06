@@ -1,0 +1,82 @@
+"""
+Shared type definitions cho toàn bộ fbchat-v2 codebase.
+
+Cung cấp TypedDict và type aliases cho các cấu trúc dữ liệu phổ biến:
+- DataFB: Session data từ Facebook
+- SuccessResponse / ErrorResponse: Chuẩn hoá return shape
+- RequestKwargs: Cấu trúc dict cho requests.post()
+"""
+from __future__ import annotations
+
+from typing import Any, NotRequired, TypedDict
+
+
+class DataFB(TypedDict):
+    """Session data trả về từ ``dataGetHome()``.
+
+    Chứa tất cả thông tin session cần thiết để gọi Facebook API.
+    """
+
+    fb_dtsg: str
+    fb_dtsg_ag: str
+    jazoest: str
+    hash: str
+    sessionID: str
+    FacebookID: str
+    clientRevision: str
+    cookieFacebook: str
+
+
+class SuccessResponse(TypedDict):
+    """Chuẩn response khi thành công — ``{"success": 1, ...}``."""
+
+    success: int  # always 1
+    payload: NotRequired[dict[str, Any]]
+    messages: NotRequired[str]
+    data: NotRequired[dict[str, Any]]
+
+
+class ErrorResponse(TypedDict):
+    """Chuẩn response khi lỗi — ``{"error": 1, ...}``."""
+
+    error: int  # always 1
+    payload: NotRequired[dict[str, Any]]
+    messages: NotRequired[str]
+
+
+class RequestKwargs(TypedDict):
+    """Cấu trúc dict trả về từ ``mainRequests()`` — dùng cho ``requests.post(**kw)``."""
+
+    headers: dict[str, str]
+    timeout: int
+    url: str
+    data: dict[str, Any]
+    cookies: dict[str, str]
+    verify: bool
+
+
+class LoginSuccessPayload(TypedDict):
+    """Payload khi đăng nhập thành công."""
+
+    setCookies: str
+    accessTokenFB: str
+    cookiesKeyValueList: NotRequired[list[dict[str, Any]]]
+
+
+class LoginErrorPayload(TypedDict):
+    """Payload khi đăng nhập thất bại."""
+
+    title: str
+    description: str
+    error_subcode: int | None
+    error_code: int | None
+    fbtrace_id: str | None
+
+
+class AttachmentResult(TypedDict):
+    """Kết quả upload attachment."""
+
+    attachmentID: str
+    attachmentUrl: str
+    attachmentType: str
+    attachmentDataSend: dict[str, Any]
