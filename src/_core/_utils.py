@@ -1,5 +1,13 @@
 import attr, re, json, random, string, time
-from mimetypes import guess_type 
+from mimetypes import guess_type
+
+# User-Agent pool — xoay ngẫu nhiên để giảm fingerprint detection từ Facebook
+_USER_AGENTS: list[str] = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+]
+_SEC_CH_UA = '"Chromium";v="137", "Not;A=Brand";v="24", "Google Chrome";v="137"'
 
 def Headers(dataForm=None, Host='www.facebook.com'):
      headers = {}
@@ -7,14 +15,14 @@ def Headers(dataForm=None, Host='www.facebook.com'):
      headers["Connection"] = "keep-alive"
      if (dataForm is not None):
           headers["Content-Length"] = str(len(dataForm))
-     headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
+     headers["User-Agent"] = random.choice(_USER_AGENTS)
      headers["Accept"] = "*/*"
      headers["Origin"] = "https://" + Host
      headers["Sec-Fetch-Site"] = "same-origin"
      headers["Sec-Fetch-Mode"] = "cors"
      headers["Sec-Fetch-Dest"] = "empty"
      headers["Referer"] = "https://" + Host
-     headers["sec-ch-ua"] = "\"Chromium\";v=\"134\", \"Not;A=Brand\";v=\"24\", \"Google Chrome\";v=\"134\""
+     headers["sec-ch-ua"] = _SEC_CH_UA
      headers["sec-ch-ua-mobile"] = "?0"
      headers["sec-ch-ua-platform"] = "\"Windows\""
      headers["Accept-Language"] = "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
