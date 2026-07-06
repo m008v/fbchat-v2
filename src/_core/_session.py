@@ -4,13 +4,20 @@ import httpx
 from typing import Any
 
 from _core._utils import parse_cookie_string, dataSplit, send_get_request
+from _core._storage import SessionStorage
 
 REQUIRED_SESSION_FIELDS: tuple[str, ...] = ("fb_dtsg", "jazoest", "sessionID", "FacebookID", "clientRevision")
 
 def _has_value(value: Any) -> bool:
      return value is not None and str(value).strip() != ""
 
-def dataGetHome(setCookies: str) -> dict[str, Any] | None:
+def dataGetHome(setCookies: str | None = None, storage: SessionStorage | None = None) -> dict[str, Any] | None:
+     if setCookies is None and storage is not None:
+          setCookies = storage.load()
+     
+     if not setCookies:
+          print("[session] Không có cookie để khởi tạo session.")
+          return None
      
      mainRequests = {
           "headers": {

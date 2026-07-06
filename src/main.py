@@ -51,7 +51,7 @@ from _features._facebook import _search
 from _messaging._send import api as SendAPI
 from _messaging._unsend import func as unsend_message
 from _messaging._listening import listeningEvent
-
+from _core._storage import FileSessionStorage
 
 # ---------------------------------------------------------------------------
 # Config helpers
@@ -79,10 +79,7 @@ def load_config() -> dict:
     with CONFIG_PATH.open("r", encoding="utf-8") as f:
         cfg = json.load(f)
 
-    if not cfg.get("cookies") or "PASTE_YOUR" in cfg["cookies"]:
-        print("[config] Bạn chưa điền cookie Facebook trong config.json.")
-        sys.exit(1)
-
+    # Validate cookies later via FileSessionStorage
     cfg.setdefault("prefix", "/")
     cfg.setdefault("admins", [])
     return cfg
@@ -312,7 +309,8 @@ def main() -> None:
     cfg = load_config()
 
     log("boot", "Đang khởi tạo dataFB từ cookie…")
-    dataFB = dataGetHome(cfg["cookies"])
+    storage = FileSessionStorage(str(CONFIG_PATH), key="cookies")
+    dataFB = dataGetHome(storage=storage)
 
     if not is_valid_datafb(dataFB):
         log("boot", "❌ Không lấy được dataFB hợp lệ — cookie có thể đã hết hạn hoặc HTML token đã đổi.")
