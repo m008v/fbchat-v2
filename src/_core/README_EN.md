@@ -115,8 +115,8 @@ The most important module inside `_core`. Five helper groups:
 | Function | Description |
 |---|---|
 | `Headers(dataForm=None, Host=None)` | Builds the base headers; auto-sets `Content-Length` when `dataForm` is given. |
-| `parse_cookie_string(cookie_string)` | Cookie string → `dict` for `requests`. |
-| `mainRequests(urlRequests, dataForm, setCookies)` | Returns a `kwargs` dict ready for `requests.post(**kwargs)`. |
+| `parse_cookie_string(cookie_string)` | Cookie string → `dict` for `httpx`. |
+| `mainRequests(urlRequests, dataForm, setCookies)` | Returns a `kwargs` dict ready for `send_request(kwargs)`. |
 
 #### B. Parse / Format
 
@@ -211,8 +211,8 @@ print(dataFB["fb_dtsg"])
 ### Build & send a GraphQL request
 
 ```python
-import json, requests
-from _core._utils import formAll, mainRequests
+import json
+from _core._utils import formAll, mainRequests, send_request
 
 dataForm = formAll(
     dataFB,
@@ -225,7 +225,7 @@ dataForm["variables"] = json.dumps({
     "scale": 1,
 })
 
-resp = requests.post(**mainRequests(
+resp = send_request(mainRequests(
     "https://www.facebook.com/api/graphql/",
     dataForm,
     dataFB["cookieFacebook"],

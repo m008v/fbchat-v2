@@ -250,7 +250,7 @@ Python dependencies are managed via `pyproject.toml` (PEP 621):
 ```toml
 [project]
 dependencies = [
-    "requests>=2.31.0",   # HTTP client
+    "httpx>=0.27.0",      # HTTP client
     "paho-mqtt>=1.6.1",   # MQTT WebSocket for _listening.py
     "attrs>=23.2.0",      # Decorator class
     "pyotp>=2.9.0"        # 2FA TOTP when logging in with username/password
@@ -298,7 +298,7 @@ pip install -e .
 Quick sanity check:
 
 ```bash
-python -c "import requests, paho.mqtt.client, attr, pyotp; print('OK')"
+python -c "import httpx, paho.mqtt.client, attr, pyotp; print('OK')"
 ```
 
 ### 4. Make `src/` importable

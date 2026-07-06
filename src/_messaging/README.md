@@ -57,14 +57,14 @@
 
 | Package | Dùng cho | Ghi chú |
 |---|---|---|
-| `requests` | `_send` · `_attachments` · `_reactions` · `_unsend` · `_message_requests` · `_createNotes` · `_changeTheme` | HTTP client |
+| `httpx`    | `_send` · `_attachments` · `_reactions` · `_unsend` · `_message_requests` · `_createNotes` · `_changeTheme` | HTTP client |
 | `paho-mqtt` | `_listening` · `_editMessage` · `_changeTheme` | MQTT over WebSocket / LS task |
 | `attrs` | `_listening` | Decorator class |
 
 Cài nhanh nếu chỉ muốn dùng riêng `_messaging`:
 
 ```bash
-pip install requests paho-mqtt attrs
+pip install httpx paho-mqtt attrs
 ```
 
 ### 2. Bridge Go cho `_listening_e2ee` (tuỳ chọn)
@@ -356,7 +356,7 @@ Thêm / xoá reaction trên tin nhắn.
 | `messageID` | ID tin nhắn cần react. |
 | `emojiChoice` | Emoji muốn dùng. |
 
-**Trả về:** `requests.Response` thô — bạn cần tự parse `response.text`.
+**Trả về:** `httpx.Response` thô — bạn cần tự parse `response.text`.
 
 ---
 
@@ -470,7 +470,7 @@ _createNotes.func(dataFB, action="recreate", oldNoteID="<id>", newText="...")
 
 - Gọi 3 GraphQL `friendly_name` / `doc_id` riêng (check / create / delete).
 - Có **timeout** `(connect=10s, read=45s)` và **retry** tối đa 2 lần với
-  `requests.Timeout` / `requests.RequestException`.
+  `httpx.TimeoutException` / `httpx.RequestError`.
 - Tự strip prefix `for (;;);` của response Facebook trước khi `json.loads`.
 - `client_mutation_id` random 0–10, `session_id` sinh bằng
   `_core._utils.generate_client_id()`.
@@ -483,12 +483,12 @@ _createNotes.func(dataFB, action="recreate", oldNoteID="<id>", newText="...")
 
 ```text
 _core._session.dataGetHome(setCookies)  →  dataFB
-_core._utils  →  formAll · mainRequests · gen_threading_id
+_core._utils  →  formAll · send_request · send_request_async · mainRequests · gen_threading_id
                  generate_session_id · generate_client_id · json_minimal
                  str_base · get_files_from_paths · Headers · parse_cookie_string
 ```
 
-**Thư viện ngoài:** `requests`, `paho-mqtt`.
+**Thư viện ngoài:** `httpx`, `paho-mqtt`.
 
 > Riêng `_listening_e2ee.py` **và** `_send_e2ee.py` còn cần binary Go `fbchat-bridge-e2ee` (subprocess, không phải Python dependency). `_send_e2ee.py` tái sử dụng `_BridgeProcess`, `_resolve_binary` và `parse_cookie_string` từ `_listening_e2ee.py` — hai module có thể chia sẻ chung 1 bridge.
 

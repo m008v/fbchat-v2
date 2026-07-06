@@ -8,7 +8,7 @@
 ## TL;DR
 
 - **What:** Unofficial Python ≥ 3.10 library that talks to Facebook Messenger as a real user (cookies, not Graph API).
-- **How:** Synchronous `requests` calls to private Facebook endpoints + `paho-mqtt` listener over WebSocket. E2EE (Secret Conversations) is delegated to a Go subprocess (`bridge-e2ee/`) using whatsmeow.
+- **How:** HTTP calls to private Facebook endpoints using `httpx` (Dual sync/async API) + `paho-mqtt` listener over WebSocket. E2EE (Secret Conversations) is delegated to a Go subprocess (`bridge-e2ee/`) using whatsmeow.
 - **Layout:** Strict 3 layers under `src/` — `_core` → `_features` → `_messaging`. Higher layers may import lower; **never the reverse**.
 - **Convention:** Every module exposes a `func(dataFB, ...)` (or a class with one verb method). The first argument is almost always `dataFB`.
 - **Run:** `set PYTHONPATH=src` (Windows) / `export PYTHONPATH=src` (POSIX), then `python src/main.py`.
@@ -102,7 +102,7 @@ Produced by `_core._session.dataGetHome(cookie_string)`. Passed as **first arg**
 | Symbol                                                                | Purpose                                                              |
 |-----------------------------------------------------------------------|----------------------------------------------------------------------|
 | `formAll(dataFB, FBApiReqFriendlyName, docID, requireGraphql)`        | Build base POST form. `requireGraphql=False` for non-GraphQL routes. |
-| `mainRequests(url, dataForm, cookies)`                                | Returns kwargs ready for `requests.post(**kwargs)`.                  |
+| `mainRequests(url, dataForm, cookies)`                                | Returns kwargs ready for `httpx` HTTP requests.                  |
 | `Headers(dataForm, Host)`                                             | Browser-like headers.                                                |
 | `dataSplit(s1, s2, ..., HTML)`                                        | Cheap regex-free string splitting on raw HTML.                       |
 | `parse_cookie_string(s)`                                              | `"k=v; k2=v2"` → dict.                                               |
@@ -122,7 +122,7 @@ def func(dataFB, new_bio: str) -> dict:
     form = formAll(dataFB, "ProfileBioMutation", "<docID>", True)
     form["variables"] = json.dumps({"input": {"bio": new_bio, ...}})
     kw = mainRequests("https://www.facebook.com/api/graphql/", form, dataFB["cookieFacebook"])
-    r = requests.post(**kw)
+    r = send_request(kw)
     return {"success": 1, "data": r.json()} if r.ok else {"error": 1, "raw": r.text}
 ```
 
@@ -314,7 +314,7 @@ Standalone test driver for the E2EE listener. Reads cookie from env `FBCHAT_COOK
 | Module / package names | Start with `_` (`_send.py`, `_core/`).                                                                                   |
 | Public function name   | `func(dataFB, ...)` per file. Exceptions: `_send.py` (`class api`), `_facebookLogin.py` (`class loginFacebook`), listener classes. |
 | Return shape           | success `{"success": 1, ...}` / error `{"error": 1, ...}`.                                                               |
-| Sync only              | Codebase is synchronous (`requests`). No `async/await` yet.                                                              |
+| Dual API (Sync/Async)  | Codebase supports both synchronous and native `async`/`await` functions (e.g. `func` and `func_async`).                                                              |
 | Python version         | ≥ 3.10 (uses `match/case` in `_all_thread_data.py`).                                                                     |
 | Import path            | `PYTHONPATH=src`. Write `from _core._session import dataGetHome`, NOT `from src._core...`.                               |
 | `attrs` decorator      | **Do NOT** add `@attr.s` to a class that defines a manual `__init__` — it silently overrides yours. (Lesson learned in `_listening_e2ee.py`.) |
@@ -328,7 +328,7 @@ Standalone test driver for the E2EE listener. Reads cookie from env `FBCHAT_COOK
 ### Python (`pyproject.toml`)
 | Package      | Used for                                          |
 |--------------|---------------------------------------------------|
-| `requests`   | All HTTP                                          |
+| `httpx`      | All HTTP (Sync & Async)                           |
 | `paho-mqtt`  | Real-time listener WSS + LS task publish helpers  |
 | `attrs`      | `attr.ib` counter in `formAll`, listener classes  |
 | `pyotp`      | TOTP for 2FA login                                |
@@ -351,7 +351,7 @@ Standalone test driver for the E2EE listener. Reads cookie from env `FBCHAT_COOK
    - Session, login, low-level → `_core/`.
 2. **Create `_myFeature.py`** in that subdirectory.
 3. **Define `def func(dataFB, ...) -> dict:`** following the return-shape contract.
-4. Build POST with `formAll()` + `mainRequests()`. Use `requests.post(**kw)`.
+4. Build POST with `formAll()` + `mainRequests()`. Use `send_request(kw)` or `send_request_async(kw)`.
 5. Add a usage block in `DOCS.md` and (if user-facing) a card in `website/index.html`.
 6. Commit with `feat: <short imperative summary>`.
 

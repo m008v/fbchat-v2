@@ -74,7 +74,7 @@ Sau khi `import _core`, bạn có thể truy cập tất cả module con thông 
 | `sessionID` | ID phiên runtime |
 | `FacebookID` | UID người dùng đang đăng nhập |
 | `clientRevision` | Revision client (cập nhật theo Facebook) |
-| `cookieFacebook` | Cookie gốc dạng dict, sẵn sàng cho `requests` |
+| `cookieFacebook` | Cookie gốc dạng dict, sẵn sàng cho `httpx` |
 
 > ⚠️ Gần như **mọi** module trong `_features/*` và `_messaging/*` đều phụ thuộc vào các giá trị này.
 
@@ -115,8 +115,8 @@ Module quan trọng nhất của `_core`. Gồm 5 nhóm hàm chính:
 | Hàm | Mô tả |
 |---|---|
 | `Headers(dataForm=None, Host=None)` | Tạo bộ header chuẩn; tự thêm `Content-Length` nếu có `dataForm`. |
-| `parse_cookie_string(cookie_string)` | Cookie string → `dict` cho `requests`; dùng `partition("=")` nên không làm vỡ cookie value có dấu `=`. |
-| `mainRequests(urlRequests, dataForm, setCookies)` | Trả về `kwargs` sẵn sàng dùng `requests.post(**kwargs)`. |
+| `parse_cookie_string(cookie_string)` | Cookie string → `dict` cho `httpx`; dùng `partition("=")` nên không làm vỡ cookie value có dấu `=`. |
+| `mainRequests(urlRequests, dataForm, setCookies)` | Trả về `kwargs` sẵn sàng dùng `send_request(kwargs)`. |
 
 #### B. Parse / Format
 
@@ -212,8 +212,8 @@ print(dataFB["fb_dtsg"])
 ### Gửi request GraphQL
 
 ```python
-import json, requests
-from _core._utils import formAll, mainRequests
+import json
+from _core._utils import formAll, mainRequests, send_request
 
 dataForm = formAll(
     dataFB,
@@ -226,7 +226,7 @@ dataForm["variables"] = json.dumps({
     "scale": 1,
 })
 
-resp = requests.post(**mainRequests(
+resp = send_request(mainRequests(
     "https://www.facebook.com/api/graphql/",
     dataForm,
     dataFB["cookieFacebook"],

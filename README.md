@@ -250,7 +250,7 @@ Các phụ thuộc Python được quản lý qua `pyproject.toml` (PEP 621):
 ```toml
 [project]
 dependencies = [
-    "requests>=2.31.0",   # HTTP client
+    "httpx>=0.27.0",      # HTTP client
     "paho-mqtt>=1.6.1",   # MQTT WebSocket cho _listening.py
     "attrs>=23.2.0",      # Decorator class
     "pyotp>=2.9.0"        # 2FA TOTP khi login bằng username/password
@@ -298,7 +298,7 @@ pip install -e .
 Kiểm tra nhanh:
 
 ```bash
-python -c "import requests, paho.mqtt.client, attr, pyotp; print('OK')"
+python -c "import httpx, paho.mqtt.client, attr, pyotp; print('OK')"
 ```
 
 ### 4. Cho phép import từ `src/`

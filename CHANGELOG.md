@@ -7,6 +7,19 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
+## [2.2.0-beta] - 2026-07-06
+
+### ✨ Added
+- **Dual API (Sync & Async) cho toàn bộ `_messaging`**: Hỗ trợ native `async`/`await` cho tất cả các hành động (`send_async`, `unsend_async`, `react_async`, ...).
+- **Hỗ trợ `httpx` hoàn toàn**: Đã loại bỏ hoàn toàn dependency `requests` (chuyển sang `httpx` cho cả HTTP/1.1 và HTTP/2, Timeout, Retries).
+- **Type Hints đầy đủ**: Tích hợp kiểu dữ liệu (`TypedDict`, `Literal`) cho 11 module core và messaging (giảm thiểu lỗi type runtime).
+- **E2EE Bridge Auto-Respawn**: Cơ chế tự động hồi sinh Bridge E2EE (`_listening_e2ee.py`) với exponential backoff (2s → 32s) khi mất kết nối đột ngột hoặc crash.
+
+### 🛠 Changed
+- Module `_core._session.py` và `_utils.py` hiện tại sử dụng helper `send_request` và `send_request_async`.
+
+---
+
 ## [2.1.3b] — 2026-05-18
 
 ### 🛠 Changed
