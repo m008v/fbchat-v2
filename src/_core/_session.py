@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import requests
+import httpx
 from typing import Any
 
-from _core._utils import parse_cookie_string, dataSplit
+from _core._utils import parse_cookie_string, dataSplit, send_get_request
 
 REQUIRED_SESSION_FIELDS: tuple[str, ...] = ("fb_dtsg", "jazoest", "sessionID", "FacebookID", "clientRevision")
 
@@ -58,10 +58,13 @@ def dataGetHome(setCookies: str) -> dict[str, Any] | None:
      ]
      
      try:
-          response = requests.get(**mainRequests)
+          response = send_get_request(mainRequests)
           response.raise_for_status()
-     except requests.RequestException as err:
+     except httpx.RequestError as err:
           print(f"[session] Không thể lấy homepage Facebook: {err}")
+          return None
+     except httpx.HTTPStatusError as err:
+          print(f"[session] Lỗi HTTP khi lấy homepage: {err}")
           return None
 
      sendRequests = response.text

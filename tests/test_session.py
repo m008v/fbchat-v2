@@ -1,10 +1,11 @@
 import pytest
 from unittest.mock import patch, Mock
 from _core._session import dataGetHome
+import httpx
 
 @pytest.mark.skip(reason="Requires exact HTML fixture from Facebook to parse correctly")
 def test_dataGetHome_success(mock_dataFB):
-    with patch("requests.get") as mock_get:
+    with patch("_core._session.send_get_request") as mock_get:
         # Mock the HTML response from facebook to contain the necessary script tags
         mock_resp = Mock()
         mock_resp.text = '["DTSGInitialData",[],{"token":"mock_dtsg"},123]\n{"async_get_token":"mock_dtsg_ag"}\n["LSD",[],{"token":"22421"},123]\n{"client_revision":123456}\n{"USER_ID":"10001234567890"}'
@@ -19,7 +20,6 @@ def test_dataGetHome_success(mock_dataFB):
         assert result is not None
 
 def test_dataGetHome_network_error():
-    import requests
-    with patch("requests.get", side_effect=requests.RequestException("Network error")):
+    with patch("_core._session.send_get_request", side_effect=httpx.RequestError("Network error", request=Mock())):
         result = dataGetHome("cookie")
         assert result is None
