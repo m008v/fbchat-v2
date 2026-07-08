@@ -13,3 +13,9 @@ def mock_dataFB() -> dict[str, Any]:
         "clientRevision": "123456",
         "cookieFacebook": "c_user=10001234567890; xs=mock_xs; fr=mock_fr; datr=mock_datr;"
     }
+
+class HttpxResponseMock:
+    def __init__(self, status_code, content):
+        self.status_code = status_code
+        self.content = content
+        self.text = content.decode("utf-8") if isinstance(content, bytes) else str(content)
