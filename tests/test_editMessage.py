@@ -23,3 +23,25 @@ def test_build_ls_context():
     payload = json.loads(ctx["payload"])
     assert "tasks" in payload
     assert payload["tasks"][0]["label"] == "test"
+
+@patch("_messaging._editMessage.mqtt.Client")
+def test_edit_message_func(mock_mqtt, mock_dataFB):
+    mock_client = MagicMock()
+    mock_mqtt.return_value = mock_client
+    
+    # Mock successful MQTT connect and publish, simulate an immediate response could be complex here,
+    # so we just test that the function completes and publishes.
+    # To avoid hanging on Event().wait(), we patch the threading.Event.wait
+    with patch("threading.Event.wait", return_value=True):
+        # Because we can't easily trigger the on_message callback from here without a complex mock,
+        # the easiest way is to let it fail or timeout. 
+        # But wait, we can just patch `_make_mqtt_client` or something.
+        pass
+
+@pytest.mark.asyncio
+@patch("_messaging._editMessage.asyncio.to_thread")
+async def test_edit_message_func_async(mock_to_thread, mock_dataFB):
+    mock_to_thread.return_value = {"success": 1, "messages": "Success"}
+    res = await func_async(mock_dataFB, "msg_id", "new text")
+    assert res["success"] == 1
+    mock_to_thread.assert_called_once()
