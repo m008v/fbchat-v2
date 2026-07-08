@@ -24,6 +24,8 @@ from _features._facebook._notification import func_async as get_notification_asy
 from _features._facebook._changeBio import func_async as change_bio_async
 from _features._thread._changeEmoji import func_async as change_emoji_async
 from _features._thread._changeNickname import func_async as change_nickname_async
+from _features._thread._all_thread_data import func_async as all_thread_data_async
+from _features._thread._changeNameThread import func_async as change_name_thread_async
 
 def on_e2ee_message(msg):
     # Callback xử lý tin nhắn E2EE (từ Bridge trả về event có dạng {'type': '...', 'data': {...}})
@@ -138,7 +140,21 @@ async def main():
     except Exception as e:
         print(f"Lỗi Change Bio: {e}")
 
-    print("\n16. Khởi động E2EE Listener & Gửi E2EE...")
+    print("\n16. Test Get All Thread Data (Thread Feature)...")
+    try:
+        threads = await all_thread_data_async(dataFB)
+        print(f"Kết quả All Thread Data: Đã lấy {len(threads)} nhóm (Hiển thị nhóm đầu tiên): {threads[0] if threads else 'Không có'}")
+    except Exception as e:
+        print(f"Lỗi All Thread Data: {e}")
+
+    print("\n17. Test Change Name Thread (Thread Feature)...")
+    try:
+        name_res = await change_name_thread_async(dataFB, target_id, "FBChat v2 Async Test Group 🚀")
+        print(f"Kết quả Change Name Thread: {name_res}")
+    except Exception as e:
+        print(f"Lỗi Change Name Thread: {e}")
+
+    print("\n18. Khởi động E2EE Listener & Gửi E2EE...")
     listener = listeningE2EEEvent(dataFB)
     listener.on_message(on_e2ee_message)
     listener_thread = threading.Thread(target=listener.connect_mqtt, daemon=True)
