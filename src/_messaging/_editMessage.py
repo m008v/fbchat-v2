@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import ssl
+import asyncio
 from threading import Event
 from typing import Any
 from urllib.parse import urlparse
@@ -221,6 +222,14 @@ def editMessage(dataFB: dict[str, Any], messageID: str, newText: str, timeout: i
 
 def func(dataFB: dict[str, Any], messageID: str, newText: str, timeout: int = _DEFAULT_TIMEOUT) -> dict[str, Any]:
      return editMessage(dataFB, messageID, newText, timeout=timeout)
+
+
+async def editMessage_async(dataFB: dict[str, Any], messageID: str, newText: str, timeout: int = _DEFAULT_TIMEOUT) -> dict[str, Any]:
+     return await asyncio.to_thread(editMessage, dataFB, messageID, newText, timeout)
+
+
+async def func_async(dataFB: dict[str, Any], messageID: str, newText: str, timeout: int = _DEFAULT_TIMEOUT) -> dict[str, Any]:
+     return await editMessage_async(dataFB, messageID, newText, timeout=timeout)
 
 
 """ Hướng dẫn sử dụng (Tutorial)
