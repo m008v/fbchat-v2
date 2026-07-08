@@ -167,14 +167,14 @@ async def main():
 
     print("\n19. Test Blocking User (Facebook Feature)...")
     try:
-        block_res = await blocking_async(dataFB, "4") # Mark Zuckerberg
+        block_res = await blocking_async(dataFB, "4", "block") # Mark Zuckerberg
         print(f"Kết quả Blocking: {block_res}")
     except Exception as e:
         print(f"Lỗi Blocking: {e}")
 
     print("\n20. Test Professional Mode (Facebook Feature)...")
     try:
-        pro_res = await professional_async(dataFB, enablePro=True)
+        pro_res = await professional_async(dataFB, "on")
         print(f"Kết quả Professional Mode: {pro_res}")
     except Exception as e:
         print(f"Lỗi Professional Mode: {e}")
