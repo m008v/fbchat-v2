@@ -180,22 +180,48 @@ class api:
           self.removeDataAttachmentCheck()
 
      def _parse_response(self, text: str) -> None:
-          sendRequests = json.loads(text.split("for (;;);")[1])
-          if sendRequests.get('payload'):
-               _ = sendRequests["payload"]["actions"][0]
+          if text.startswith("for (;;);"):
+               text = text.split("for (;;);", 1)[1]
+               
+          try:
+               sendRequests = json.loads(text)
+          except (ValueError, json.JSONDecodeError):
                self.results = {
-                    "success": 1,
+                    "error": 1,
                     "payload": {
-                         "messageID": _["message_id"],
-                         "timestamp": _["timestamp"]
+                         "error-decription": "Invalid JSON response from server.",
+                         "raw": text[:300]
                     }
                }
                return
+
+          if sendRequests.get('payload'):
+               payload_data = sendRequests["payload"]
+               if "actions" in payload_data and len(payload_data["actions"]) > 0:
+                    _ = payload_data["actions"][0]
+                    self.results = {
+                         "success": 1,
+                         "payload": {
+                              "messageID": _["message_id"],
+                              "timestamp": _["timestamp"]
+                         }
+                    }
+                    return
+               else:
+                    self.results = {
+                         "error": 1,
+                         "payload": {
+                              "error-decription": "Payload does not contain 'actions'.",
+                              "raw": sendRequests
+                         }
+                    }
+                    return
           self.results = {
                "error": 1,
                "payload": {
                     "error-decription": sendRequests.get("errorDescription"),
-                    "error-code": sendRequests.get("error")
+                    "error-code": sendRequests.get("error"),
+                    "raw": sendRequests
                }
           }
           return
