@@ -117,7 +117,7 @@ async def main():
 
     print("\n13. Test Change Nickname (Thread Feature)...")
     try:
-        nick_res = await change_nickname_async(dataFB, target_id, "Test Bot Nickname", dataFB["FacebookID"])
+        nick_res = await change_nickname_async(dataFB, target_id, dataFB["FacebookID"], "Test Bot Nickname")
         print(f"Kết quả Change Nickname: {nick_res}")
     except Exception as e:
         print(f"Lỗi Change Nickname: {e}")
