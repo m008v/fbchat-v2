@@ -21,8 +21,22 @@ def _build_request(dataFB: dict[str, Any]) -> dict[str, Any]:
      return mainRequests("https://www.facebook.com/api/graphqlbatch/", dataForm, dataFB["cookieFacebook"])
 
 def _parse_response(text: str) -> dict[str, Any]:
-     dataGet = json.loads(text.split('{"successful_results"}')[0])
-     PendingList: list[dict[str, Any]] = dataGet['o0']['data']['viewer']['message_threads']['nodes']
+     dataGet = {}
+     for line in text.splitlines():
+          if not line.strip():
+               continue
+          try:
+               obj = json.loads(line)
+               if "o0" in obj:
+                    dataGet = obj
+                    break
+          except json.JSONDecodeError:
+               pass
+     
+     if not dataGet:
+          return {"error": 1, "messages": "Failed to parse message requests response.", "raw": text}
+     
+     PendingList: list[dict[str, Any]] = dataGet.get('o0', {}).get('data', {}).get('viewer', {}).get('message_threads', {}).get('nodes', [])
      dictExportData: dict[str | int, Any] = {"data":{}}
      total: int = 0
      for i in PendingList:
