@@ -204,3 +204,10 @@ def getInformationProductItemMarketPlace(dataFB, idProductItem):
             }
             
         return a
+import asyncio
+
+async def createItem_async(*args, **kwargs):
+    return await asyncio.to_thread(createItem, *args, **kwargs)
+
+async def getInformationProductItemMarketPlace_async(*args, **kwargs):
+    return await asyncio.to_thread(getInformationProductItemMarketPlace, *args, **kwargs)

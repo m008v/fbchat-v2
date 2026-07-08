@@ -187,3 +187,7 @@ def features(dataGet, threadID, commandUse):
         
     else:
         return "Không lấy được dữ liệu ThreadList, đã xảy ra lỗi T___T"
+
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

@@ -16,3 +16,6 @@ def func(dataFB, threadID, newEmoji): # Thay đổi biểu tượng cảm xúc c
             return formatResults("error", "Lỗi không xác định.")
     else:
             return formatResults("success", "Thay đổi biểu tượng cảm xúc nhanh thành công.")
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

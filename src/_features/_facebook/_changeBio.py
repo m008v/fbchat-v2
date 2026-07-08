@@ -43,3 +43,6 @@ def func(dataFB, newContents, uploadPost=False): # Thay đổi Bio trên trang F
             "error": 1
         }
         
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

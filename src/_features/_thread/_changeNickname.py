@@ -21,3 +21,6 @@ def func(dataFB, threadID, idUser, NewNickname): # Thay đổi biệt danh ngư�
                 return formatResults("error", "Lỗi không xác định.")
     else:
         return formatResults("success", "Thay đổi biệt danh người dùng thành công.")
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

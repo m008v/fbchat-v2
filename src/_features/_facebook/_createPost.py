@@ -88,3 +88,6 @@ def func(dataFB, newContents, attachmentID=None): # Tạo bài viết trên Face
             "error": 1,
             "messages": sendRequests["errors"][0]["message"]
         }
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

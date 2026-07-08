@@ -34,3 +34,6 @@ def func(dataFB): # Lấy thông báo Facebook
         "success": 1,
         "NotificationResults": listNotificationResults
     }
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

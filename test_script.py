@@ -18,6 +18,8 @@ from _messaging._editMessage import func_async as edit_message_async
 from _messaging._changeTheme import func_async as change_theme_async
 from _messaging._createNotes import func_async as create_notes_async
 from _messaging._message_requests import func_async as message_requests_async
+from _features._facebook._get_user_info import func_async as get_user_info_async
+from _features._thread._changeEmoji import func_async as change_emoji_async
 
 def on_e2ee_message(msg):
     # Callback xử lý tin nhắn E2EE (từ Bridge trả về event có dạng {'type': '...', 'data': {...}})
@@ -73,7 +75,7 @@ async def main():
     if os.path.exists("test_dummy.txt"): os.remove("test_dummy.txt")
 
     print("\n7. Test thay đổi Theme...")
-    theme_res = await change_theme_async(dataFB, target_id, "default")
+    theme_res = await change_theme_async(dataFB, target_id, "2442142322678320")
     print(f"Kết quả Change Theme: {theme_res}")
 
     print("\n8. Test tạo Note...")
@@ -90,7 +92,21 @@ async def main():
     if req_res.get("data"):
         print(req_res["data"][0])
 
-    print("\n10. Khởi động E2EE Listener & Gửi E2EE...")
+    print("\n10. Test Get User Info (Facebook Feature)...")
+    try:
+        user_info = await get_user_info_async(dataFB, target_id)
+        print(f"Kết quả Get User Info: {user_info}")
+    except Exception as e:
+        print(f"Lỗi Get User Info: {e}")
+
+    print("\n11. Test Change Emoji (Thread Feature)...")
+    try:
+        emoji_res = await change_emoji_async(dataFB, target_id, "😎")
+        print(f"Kết quả Change Emoji: {emoji_res}")
+    except Exception as e:
+        print(f"Lỗi Change Emoji: {e}")
+
+    print("\n12. Khởi động E2EE Listener & Gửi E2EE...")
     listener = listeningE2EEEvent(dataFB)
     listener.on_message(on_e2ee_message)
     listener_thread = threading.Thread(target=listener.connect_mqtt, daemon=True)

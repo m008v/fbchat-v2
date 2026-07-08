@@ -51,3 +51,6 @@ def func(dataFB, threadID, newNameThread): # Thay đổi tên nhóm
                 return formatResults("error", "Không thể thay đổi tên nhóm không tồn tại.")
     else:
         return formatResults("error", "Thay đổi tên nhóm thành công.")
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

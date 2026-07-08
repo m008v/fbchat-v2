@@ -80,3 +80,7 @@ def func(dataFB, userID):
 ✓Hoàn thành vào lúc 18:43 ngày 27/6/2023
 ✓Tôn trọng tác giả ❤️
 """
+
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

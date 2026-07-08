@@ -73,3 +73,6 @@ def func(dataFB, keywordSearch): # Tìm kiếm trên Facebook
             "error": 1,
             "messages": "ERR: " + str(errLog)
         }
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

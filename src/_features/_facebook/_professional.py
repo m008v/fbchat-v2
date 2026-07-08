@@ -43,3 +43,6 @@ def func(dataFB, statusBusiness=None): # Bật chế độ chuyên nghiệp Tran
             "error": 1,
             "message": sendRequests["errors"][0]["message"]
         }
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

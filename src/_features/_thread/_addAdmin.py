@@ -20,3 +20,6 @@ def func(dataFB, threadID, idUser, statusChoice=True):
              return formatResults("error", "Lỗi không xác định.")
     else:
         return formatResults("success", "Thêm admin cho nhóm thành công.")
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)

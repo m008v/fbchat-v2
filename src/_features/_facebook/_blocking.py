@@ -84,3 +84,6 @@ def func(dataFB, idUser, choiceInteract): # Tương tác Chặn và bỏ chặn 
                     "error": 1,
                     "messages": "Bỏ chặn người dùng thất bại!"
             } 
+import asyncio
+async def func_async(*args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)
