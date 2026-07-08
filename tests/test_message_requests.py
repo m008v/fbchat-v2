@@ -13,7 +13,7 @@ def test_build_request(mock_dataFB):
     assert queries["o0"]["query_params"]["tags"] == ["PENDING"]
 
 def test_parse_response():
-    resp_text = '{"o0": {"data": {"viewer": {"message_threads": {"nodes": [{"last_message": {"nodes": [{"snippet": "Hello", "message_sender": {"messaging_actor": {"id": "123"}}, "timestamp_precise": "1600000000"}]}}]}}}}} {"successful_results"}'
+    resp_text = '{"o0": {"data": {"viewer": {"message_threads": {"nodes": [{"last_message": {"nodes": [{"snippet": "Hello", "message_sender": {"messaging_actor": {"id": "123"}}, "timestamp_precise": "1600000000"}]}}]}}}}}\n{"successful_results": 1}'
     result = _parse_response(resp_text)
     
     assert result["success"] == 1
@@ -23,7 +23,7 @@ def test_parse_response():
 
 @patch("_messaging._message_requests.send_request")
 def test_message_requests_func(mock_send, mock_dataFB):
-    mock_send.return_value = HttpxResponseMock(200, b'{"o0": {"data": {"viewer": {"message_threads": {"nodes": []}}}}} {"successful_results"}')
+    mock_send.return_value = HttpxResponseMock(200, b'{"o0": {"data": {"viewer": {"message_threads": {"nodes": []}}}}}\n{"successful_results": 1}')
     res = func(mock_dataFB)
     assert res["success"] == 1
     assert res["data"]["total_count"] == 0
@@ -32,7 +32,7 @@ def test_message_requests_func(mock_send, mock_dataFB):
 @pytest.mark.asyncio
 @patch("_messaging._message_requests.send_request_async")
 async def test_message_requests_func_async(mock_send_async, mock_dataFB):
-    mock_send_async.return_value = HttpxResponseMock(200, b'{"o0": {"data": {"viewer": {"message_threads": {"nodes": []}}}}} {"successful_results"}')
+    mock_send_async.return_value = HttpxResponseMock(200, b'{"o0": {"data": {"viewer": {"message_threads": {"nodes": []}}}}}\n{"successful_results": 1}')
     res = await func_async(mock_dataFB)
     assert res["success"] == 1
     assert res["data"]["total_count"] == 0
