@@ -37,8 +37,8 @@ def func(dataFB, threadID, newNameThread): # Thay đổi tên nhóm
     dataForm["manual_retry_cnt"] = "0"
     dataForm["ui_push_phase"] = "V3"
     dataForm["log_message_type"] = "log:thread-name"
-    # dataForm["thread_name"] = newNameThread
-    # dataForm["thread_id"] = self.threadID
+    dataForm["thread_name"] = newNameThread
+    dataForm["thread_id"] = str(threadID)
 
 
     sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/messaging/set_thread_name/", dataForm, dataFB["cookieFacebook"])).text.split("for (;;);")[1])
@@ -50,7 +50,7 @@ def func(dataFB, threadID, newNameThread): # Thay đổi tên nhóm
             case 1545003:
                 return formatResults("error", "Không thể thay đổi tên nhóm không tồn tại.")
     else:
-        return formatResults("error", "Thay đổi tên nhóm thành công.")
+        return formatResults("success", "Thay đổi tên nhóm thành công.")
 import asyncio
 async def func_async(*args, **kwargs):
     return await asyncio.to_thread(func, *args, **kwargs)
