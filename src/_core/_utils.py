@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import attr, re, json, random, string, time
+import attr, re, json, random, string, time, os
 from io import BufferedReader
 from mimetypes import guess_type
 from typing import Any, Generator
@@ -160,11 +160,11 @@ def require_list(list_: list[Any] | Any) -> set[Any]:
           return set(list_)
      else:
           return set([list_])
-def get_files_from_paths(filenames: str) -> Generator[list[str | BufferedReader | str | None], None, None]:
-     
-     files: list[str | BufferedReader | str | None] = [filenames, open(filenames, "rb"), guess_type(filenames)[0]]
-     yield files
-     
+def get_files_from_paths(filenames: str | list[str]) -> Generator[tuple[str, BufferedReader, str | None], None, None]:
+     if isinstance(filenames, str):
+          filenames = [filenames]
+     for filename in filenames:
+          yield (os.path.basename(filename), open(filename, "rb"), guess_type(filename)[0])
 def formatResults(type: str, text: str) -> dict[str, str]:
      return {
           "status": type,
