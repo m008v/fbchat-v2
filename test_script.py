@@ -96,7 +96,7 @@ async def main():
 
     print("\n10. Test Get User Info (Facebook Feature)...")
     try:
-        user_info = await get_user_info_async(dataFB, target_id)
+        user_info = await get_user_info_async(dataFB, dataFB["FacebookID"])
         print(f"Kết quả Get User Info: {user_info}")
     except Exception as e:
         print(f"Lỗi Get User Info: {e}")
