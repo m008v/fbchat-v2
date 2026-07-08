@@ -26,6 +26,10 @@ from _features._thread._changeEmoji import func_async as change_emoji_async
 from _features._thread._changeNickname import func_async as change_nickname_async
 from _features._thread._all_thread_data import func_async as all_thread_data_async
 from _features._thread._changeNameThread import func_async as change_name_thread_async
+from _features._facebook._createPost import func_async as create_post_async
+from _features._facebook._blocking import func_async as blocking_async
+from _features._facebook._professional import func_async as professional_async
+from _features._facebook._marketplace import createItem_async as marketplace_create_async
 
 def on_e2ee_message(msg):
     # Callback xử lý tin nhắn E2EE (từ Bridge trả về event có dạng {'type': '...', 'data': {...}})
@@ -154,7 +158,35 @@ async def main():
     except Exception as e:
         print(f"Lỗi Change Name Thread: {e}")
 
-    print("\n18. Khởi động E2EE Listener & Gửi E2EE...")
+    print("\n18. Test Create Post (Facebook Feature)...")
+    try:
+        post_res = await create_post_async(dataFB, "Bot FBChat-v2 test tạo bài viết! 🚀")
+        print(f"Kết quả Create Post: {post_res}")
+    except Exception as e:
+        print(f"Lỗi Create Post: {e}")
+
+    print("\n19. Test Blocking User (Facebook Feature)...")
+    try:
+        block_res = await blocking_async(dataFB, "4") # Mark Zuckerberg
+        print(f"Kết quả Blocking: {block_res}")
+    except Exception as e:
+        print(f"Lỗi Blocking: {e}")
+
+    print("\n20. Test Professional Mode (Facebook Feature)...")
+    try:
+        pro_res = await professional_async(dataFB, enablePro=True)
+        print(f"Kết quả Professional Mode: {pro_res}")
+    except Exception as e:
+        print(f"Lỗi Professional Mode: {e}")
+
+    print("\n21. Test Marketplace Create Item (Facebook Feature)...")
+    try:
+        market_res = await marketplace_create_async(dataFB, "Bot Test Item", "Apple", 1000000, "VND", "Sản phẩm test từ fbchat-v2", ["test", "fbchat"], "Tools", [], {"latitude": 11.5614, "longitude": 108.9935})
+        print(f"Kết quả Marketplace: {market_res}")
+    except Exception as e:
+        print(f"Lỗi Marketplace: {e}")
+
+    print("\n22. Khởi động E2EE Listener & Gửi E2EE...")
     listener = listeningE2EEEvent(dataFB)
     listener.on_message(on_e2ee_message)
     listener_thread = threading.Thread(target=listener.connect_mqtt, daemon=True)
