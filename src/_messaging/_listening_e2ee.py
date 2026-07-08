@@ -163,7 +163,11 @@ class _BridgeProcess:
     - Một luồng đọc stdout, phân phối response theo `id` về caller hoặc đẩy
       event vào `events` queue.
     - `call(method, params)` block tới khi nhận response.
+    - Watchdog thread giám sát subprocess health, auto-respawn khi crash.
     """
+
+    MAX_RETRIES: int = 5
+    BASE_BACKOFF: float = 2.0  # seconds — exponential: 2, 4, 8, 16, 32
 
     def __init__(self, binary: Path, *, log_stderr: bool = True) -> None:
         self.events: "Queue[dict[str, Any]]" = Queue()
@@ -171,9 +175,17 @@ class _BridgeProcess:
         self._pending: dict[int, Queue] = {}
         self._lock = threading.Lock()
         self._closed = False
+        self._stop_event = threading.Event()
+        self._binary = binary
+        self._log_stderr = log_stderr
 
+        self._spawn()
+
+    def _spawn(self) -> None:
+        """Spawn subprocess và khởi động reader/stderr threads."""
+        self._closed = False
         self._proc = subprocess.Popen(
-            [str(binary)],
+            [str(self._binary)],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -183,7 +195,7 @@ class _BridgeProcess:
         self._reader = threading.Thread(target=self._read_loop, daemon=True)
         self._reader.start()
 
-        if log_stderr:
+        if self._log_stderr:
             self._stderr_thread = threading.Thread(
                 target=self._drain_stderr, daemon=True
             )
@@ -260,7 +272,75 @@ class _BridgeProcess:
             raise BridgeError(f"{method}: {resp.get('error', 'unknown')}")
         return resp.get("data") or {}
 
+    # ------------------------------------------------------------------
+    # Watchdog — auto-respawn
+    # ------------------------------------------------------------------
+    def start_watchdog(self, connect_cfg: dict[str, Any] | None = None,
+                       enable_e2ee: bool = True) -> threading.Thread:
+        """Khởi động watchdog thread giám sát subprocess.
+        
+        Khi bridge crash, watchdog sẽ:
+        1. Đợi exponential backoff (2s, 4s, 8s, 16s, 32s)
+        2. Respawn subprocess
+        3. Replay connection state (newClient + connect + connectE2EE)
+        4. Emit `bridge_fatal` event nếu vượt quá MAX_RETRIES
+        """
+        self._connect_cfg = connect_cfg or {}
+        self._enable_e2ee = enable_e2ee
+
+        t = threading.Thread(target=self._watchdog_loop, daemon=True, name="bridge-watchdog")
+        t.start()
+        return t
+
+    def _watchdog_loop(self) -> None:
+        retries = 0
+        while not self._stop_event.is_set():
+            # Đợi subprocess thoát
+            try:
+                self._proc.wait()
+            except Exception:
+                pass
+
+            if self._stop_event.is_set():
+                break
+
+            if retries >= self.MAX_RETRIES:
+                print(f"[{datetime.datetime.now()}] Bridge exceeded max retries ({self.MAX_RETRIES}). Giving up.")
+                self.events.put({
+                    "type": "bridge_fatal",
+                    "error": f"max retries exceeded ({self.MAX_RETRIES})",
+                    "retries": retries,
+                })
+                break
+
+            backoff = self.BASE_BACKOFF ** (retries + 1)
+            print(f"[{datetime.datetime.now()}] Bridge crashed. "
+                  f"Respawning in {backoff:.0f}s (attempt {retries + 1}/{self.MAX_RETRIES})")
+
+            # Sleep với check stop mỗi 0.5s để có thể cancel nhanh
+            sleep_end = time.monotonic() + backoff
+            while time.monotonic() < sleep_end:
+                if self._stop_event.is_set():
+                    return
+                time.sleep(min(0.5, sleep_end - time.monotonic()))
+
+            try:
+                self._spawn()
+                # Replay connection state
+                if self._connect_cfg:
+                    self.call("newClient", self._connect_cfg)
+                    self.call("connect", timeout=120)
+                    if self._enable_e2ee:
+                        self.call("connectE2EE", timeout=60)
+                print(f"[{datetime.datetime.now()}] Respawn successful (attempt {retries + 1})")
+                retries = 0  # Reset sau khi respawn thành công
+            except Exception as exc:
+                print(f"[{datetime.datetime.now()}] Respawn failed: {exc}")
+                retries += 1
+
+    # ------------------------------------------------------------------
     def close(self) -> None:
+        self._stop_event.set()
         if self._proc.poll() is None:
             try:
                 self.call("disconnect", timeout=5)
@@ -365,7 +445,12 @@ class listeningE2EEEvent:
 
     # ------------------------------------------------------------------
     def connect_mqtt(self) -> None:
-        """Khởi động bridge subprocess + connect Messenger (blocking poll loop)."""
+        """Khởi động bridge subprocess + connect Messenger (blocking poll loop).
+        
+        Watchdog thread tự động respawn bridge nếu subprocess crash,
+        với exponential backoff (2s→32s, tối đa 5 lần).
+        Emit `bridge_fatal` event nếu give up.
+        """
         binary = (
             Path(self._binary_path_override)
             if self._binary_path_override else _resolve_binary()
@@ -395,6 +480,9 @@ class listeningE2EEEvent:
             except BridgeError as exc:
                 print(f"[{datetime.datetime.now()}] E2EE connect failed: {exc}")
 
+        # Khởi động watchdog — auto-respawn khi bridge crash
+        self._bridge.start_watchdog(connect_cfg=cfg, enable_e2ee=self.enable_e2ee)
+
         self._poll_loop()
 
     def stop(self) -> None:
@@ -405,72 +493,25 @@ class listeningE2EEEvent:
 
     # ------------------------------------------------------------------
     def _poll_loop(self) -> None:
+        """Event dispatch loop — chỉ lắng nghe và dispatch events.
+        
+        Watchdog thread xử lý respawn độc lập, poll loop không cần
+        quan tâm đến reconnect logic nữa.
+        """
         assert self._bridge is not None
-        backoff_steps = [2, 4, 8, 16, 32]
-        respawn_count = 0
 
         try:
             while not self._stop.is_set():
                 try:
-                    while not self._stop.is_set():
-                        try:
-                            evt = self._bridge.events.get(timeout=1.0)
-                        except Empty:
-                            if self._bridge._closed:
-                                break
-                            continue
-                        if evt.get("type") == "closed":
-                            print(f"[{datetime.datetime.now()}] bridge closed")
-                            break
-                        self._dispatch(evt)
-                        # reset backoff on successful event dispatch
-                        respawn_count = 0
-                    
-                    if self._stop.is_set():
-                        break
-                        
-                    if respawn_count >= len(backoff_steps):
-                        print(f"[{datetime.datetime.now()}] Max respawn attempts reached. Stopping.")
-                        break
-                        
-                    wait_time = backoff_steps[respawn_count]
-                    print(f"[{datetime.datetime.now()}] Bridge disconnected. Respawning in {wait_time}s... (Attempt {respawn_count + 1})")
-                    time.sleep(wait_time)
-                    respawn_count += 1
-                    
-                    # Cleanup old bridge
-                    try:
-                        self._bridge.close()
-                    except Exception:
-                        pass
-                        
-                    # Reconnect
-                    binary = (
-                        Path(self._binary_path_override)
-                        if self._binary_path_override else _resolve_binary()
-                    )
-                    self._bridge = _BridgeProcess(binary)
-                    
-                    cfg: dict[str, Any] = {
-                        "cookies": self._build_cookie_dict(),
-                        "platform": "facebook",
-                        "logLevel": self.log_level,
-                        "e2eeMemoryOnly": self.e2ee_memory_only,
-                    }
-                    if self.device_path:
-                        cfg["devicePath"] = self.device_path
+                    evt = self._bridge.events.get(timeout=1.0)
+                except Empty:
+                    continue
 
-                    self._bridge.call("newClient", cfg)
-                    self._bridge.call("connect", timeout=120)
-                    
-                    if self.enable_e2ee:
-                        self._bridge.call("connectE2EE", timeout=60)
-                        
-                    print(f"[{datetime.datetime.now()}] Respawn successful.")
-                    
-                except Exception as e:
-                    print(f"[{datetime.datetime.now()}] Respawn or poll failed: {e}")
-                    # Will retry at next loop iteration if backoff not maxed
+                if evt.get("type") == "bridge_fatal":
+                    print(f"[{datetime.datetime.now()}] bridge_fatal: {evt.get('error')}")
+                    break
+
+                self._dispatch(evt)
                     
         finally:
             self.stop()
