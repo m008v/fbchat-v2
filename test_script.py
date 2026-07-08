@@ -20,6 +20,8 @@ from _messaging._createNotes import func_async as create_notes_async
 from _messaging._message_requests import func_async as message_requests_async
 from _features._facebook._get_user_info import func_async as get_user_info_async
 from _features._facebook._search import func_async as search_facebook_async
+from _features._facebook._notification import func_async as get_notification_async
+from _features._facebook._changeBio import func_async as change_bio_async
 from _features._thread._changeEmoji import func_async as change_emoji_async
 from _features._thread._changeNickname import func_async as change_nickname_async
 
@@ -122,7 +124,21 @@ async def main():
     except Exception as e:
         print(f"Lỗi Change Nickname: {e}")
 
-    print("\n14. Khởi động E2EE Listener & Gửi E2EE...")
+    print("\n14. Test Get Notifications (Facebook Feature)...")
+    try:
+        notif_res = await get_notification_async(dataFB)
+        print(f"Kết quả Get Notifications: Có {len(notif_res)} thông báo mới (Hiển thị 2 cái đầu): {notif_res[:2]}")
+    except Exception as e:
+        print(f"Lỗi Get Notifications: {e}")
+
+    print("\n15. Test Change Bio (Facebook Feature)...")
+    try:
+        bio_res = await change_bio_async(dataFB, "Bot đang test fbchat-v2 bằng async/await 🚀", False)
+        print(f"Kết quả Change Bio: {bio_res}")
+    except Exception as e:
+        print(f"Lỗi Change Bio: {e}")
+
+    print("\n16. Khởi động E2EE Listener & Gửi E2EE...")
     listener = listeningE2EEEvent(dataFB)
     listener.on_message(on_e2ee_message)
     listener_thread = threading.Thread(target=listener.connect_mqtt, daemon=True)
