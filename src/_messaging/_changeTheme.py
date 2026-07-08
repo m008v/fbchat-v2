@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import asyncio
 from typing import Any
 
 import httpx
@@ -295,6 +296,105 @@ def func(dataFB: dict[str, Any], threadID: str | None = None, themeName: str | N
      if action == "find":
           return findTheme(dataFB, themeName)
      return changeTheme(
+          dataFB,
+          threadID,
+          themeName,
+          initiatorID=kwargs.get("initiatorID"),
+          timeout=kwargs.get("timeout", _DEFAULT_TIMEOUT),
+     )
+
+
+async def listThemes_async(dataFB: dict[str, Any]) -> dict[str, Any]:
+     resData = await _post_graphql_async(
+          dataFB,
+          THEME_LIST_FRIENDLY_NAME,
+          THEME_LIST_DOC_ID,
+          {"version": "default"},
+     )
+
+     if resData.get("errors"):
+          return _graphql_error_response(resData)
+
+     try:
+          rawThemes = resData["data"]["messenger_thread_themes"]
+     except (KeyError, TypeError):
+          return {
+               "error": 1,
+               "messages": "Could not retrieve thread themes from response.",
+               "raw": resData,
+          }
+
+     themes = [_normalize_theme(themeData) for themeData in rawThemes]
+     themes = [themeData for themeData in themes if themeData]
+     return {
+          "success": 1,
+          "messages": "Lấy danh sách theme thành công.",
+          "data": themes,
+          "total_count": len(themes),
+     }
+
+async def findTheme_async(dataFB: dict[str, Any], themeName: str) -> dict[str, Any]:
+     if not themeName:
+          return _error_response("themeName cannot be empty.")
+
+     listResult = await listThemes_async(dataFB)
+     if listResult.get("error"):
+          return listResult
+
+     themes = listResult["data"]
+     matchedTheme = _match_theme(themes, themeName)
+
+     if not matchedTheme:
+          return _error_response(f"Could not find any theme matching '{themeName}'.")
+
+     return {
+          "success": 1,
+          "data": matchedTheme,
+     }
+
+async def changeTheme_async(dataFB: dict[str, Any], threadID: str, themeName: str, initiatorID: str | None = None, timeout: int = _DEFAULT_TIMEOUT) -> dict[str, Any]:
+     if not threadID:
+          return _error_response("threadID is required.")
+     if not themeName:
+          return _error_response("themeName is required. Use 'list' to view available themes.")
+
+     if str(themeName).strip().lower() == "list":
+          return await listThemes_async(dataFB)
+
+     themeResult = await findTheme_async(dataFB, themeName)
+     if themeResult.get("error"):
+          return themeResult
+
+     theme = themeResult["data"]
+     contexts = _build_theme_contexts(threadID, theme["id"])
+     published = await asyncio.to_thread(_publish_ls_requests, dataFB, contexts, timeout)
+     if published.get("error"):
+          return published
+
+     return {
+          "success": 1,
+          "messages": "Gửi yêu cầu đổi theme thành công.",
+          "data": {
+               "type": "thread_theme_update",
+               "threadID": str(threadID),
+               "themeID": theme["id"],
+               "themeName": theme.get("name"),
+               "senderID": str(initiatorID or dataFB["FacebookID"]),
+               "BotID": str(dataFB["FacebookID"]),
+               "timestamp": int(time.time() * 1000),
+               "published": published.get("payload"),
+          },
+     }
+
+async def func_async(dataFB: dict[str, Any], threadID: str | None = None, themeName: str | None = None, action: str = "set", **kwargs: Any) -> dict[str, Any]:
+     action = (action or "set").lower()
+     if str(threadID or "").strip().lower() == "list" and themeName is None:
+          return await listThemes_async(dataFB)
+     if action == "list" or str(themeName or "").strip().lower() == "list":
+          return await listThemes_async(dataFB)
+     if action == "find":
+          return await findTheme_async(dataFB, themeName)
+     return await changeTheme_async(
           dataFB,
           threadID,
           themeName,
