@@ -19,7 +19,9 @@ from _messaging._changeTheme import func_async as change_theme_async
 from _messaging._createNotes import func_async as create_notes_async
 from _messaging._message_requests import func_async as message_requests_async
 from _features._facebook._get_user_info import func_async as get_user_info_async
+from _features._facebook._search import func_async as search_facebook_async
 from _features._thread._changeEmoji import func_async as change_emoji_async
+from _features._thread._changeNickname import func_async as change_nickname_async
 
 def on_e2ee_message(msg):
     # Callback xử lý tin nhắn E2EE (từ Bridge trả về event có dạng {'type': '...', 'data': {...}})
@@ -106,7 +108,21 @@ async def main():
     except Exception as e:
         print(f"Lỗi Change Emoji: {e}")
 
-    print("\n12. Khởi động E2EE Listener & Gửi E2EE...")
+    print("\n12. Test Search (Facebook Feature)...")
+    try:
+        search_res = await search_facebook_async(dataFB, "Mark Zuckerberg")
+        print(f"Kết quả Search Facebook: {search_res}")
+    except Exception as e:
+        print(f"Lỗi Search Facebook: {e}")
+
+    print("\n13. Test Change Nickname (Thread Feature)...")
+    try:
+        nick_res = await change_nickname_async(dataFB, target_id, "Test Bot Nickname", dataFB["FacebookID"])
+        print(f"Kết quả Change Nickname: {nick_res}")
+    except Exception as e:
+        print(f"Lỗi Change Nickname: {e}")
+
+    print("\n14. Khởi động E2EE Listener & Gửi E2EE...")
     listener = listeningE2EEEvent(dataFB)
     listener.on_message(on_e2ee_message)
     listener_thread = threading.Thread(target=listener.connect_mqtt, daemon=True)

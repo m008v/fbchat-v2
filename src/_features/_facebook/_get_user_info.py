@@ -8,8 +8,8 @@ def func(dataFB, userID):
 
 
      mainRequests = {
-        "headers": Headers(dataFB["cookieFacebook"], dataForm),
-        "timeout": 5,
+        "headers": Headers(dataForm, "www.facebook.com"),
+        "timeout": 30,
         "url": "https://www.facebook.com/chat/user_info/",
         "data": dataForm,
         "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
