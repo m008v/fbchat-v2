@@ -16,7 +16,7 @@ def _build_request(dataFB: dict[str, Any], typeAdded: str, messageID: str | int,
      dataForm["dpr"] = 1
      
      return {
-               "headers": Headers(dataFB["cookieFacebook"], dataForm),
+               "headers": Headers(dataForm),
                "timeout": 30,
                "url": "https://www.facebook.com/webgraphql/mutation/",
                "data": dataForm,

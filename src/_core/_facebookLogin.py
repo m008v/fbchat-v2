@@ -1,4 +1,4 @@
-import requests
+import httpx
 import string
 import random
 import re
@@ -55,18 +55,27 @@ def _build_cookie_export(session_cookies):
      return exported
 
 
+def _build_proxy(proxies):
+     if not proxies:
+          return None
+     return f"http://{proxies}"
+
 def _post_json(url, data, headers, proxies):
      try:
-          kwags = {
-               "url": url,
-               "data": data,  
-               "headers": headers,
-               "timeout": REQUEST_TIMEOUT,
-               "proxies": {"http": "http://" + proxies, "https": "https://" + proxies} if proxies else None,
-          }
-          response = requests.post(**kwags)
+          proxy = _build_proxy(proxies)
+          with httpx.Client(timeout=REQUEST_TIMEOUT, proxy=proxy) as client:
+               response = client.post(url, data=data, headers=headers)
           return response.json()
-     except (requests.RequestException, ValueError) as err:
+     except (httpx.HTTPError, ValueError) as err:
+          return {"error": {"error_user_msg": str(err), "code": -1}}
+
+async def _post_json_async(url, data, headers, proxies):
+     try:
+          proxy = _build_proxy(proxies)
+          async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, proxy=proxy) as client:
+               response = await client.post(url, data=data, headers=headers)
+          return response.json()
+     except (httpx.HTTPError, ValueError) as err:
           return {"error": {"error_user_msg": str(err), "code": -1}}
 
 
@@ -81,21 +90,37 @@ def _error_result(title, description, *, error_code=-1, error_subcode=None):
           }
      }
          
+def _validate_2fa_key(key2Fa):
+     """Validate và chuẩn hoá 2FA key. Trả về (token_str, is_direct_otp) hoặc ("", False) nếu rỗng."""
+     if key2Fa is None:
+          return "", False
+     token = str(key2Fa).replace(" ", "").strip()
+     if not token:
+          return "", False
+     if DIRECT_OTP_RE.fullmatch(token):
+          return token, True
+     return token, False
+
 def GetToken2FA(key2Fa):
      try:
-          if key2Fa is None:
-               return ""
-          token = str(key2Fa).replace(" ", "").strip()
-          if not token:
-               return ""
-          if DIRECT_OTP_RE.fullmatch(token):
+          token, is_direct = _validate_2fa_key(key2Fa)
+          if not token or is_direct:
                return token
-          twoFARequests = requests.get(
-               TWO_FA_URL.format(token),
-               timeout=REQUEST_TIMEOUT,
-          ).json()
-          return str(twoFARequests.get("token", "")).strip()
-     except (requests.RequestException, ValueError, TypeError):
+          with httpx.Client(timeout=REQUEST_TIMEOUT) as client:
+               resp = client.get(TWO_FA_URL.format(token))
+          return str(resp.json().get("token", "")).strip()
+     except (httpx.HTTPError, ValueError, TypeError):
+          raise ValueError("Invalid 2FA key provided.")
+
+async def GetToken2FA_async(key2Fa):
+     try:
+          token, is_direct = _validate_2fa_key(key2Fa)
+          if not token or is_direct:
+               return token
+          async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+               resp = await client.get(TWO_FA_URL.format(token))
+          return str(resp.json().get("token", "")).strip()
+     except (httpx.HTTPError, ValueError, TypeError):
           raise ValueError("Invalid 2FA key provided.")
 
 class loginFacebook:
@@ -169,6 +194,9 @@ class loginFacebook:
      def _login(self, data_form):
           return _post_json(FB_AUTH_URL, data_form, self._headers(), self.proxies)
 
+     async def _login_async(self, data_form):
+          return await _post_json_async(FB_AUTH_URL, data_form, self._headers(), self.proxies)
+
      def _extract_two_factor_metadata(self, error):
           error_data = error.get("error_data", {}) if isinstance(error, dict) else {}
           user_id = str(
@@ -194,6 +222,11 @@ class loginFacebook:
 
      def _run_two_factor(self, token_2fa, user_id, first_factor, try_num):
           return self._login(
+               self._build_two_factor_form(token_2fa, user_id, first_factor, try_num)
+          )
+
+     async def _run_two_factor_async(self, token_2fa, user_id, first_factor, try_num):
+          return await self._login_async(
                self._build_two_factor_form(token_2fa, user_id, first_factor, try_num)
           )
           
@@ -241,6 +274,64 @@ class loginFacebook:
                     retry_token = GetToken2FA(self.twoTokenAccess)
                     if retry_token and retry_token != token_2fa:
                          retry_response = self._run_two_factor(
+                              retry_token,
+                              user_id,
+                              first_factor,
+                              3,
+                         )
+                         if retry_response.get("error") is None:
+                              return jsonResults(
+                                   retry_response,
+                                   1,
+                                   _build_cookie_export(retry_response.get("session_cookies")),
+                              )
+               return jsonResults(pass2Fa, 0)
+
+          return jsonResults(pass2Fa, 1, _build_cookie_export(pass2Fa.get("session_cookies")))
+
+     async def main_async(self):
+          """Async version của main() — toàn bộ flow login chạy non-blocking."""
+          data_form = self._base_form(self.passwordFacebook, "password", 1)
+          dataJson = await self._login_async(data_form)
+          error = dataJson.get("error")
+          if error is None:
+               return jsonResults(dataJson, 1, _build_cookie_export(dataJson.get("session_cookies")))
+
+          error_subcode = error.get("error_subcode")
+          if error_subcode not in TWO_FACTOR_SUBCODES:
+                return jsonResults(dataJson, 0)
+
+          try:
+               token_2fa = await GetToken2FA_async(self.twoTokenAccess)
+          except ValueError as err:
+               return _error_result("Invalid 2FA key", str(err), error_code=-2)
+
+          if not token_2fa:
+               return _error_result(
+                    "Missing 2FA token",
+                    "Facebook yêu cầu 2FA nhưng AuthenticationGoogleCode đang trống.",
+                    error_code=-2,
+                    error_subcode=error_subcode,
+               )
+
+          user_id, first_factor = self._extract_two_factor_metadata(error)
+          if not user_id or not first_factor:
+               return _error_result(
+                    "Missing 2FA metadata",
+                    "Facebook không trả về đủ `uid` hoặc `login_first_factor` để hoàn tất bước 2FA.",
+                    error_code=-3,
+                    error_subcode=error_subcode,
+               )
+
+          pass2Fa = await self._run_two_factor_async(token_2fa, user_id, first_factor, 2)
+          if pass2Fa.get("error") is not None:
+               is_direct_otp = DIRECT_OTP_RE.fullmatch(
+                    str(self.twoTokenAccess or "").replace(" ", "").strip()
+               )
+               if not is_direct_otp:
+                    retry_token = await GetToken2FA_async(self.twoTokenAccess)
+                    if retry_token and retry_token != token_2fa:
+                         retry_response = await self._run_two_factor_async(
                               retry_token,
                               user_id,
                               first_factor,

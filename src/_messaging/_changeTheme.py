@@ -4,15 +4,15 @@ import json
 import time
 from typing import Any
 
-import requests
+import httpx
 
-from _core._utils import formAll, mainRequests
+from _core._utils import formAll, mainRequests, send_request, send_request_async
 from _messaging._editMessage import APP_ID, _build_ls_context, _error_response, _json, _publish_ls_requests
 
 THEME_LIST_FRIENDLY_NAME = "MWPThreadThemeQuery_AllThemesQuery"
 THEME_LIST_DOC_ID = 24474714052117636
 THEME_VERSION_ID = "24631415369801570"
-GRAPHQL_TIMEOUT = (10, 45)
+GRAPHQL_TIMEOUT = 45
 GRAPHQL_RETRIES = 2
 _DEFAULT_TIMEOUT = 20
 
@@ -36,47 +36,82 @@ def _graphql_error_response(resData: dict[str, Any]) -> dict[str, Any]:
           "details": error,
      }
 
-
-def _post_graphql(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any], timeout: tuple[int, int] = GRAPHQL_TIMEOUT, retries: int = GRAPHQL_RETRIES) -> dict[str, Any]:
+def _build_graphql_request(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any]) -> dict[str, Any]:
      dataForm = formAll(dataFB, friendly_name, doc_id)
      dataForm["variables"] = json.dumps(variables, separators=(",", ":"), ensure_ascii=False)
-
      request_args = mainRequests(
           "https://www.facebook.com/api/graphql/",
           dataForm,
           dataFB["cookieFacebook"],
      )
+     request_args["timeout"] = GRAPHQL_TIMEOUT
+     return request_args
+
+def _parse_graphql_text(text: str) -> dict[str, Any]:
+     if text.startswith("for (;;);"):
+          text = text.split("for (;;);", 1)[1]
+     try:
+          return json.loads(text)
+     except (ValueError, json.JSONDecodeError):
+          return {"errors": [{"message": "Invalid JSON response", "raw": text[:300]}]}
+
+def _post_graphql(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any], timeout: int = GRAPHQL_TIMEOUT, retries: int = GRAPHQL_RETRIES) -> dict[str, Any]:
+     request_args = _build_graphql_request(dataFB, friendly_name, doc_id, variables)
      request_args["timeout"] = timeout
 
      last_error = None
      for attempt in range(retries + 1):
           try:
-               response = requests.post(**request_args)
+               response = send_request(request_args)
                response.raise_for_status()
-               text = response.text
-               if text.startswith("for (;;);"):
-                    text = text.split("for (;;);", 1)[1]
-               try:
-                    return json.loads(text)
-               except (ValueError, json.JSONDecodeError):
-                    return {"errors": [{"message": "Invalid JSON response", "raw": text[:300]}]}
-          except requests.Timeout as exc:
+               return _parse_graphql_text(response.text)
+          except httpx.TimeoutException as exc:
                last_error = exc
                if attempt < retries:
                     continue
                return _request_error(
-                    f"Facebook GraphQL request timed out after {timeout[1]} seconds.",
+                    f"Facebook GraphQL request timed out after {timeout} seconds.",
                     exc,
                     friendly_name,
                     doc_id,
                )
-          except requests.RequestException as exc:
+          except httpx.HTTPError as exc:
                last_error = exc
                if attempt < retries:
                     continue
                return _request_error("Facebook GraphQL request failed.", exc, friendly_name, doc_id)
 
      return _request_error("Facebook GraphQL request failed after retry.", last_error, friendly_name, doc_id)
+
+async def _post_graphql_async(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any], timeout: int = GRAPHQL_TIMEOUT, retries: int = GRAPHQL_RETRIES) -> dict[str, Any]:
+     """Async version của _post_graphql."""
+     request_args = _build_graphql_request(dataFB, friendly_name, doc_id, variables)
+     request_args["timeout"] = timeout
+
+     last_error = None
+     for attempt in range(retries + 1):
+          try:
+               response = await send_request_async(request_args)
+               response.raise_for_status()
+               return _parse_graphql_text(response.text)
+          except httpx.TimeoutException as exc:
+               last_error = exc
+               if attempt < retries:
+                    continue
+               return _request_error(
+                    f"Facebook GraphQL request timed out after {timeout} seconds.",
+                    exc,
+                    friendly_name,
+                    doc_id,
+               )
+          except httpx.HTTPError as exc:
+               last_error = exc
+               if attempt < retries:
+                    continue
+               return _request_error("Facebook GraphQL request failed.", exc, friendly_name, doc_id)
+
+     return _request_error("Facebook GraphQL request failed after retry.", last_error, friendly_name, doc_id)
+
 
 
 def _normalize_theme(themeData: dict[str, Any]) -> dict[str, Any] | None:

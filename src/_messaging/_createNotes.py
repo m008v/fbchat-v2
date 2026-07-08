@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import requests, json, random
+import httpx, json, random
 from typing import Any
-from _core._utils import formAll, mainRequests, generate_client_id
+from _core._utils import formAll, mainRequests, generate_client_id, send_request, send_request_async
 
 # =====================================================================
 # Messenger Notes (the temporary status-like notes shown in Messenger)
@@ -13,7 +13,7 @@ PRIVACY_ALIASES = {
      "EVERYONE": "FRIENDS",  # Messenger Notes hiện trả/nhận visibility FRIENDS
      "PUBLIC": "FRIENDS",
 }
-GRAPHQL_TIMEOUT = (10, 45)  # (connect timeout, read timeout) tính bằng giây
+GRAPHQL_TIMEOUT = 45
 GRAPHQL_RETRIES = 2
 
 
@@ -41,47 +41,87 @@ def _request_error(message: str, exc: Exception | None = None, friendly_name: st
      return {"errors": [error]}
 
 
-def _post_graphql(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any], timeout: tuple[int, int] = GRAPHQL_TIMEOUT, retries: int = GRAPHQL_RETRIES) -> dict[str, Any]:
-     """Gửi 1 GraphQL request và trả về JSON đã parse."""
+def _build_graphql_request(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any]) -> dict[str, Any]:
+     """Chuẩn bị request args cho GraphQL call."""
      dataForm = formAll(dataFB, friendly_name, doc_id)
      dataForm["variables"] = json.dumps(variables)
-
      request_args = mainRequests(
           "https://www.facebook.com/api/graphql/",
           dataForm,
           dataFB["cookieFacebook"],
      )
+     request_args["timeout"] = GRAPHQL_TIMEOUT
+     return request_args
+
+
+def _parse_graphql_text(text: str) -> dict[str, Any]:
+     if text.startswith("for (;;);"):
+          text = text.split("for (;;);", 1)[1]
+     try:
+          return json.loads(text)
+     except (ValueError, json.JSONDecodeError):
+          return {"errors": [{"message": "Invalid JSON response", "raw": text[:300]}]}
+
+
+def _post_graphql(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any], timeout: int = GRAPHQL_TIMEOUT, retries: int = GRAPHQL_RETRIES) -> dict[str, Any]:
+     """Gửi 1 GraphQL request và trả về JSON đã parse."""
+     request_args = _build_graphql_request(dataFB, friendly_name, doc_id, variables)
      request_args["timeout"] = timeout
 
      last_error = None
      for attempt in range(retries + 1):
           try:
-               response = requests.post(**request_args)
+               response = send_request(request_args)
                response.raise_for_status()
-               text = response.text
-               if text.startswith("for (;;);"):
-                    text = text.split("for (;;);", 1)[1]
-               try:
-                    return json.loads(text)
-               except (ValueError, json.JSONDecodeError):
-                    return {"errors": [{"message": "Invalid JSON response", "raw": text[:300]}]}
-          except requests.Timeout as e:
+               return _parse_graphql_text(response.text)
+          except httpx.TimeoutException as e:
                last_error = e
                if attempt < retries:
                     continue
                return _request_error(
-                    f"Facebook GraphQL request timed out after {timeout[1]} seconds.",
+                    f"Facebook GraphQL request timed out after {timeout} seconds.",
                     e,
                     friendly_name,
                     doc_id,
                )
-          except requests.RequestException as e:
+          except httpx.HTTPError as e:
                last_error = e
                if attempt < retries:
                     continue
                return _request_error("Facebook GraphQL request failed.", e, friendly_name, doc_id)
 
      return _request_error("Facebook GraphQL request failed after retry.", last_error, friendly_name, doc_id)
+
+
+async def _post_graphql_async(dataFB: dict[str, Any], friendly_name: str, doc_id: int, variables: dict[str, Any], timeout: int = GRAPHQL_TIMEOUT, retries: int = GRAPHQL_RETRIES) -> dict[str, Any]:
+     """Async version của _post_graphql."""
+     request_args = _build_graphql_request(dataFB, friendly_name, doc_id, variables)
+     request_args["timeout"] = timeout
+
+     last_error = None
+     for attempt in range(retries + 1):
+          try:
+               response = await send_request_async(request_args)
+               response.raise_for_status()
+               return _parse_graphql_text(response.text)
+          except httpx.TimeoutException as e:
+               last_error = e
+               if attempt < retries:
+                    continue
+               return _request_error(
+                    f"Facebook GraphQL request timed out after {timeout} seconds.",
+                    e,
+                    friendly_name,
+                    doc_id,
+               )
+          except httpx.HTTPError as e:
+               last_error = e
+               if attempt < retries:
+                    continue
+               return _request_error("Facebook GraphQL request failed.", e, friendly_name, doc_id)
+
+     return _request_error("Facebook GraphQL request failed after retry.", last_error, friendly_name, doc_id)
+
 
 
 # ---------------------------------------------------------------------

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 from typing import Any
 
-from _core._utils import parse_cookie_string, dataSplit, send_get_request
+from _core._utils import parse_cookie_string, dataSplit, send_get_request, send_get_request_async
 from _core._storage import SessionStorage
 
 REQUIRED_SESSION_FIELDS: tuple[str, ...] = ("fb_dtsg", "jazoest", "sessionID", "FacebookID", "clientRevision")
@@ -11,15 +11,8 @@ REQUIRED_SESSION_FIELDS: tuple[str, ...] = ("fb_dtsg", "jazoest", "sessionID", "
 def _has_value(value: Any) -> bool:
      return value is not None and str(value).strip() != ""
 
-def dataGetHome(setCookies: str | None = None, storage: SessionStorage | None = None) -> dict[str, Any] | None:
-     if setCookies is None and storage is not None:
-          setCookies = storage.load()
-     
-     if not setCookies:
-          print("[session] Không có cookie để khởi tạo session.")
-          return None
-     
-     mainRequests = {
+def _build_home_request(setCookies: str) -> dict[str, Any]:
+     return {
           "headers": {
                "authority": "www.facebook.com",
                "method": "GET",
@@ -51,34 +44,25 @@ def dataGetHome(setCookies: str | None = None, storage: SessionStorage | None = 
           "cookies": parse_cookie_string(setCookies),
           "verify": True
      }
-     
-     dictValueSaved = {}
-     splitDataList = [
-          # FORMAT: nameValue, stringData_1, stringData_2
-          ["fb_dtsg", "DTSGInitialData\",[],{\"token\":\"", "\""],
-          ["fb_dtsg_ag", "async_get_token\":\"", "\""],
-          ["jazoest", "jazoest=", "\""],
-          ["hash", "hash\":\"", "\""],
-          ["sessionID", "sessionId\":\"", "\""],
-          ["FacebookID", "\"actorID\":\"", "\""],
-          ["clientRevision", "client_revision\":", ","]
-     ]
-     
-     try:
-          response = send_get_request(mainRequests)
-          response.raise_for_status()
-     except httpx.RequestError as err:
-          print(f"[session] Không thể lấy homepage Facebook: {err}")
-          return None
-     except httpx.HTTPStatusError as err:
-          print(f"[session] Lỗi HTTP khi lấy homepage: {err}")
-          return None
 
-     sendRequests = response.text
-     for i in splitDataList:
+_SPLIT_DATA_LIST: list[list[str]] = [
+     # FORMAT: nameValue, stringData_1, stringData_2
+     ["fb_dtsg", "DTSGInitialData\",[],{\"token\":\"", "\""],
+     ["fb_dtsg_ag", "async_get_token\":\"", "\""],
+     ["jazoest", "jazoest=", "\""],
+     ["hash", "hash\":\"", "\""],
+     ["sessionID", "sessionId\":\"", "\""],
+     ["FacebookID", "\"actorID\":\"", "\""],
+     ["clientRevision", "client_revision\":", ","]
+]
+
+def _parse_home_response(html: str, setCookies: str) -> dict[str, Any] | None:
+     """Parse HTML response từ Facebook homepage, trích xuất session tokens."""
+     dictValueSaved: dict[str, Any] = {}
+     for i in _SPLIT_DATA_LIST:
           nameValue = i[0]
           try:
-               exportValue = dataSplit(i[1], i[2], HTML=sendRequests, defaultValue=True)
+               exportValue = dataSplit(i[1], i[2], HTML=html, defaultValue=True)
           except (IndexError, AttributeError, TypeError):
                exportValue = None
           dictValueSaved[nameValue] = exportValue
@@ -95,3 +79,47 @@ def dataGetHome(setCookies: str | None = None, storage: SessionStorage | None = 
           return None
 
      return dictValueSaved
+
+def _resolve_cookies(setCookies: str | None, storage: SessionStorage | None) -> str | None:
+     """Lấy cookie string từ tham số hoặc storage."""
+     if setCookies is None and storage is not None:
+          setCookies = storage.load()
+     return setCookies
+
+def dataGetHome(setCookies: str | None = None, storage: SessionStorage | None = None) -> dict[str, Any] | None:
+     setCookies = _resolve_cookies(setCookies, storage)
+     if not setCookies:
+          print("[session] Không có cookie để khởi tạo session.")
+          return None
+
+     try:
+          response = send_get_request(_build_home_request(setCookies))
+          response.raise_for_status()
+     except httpx.RequestError as err:
+          print(f"[session] Không thể lấy homepage Facebook: {err}")
+          return None
+     except httpx.HTTPStatusError as err:
+          print(f"[session] Lỗi HTTP khi lấy homepage: {err}")
+          return None
+
+     return _parse_home_response(response.text, setCookies)
+
+async def dataGetHome_async(setCookies: str | None = None, storage: SessionStorage | None = None) -> dict[str, Any] | None:
+     """Async version của dataGetHome — dùng cho async context."""
+     setCookies = _resolve_cookies(setCookies, storage)
+     if not setCookies:
+          print("[session] Không có cookie để khởi tạo session.")
+          return None
+
+     try:
+          response = await send_get_request_async(_build_home_request(setCookies))
+          response.raise_for_status()
+     except httpx.RequestError as err:
+          print(f"[session] Không thể lấy homepage Facebook: {err}")
+          return None
+     except httpx.HTTPStatusError as err:
+          print(f"[session] Lỗi HTTP khi lấy homepage: {err}")
+          return None
+
+     return _parse_home_response(response.text, setCookies)
+
