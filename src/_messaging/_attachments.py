@@ -14,7 +14,6 @@ def _build_request(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[s
           "Cookie": dataFB["cookieFacebook"],
      }
      
-     files = get_files_from_paths(filenames)
      __reg = attr.ib(0).counter
      __reg += 1
      dataForm: dict[str, Any] = {} 
@@ -22,10 +21,15 @@ def _build_request(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[s
      dataForm["__a"] = 1
      dataForm["__req"] = str_base(__reg, 36) 
      dataForm["fb_dtsg"] = dataFB["fb_dtsg"]
-
-     file_dict: dict[str, Any] = {
-          "upload_{}".format(i): f for i, f in enumerate(files)
-     }
+     
+     if isinstance(filenames, str):
+          filenames = [filenames]
+          
+     file_dict: dict[str, Any] = {}
+     import os, mimetypes
+     for i, fpath in enumerate(filenames):
+          mime = mimetypes.guess_type(fpath)[0] or 'application/octet-stream'
+          file_dict[f"upload_{i}"] = (os.path.basename(fpath), open(fpath, "rb"), mime)
      
      return {
           "url": "https://upload.facebook.com/ajax/mercury/upload.php",
@@ -51,25 +55,36 @@ def _parse_response(resultRequests: str) -> dict[str, Any] | None:
           except (KeyError, TypeError):
                print("ERROR-UPLOADED (metadata fallback failed): " + str(resultRequests))
                return None
-     try: attachmentUrl: str | None = dataList[3]
-     except IndexError: attachmentUrl = None
+     def safe_get(idx: int) -> Any:
+          return dataList[idx] if len(dataList) > idx else None
+
      return {
-          "attachmentID": dataList[0],
-          "attachmentUrl": attachmentUrl,
-          "videoDuration": dataList[2],
-          "typeAttachment": dataList[4]
+          "attachmentID": safe_get(0),
+          "attachmentUrl": safe_get(3),
+          "videoDuration": safe_get(2),
+          "typeAttachment": safe_get(4)
      }
 
 def func(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[str, Any] | None:
      req = _build_request(filenames, dataFB)
-     with httpx.Client(timeout=30) as client:
-          res = client.post(**req)
+     try:
+          with httpx.Client(timeout=30) as client:
+               res = client.post(**req)
+     finally:
+          for f_tuple in req.get("files", {}).values():
+               if isinstance(f_tuple, tuple) and len(f_tuple) >= 2 and hasattr(f_tuple[1], 'close'):
+                    f_tuple[1].close()
      return _parse_response(res.text)
 
 async def func_async(filenames: str | list[str], dataFB: dict[str, Any]) -> dict[str, Any] | None:
      req = _build_request(filenames, dataFB)
-     async with httpx.AsyncClient(timeout=30) as client:
-          res = await client.post(**req)
+     try:
+          async with httpx.AsyncClient(timeout=30) as client:
+               res = await client.post(**req)
+     finally:
+          for f_tuple in req.get("files", {}).values():
+               if isinstance(f_tuple, tuple) and len(f_tuple) >= 2 and hasattr(f_tuple[1], 'close'):
+                    f_tuple[1].close()
      return _parse_response(res.text)
 
 # func("file-name.jpg", dataFB)
