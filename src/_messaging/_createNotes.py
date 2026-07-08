@@ -291,6 +291,127 @@ def func(dataFB: dict[str, Any], action: str = "check", **kwargs: Any) -> dict[s
      return {"error": 1, "messages": f"Unknown action: {action}"}
 
 
+async def checkNote_async(dataFB: dict[str, Any]) -> dict[str, Any]:
+     variables = {"scale": 2}
+     resData = await _post_graphql_async(
+          dataFB,
+          "MWInboxTrayNoteCreationDialogQuery",
+          30899655739648624,
+          variables,
+     )
+
+     if resData.get("errors"):
+          return _error_response(resData)
+
+     try:
+          has_note = resData["data"]["viewer"]["notes_management_info"]["has_notes"]
+     except (KeyError, TypeError):
+          has_note = False
+
+     return {
+          "success": 1,
+          "messages": "Kiểm tra note hiện tại thành công.",
+          "data": {"has_notes": has_note},
+     }
+
+
+async def createNote_async(dataFB: dict[str, Any], text: str, privacy: str = "FRIENDS") -> dict[str, Any]:
+     if not text:
+          return {"error": 1, "messages": "Text cannot be empty."}
+
+     variables = {
+          "input": {
+               "client_mutation_id": str(random.randint(0, 10)),
+               "actor_id": str(dataFB["FacebookID"]),
+               "text": str(text),
+               "duration": 86400,
+               "note_type": "TEXT_NOTE",
+               "privacy": _normalize_privacy(privacy),
+               "session_id": generate_client_id(),
+          }
+     }
+     resData = await _post_graphql_async(
+          dataFB,
+          "MWInboxTrayNoteCreationDialogCreationStepContentMutation",
+          24060573783603122,
+          variables,
+     )
+
+     if resData.get("errors"):
+          return _error_response(resData)
+
+     return {
+          "success": 1,
+          "messages": "Tạo note mới thành công.",
+          "data": resData.get("data"),
+     }
+
+
+async def deleteNote_async(dataFB: dict[str, Any], noteID: str) -> dict[str, Any]:
+     if not noteID:
+          return {"error": 1, "messages": "noteID cannot be empty."}
+
+     variables = {
+          "input": {
+               "client_mutation_id": str(random.randint(0, 10)),
+               "actor_id": str(dataFB["FacebookID"]),
+               "rich_status_id": str(noteID),
+          }
+     }
+     resData = await _post_graphql_async(
+          dataFB,
+          "useMWInboxTrayDeleteNoteMutation",
+          9532619970198958,
+          variables,
+     )
+
+     if resData.get("errors"):
+          return _error_response(resData)
+
+     return {
+          "success": 1,
+          "messages": "Xoá note thành công.",
+          "data": resData.get("data"),
+     }
+
+
+async def recreateNote_async(dataFB: dict[str, Any], oldNoteID: str, newText: str, privacy: str = "FRIENDS") -> dict[str, Any]:
+     deleted = await deleteNote_async(dataFB, oldNoteID)
+     if deleted.get("error"):
+          return deleted
+
+     created = await createNote_async(dataFB, newText, privacy=privacy)
+     if created.get("error"):
+          return created
+
+     return {
+          "success": 1,
+          "messages": "Tạo lại note thành công.",
+          "data": {
+               "deleted": deleted.get("data"),
+               "created": created.get("data"),
+          },
+     }
+
+
+async def func_async(dataFB: dict[str, Any], action: str = "check", **kwargs: Any) -> dict[str, Any]:
+     action = (action or "check").lower()
+     if action == "check":
+          return await checkNote_async(dataFB)
+     if action == "create":
+          return await createNote_async(dataFB, kwargs["text"], privacy=kwargs.get("privacy", "FRIENDS"))
+     if action == "delete":
+          return await deleteNote_async(dataFB, kwargs["noteID"])
+     if action == "recreate":
+          return await recreateNote_async(
+               dataFB,
+               kwargs["oldNoteID"],
+               kwargs["newText"],
+               privacy=kwargs.get("privacy", "FRIENDS"),
+          )
+     return {"error": 1, "messages": f"Unknown action: {action}"}
+
+
 """ Hướng dẫn sử dụng (Tutorial)
 
 * Dữ liệu yêu cầu (args):
