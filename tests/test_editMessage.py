@@ -1,6 +1,6 @@
 import pytest
-from unittest.mock import patch
-from _messaging._editMessage import _build_ls_context, _rc_success, _error_response
+from unittest.mock import patch, MagicMock
+from _messaging._editMessage import _build_ls_context, _rc_success, _error_response, func_async
 
 def test_rc_success():
     assert _rc_success(0) is True
