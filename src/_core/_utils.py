@@ -90,7 +90,7 @@ import httpx
 def mainRequests(urlRequests: str, dataForm: dict[str, Any], setCookies: str) -> dict[str, Any]:
      return {
           "headers": Headers(dataForm, 'www.facebook.com'),
-          "timeout": 30,
+          "timeout": 60,
           "url": urlRequests,
           "data": dataForm,
           "cookies": parse_cookie_string(setCookies),
