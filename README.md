@@ -455,17 +455,21 @@ Các thao tác Messenger bổ sung nằm ngay trong `_messaging` và dùng chung
 `dataFB` từ `_core._session.dataGetHome(...)`:
 
 ```python
+import asyncio
 from _messaging import _editMessage, _changeTheme, _createNotes
 
-# Sửa tin nhắn đã gửi (thường chỉ sửa được tin do chính tài khoản gửi)
-_editMessage.editMessage(dataFB, "mid.$abc...", "Nội dung mới")
+async def main():
+    # Sửa tin nhắn đã gửi (thường chỉ sửa được tin do chính tài khoản gửi)
+    await _editMessage.func_async(dataFB, "mid.$abc...", "Nội dung mới")
 
-# Xem danh sách theme và đổi nền/thread theme
-themes = _changeTheme.listThemes(dataFB)
-_changeTheme.changeTheme(dataFB, "1234567890", "love")
+    # Xem danh sách theme và đổi nền/thread theme
+    themes = await _changeTheme.func_async(dataFB, action="list")
+    await _changeTheme.func_async(dataFB, "1234567890", "love")
 
-# Tạo Messenger Note 24h
-_createNotes.createNote(dataFB, "Đang code fbchat-v2", privacy="FRIENDS")
+    # Tạo Messenger Note 24h
+    await _createNotes.func_async(dataFB, action="create", text="Đang code fbchat-v2", privacy="FRIENDS")
+
+asyncio.run(main())
 ```
 
 Chi tiết API: [`src/_messaging/README.md`](src/_messaging/README.md) và

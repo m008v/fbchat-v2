@@ -270,20 +270,24 @@ In addition to `bodyResults`, the E2EE listener exposes `e2eeBodyResults = {"cha
 ### 6.1 Plain messages — `_send.api`
 
 ```python
+import asyncio
 from _messaging import _send
 
-sender = _send.api()
+async def main():
+    sender = _send.api()
 
-result = sender.send(
-    dataFB,
-    contentSend = "hello!",
-    threadID    = 4805171782880318,
-    typeChat    = None,        # "user" → DM, None → group/thread
-    replyMessage= None,        # truthy + messageID = reply
-    messageID   = None,
-)
-print(result)
-# → {'success': 1, 'payload': {'messageID': 'mid.$cAABa-…', 'timestamp': 1702656627619}}
+    result = await sender.send_async(
+        dataFB,
+        contentSend = "hello!",
+        threadID    = 4805171782880318,
+        typeChat    = None,        # "user" → DM, None → group/thread
+        replyMessage= None,        # truthy + messageID = reply
+        messageID   = None,
+    )
+    print(result)
+    # → {'success': 1, 'payload': {'messageID': 'mid.$cAABa-…', 'timestamp': 1702656627619}}
+
+asyncio.run(main())
 ```
 
 **Argument reference for `sender.send(...)`:**
@@ -355,19 +359,23 @@ Both modes return the same shape as `_send.api.send`:
 ## 7. Attachments — upload & send
 
 ```python
+import asyncio
 from _messaging import _attachments, _send
 
-upload = _attachments.func("mhuydev_profile_avatar.jpg", dataFB)
-attachmentID = upload.get("attachmentID")
+async def main():
+    upload = await _attachments.func_async("mhuydev_profile_avatar.jpg", dataFB)
+    attachmentID = upload.get("attachmentID")
 
-sender = _send.api()
-sender.send(
-    dataFB,
-    contentSend    = "look at this",
-    threadID       = 4805171782880318,
-    typeAttachment = "image",         # MUST match the file kind
-    attachmentID   = attachmentID,
-)
+    sender = _send.api()
+    await sender.send_async(
+        dataFB,
+        contentSend    = "look at this",
+        threadID       = 4805171782880318,
+        typeAttachment = "image",         # MUST match the file kind
+        attachmentID   = attachmentID,
+    )
+
+asyncio.run(main())
 ```
 
 **Match `typeAttachment` to the file extension:**
@@ -391,17 +399,21 @@ Messenger message by publishing a Lightspeed/MQTT task to `/ls_req` with
 `queue_name="edit_message"`.
 
 ```python
+import asyncio
 from _messaging import _editMessage
 
-result = _editMessage.editMessage(
-        dataFB,
-        messageID="mid.$cAABa-wot0daSn4Obo2Mbj5L5njhO",
-        newText="Edited content",
-)
-print(result)
+async def main():
+    result = await _editMessage.editMessage_async(
+            dataFB,
+            messageID="mid.$cAABa-wot0daSn4Obo2Mbj5L5njhO",
+            newText="Edited content",
+    )
+    print(result)
 
-# Alias following the fbchat-v2 module convention:
-_editMessage.func(dataFB, "mid.$...", "Edited content")
+    # Alias following the fbchat-v2 module convention:
+    await _editMessage.func_async(dataFB, "mid.$...", "Edited content")
+
+asyncio.run(main())
 ```
 
 **Function reference:**
@@ -434,12 +446,16 @@ _editMessage.func(dataFB, "mid.$...", "Edited content")
 ## 9. Reactions
 
 ```python
+import asyncio
 from _messaging import _reactions
 
-# typeAdded: "added" or "removed"
-_reactions.func(dataFB, typeAdded="added",
-                messageID="mid.$cAABa-wot0daSn4Obo2Mbj5L5njhO",
-                emojiChoice="❤")
+async def main():
+    # typeAdded: "added" or "removed"
+    await _reactions.func_async(dataFB, typeAdded="added",
+                    messageID="mid.$cAABa-wot0daSn4Obo2Mbj5L5njhO",
+                    emojiChoice="❤")
+
+asyncio.run(main())
 ```
 
 For E2EE reactions, the Go bridge exposes `SendE2EEReaction` but the Python wrapper does not surface it yet — track [Issues](https://github.com/MinhHuyDev/fbchat-v2/issues) for progress.
@@ -453,21 +469,25 @@ themes through GraphQL, then changes a thread theme/background by publishing
 the same set of LS tasks used by the Messenger web client.
 
 ```python
+import asyncio
 from _messaging import _changeTheme
 
-# List available Messenger themes
-themes = _changeTheme.listThemes(dataFB)
-print(themes["total_count"])
+async def main():
+    # List available Messenger themes
+    themes = await _changeTheme.listThemes_async(dataFB)
+    print(themes["total_count"])
 
-# Match by theme id, exact name, or partial keyword
-print(_changeTheme.findTheme(dataFB, "love"))
+    # Match by theme id, exact name, or partial keyword
+    print(await _changeTheme.findTheme_async(dataFB, "love"))
 
-# Change a group/thread theme
-print(_changeTheme.changeTheme(dataFB, threadID="4805171782880318", themeName="love"))
+    # Change a group/thread theme
+    print(await _changeTheme.changeTheme_async(dataFB, threadID="4805171782880318", themeName="love"))
 
-# Unified entry point
-_changeTheme.func(dataFB, action="list")
-_changeTheme.func(dataFB, "4805171782880318", "default")
+    # Unified entry point
+    await _changeTheme.func_async(dataFB, action="list")
+    await _changeTheme.func_async(dataFB, "4805171782880318", "default")
+
+asyncio.run(main())
 ```
 
 **Function reference:**
@@ -503,11 +523,15 @@ _changeTheme.func(dataFB, "4805171782880318", "default")
 ## 11. Unsending a message
 
 ```python
+import asyncio
 from _messaging import _unsend
 
-messageID = result["payload"]["messageID"]
-print(_unsend.func(messageID, dataFB))
-# → {'success': 1, 'messages': 'Thu hồi tin nhắn thành công.'}
+async def main():
+    messageID = result["payload"]["messageID"]
+    print(await _unsend.func_async(messageID, dataFB))
+    # → {'success': 1, 'messages': 'Thu hồi tin nhắn thành công.'}
+
+asyncio.run(main())
 ```
 
 ---
@@ -520,30 +544,39 @@ inbox; they auto-expire after 24 hours. fbchat-v2 ≥ 2.1.4 ships
 CRUD coverage, ported from `ws3-fca/notes.js` (© @ChoruOfficial).
 
 ```python
+import asyncio
 from _messaging import _createNotes
 
-# Inspect the current note (returns msgr_user_rich_status or None)
-print(_createNotes.checkNote(dataFB))
+async def main():
+    # Inspect the current note (returns msgr_user_rich_status or None)
+    print(await _createNotes.checkNote_async(dataFB))
 
-# Create a new 24-hour note
-created = _createNotes.createNote(dataFB, "Coding fbchat-v2 ❤️", privacy="FRIENDS")
-note_id = created["data"]["id"]
+    # Create a new 24-hour note
+    created = await _createNotes.createNote_async(dataFB, "Coding fbchat-v2 ❤️", privacy="FRIENDS")
+    note_id = created["data"]["id"]
 
-# Delete a note
-_createNotes.deleteNote(dataFB, note_id)
+    # Delete a note
+    await _createNotes.deleteNote_async(dataFB, note_id)
 
-# Replace the current note in one call (delete-then-create, fail-fast)
-_createNotes.recreateNote(dataFB, note_id, "Shipped v2.1.3 🎉")
+    # Replace the current note in one call (delete-then-create, fail-fast)
+    await _createNotes.recreateNote_async(dataFB, note_id, "Shipped v2.1.3 🎉")
+
+asyncio.run(main())
 ```
 
 A unified entry point is also available so you can drive everything from a
 single dispatcher:
 
 ```python
-_createNotes.func(dataFB, action="check")
-_createNotes.func(dataFB, action="create",   text="hi", privacy="FRIENDS")
-_createNotes.func(dataFB, action="delete",   noteID="<id>")
-_createNotes.func(dataFB, action="recreate", oldNoteID="<id>", newText="...")
+import asyncio
+
+async def main():
+    await _createNotes.func_async(dataFB, action="check")
+    await _createNotes.func_async(dataFB, action="create",   text="hi", privacy="FRIENDS")
+    await _createNotes.func_async(dataFB, action="delete",   noteID="<id>")
+    await _createNotes.func_async(dataFB, action="recreate", oldNoteID="<id>", newText="...")
+
+asyncio.run(main())
 ```
 
 **Function reference:**

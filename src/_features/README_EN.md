@@ -100,7 +100,7 @@ Frequently used keys: `fb_dtsg` · `jazoest` · `FacebookID` · `clientRevision`
 #### `_changeBio.py`
 
 ```python
-func(dataFB, newContents, uploadPost=False)
+async def func_async(dataFB, newContents, uploadPost=False)
 ```
 
 Update the account bio. `uploadPost=True` also publishes a feed story.
@@ -111,7 +111,7 @@ Update the account bio. `uploadPost=True` also publishes a feed story.
 #### `_createPost.py`
 
 ```python
-func(dataFB, newContents, attachmentID=None)
+async def func_async(dataFB, newContents, attachmentID=None)
 ```
 
 Create a timeline post. `attachmentID` is reserved (not active in the current flow).
@@ -122,7 +122,7 @@ Create a timeline post. `attachmentID` is reserved (not active in the current fl
 #### `_professional.py`
 
 ```python
-func(dataFB, statusBusiness=None)
+async def func_async(dataFB, statusBusiness=None)
 ```
 
 Toggle **Professional Mode**. `statusBusiness` accepts: `"on"`, `"off"`, `"bật"`, `"tắt"`, `True`, `False`.
@@ -130,7 +130,7 @@ Toggle **Professional Mode**. `statusBusiness` accepts: `"on"`, `"off"`, `"bật
 #### `_search.py`
 
 ```python
-func(dataFB, keywordSearch)
+async def func_async(dataFB, keywordSearch)
 ```
 
 Search users on Facebook. Returns:
@@ -141,7 +141,7 @@ Search users on Facebook. Returns:
 #### `_blocking.py`
 
 ```python
-func(dataFB, idUser, choiceInteract)
+async def func_async(dataFB, idUser, choiceInteract)
 ```
 
 Block / unblock a user. `choiceInteract`: `"block"` or `"unblock"`.
@@ -149,7 +149,7 @@ Block / unblock a user. `choiceInteract`: `"block"` or `"unblock"`.
 #### `_registerOnProfile.py`
 
 ```python
-func(dataFB, newName, newUsername)
+async def func_async(dataFB, newName, newUsername)
 ```
 
 Create an **additional profile** under the same account.
@@ -159,7 +159,7 @@ Create an **additional profile** under the same account.
 #### `_notification.py`
 
 ```python
-func(dataFB)
+async def func_async(dataFB)
 ```
 
 Fetch the notification list.
@@ -171,13 +171,13 @@ Fetch the notification list.
 
 | Function | Purpose |
 |---|---|
-| `createItem(dataFB, nameItem, brandItem, priceItem, currencyItem, decriptionItem, hashtagList, typeItem, photoIDList, locationSeller)` | Publish a new Marketplace listing. `photoIDList` comes from `_messaging._attachments`. |
-| `getInformationProductItemMarketPlace(dataFB, idProductItem)` | Fetch product details by ID. |
+| `async def createItem_async(...)` | Publish a new Marketplace listing. `photoIDList` comes from `_messaging._attachments`. |
+| `async def getInformationProductItemMarketPlace_async(...)` | Fetch product details by ID. |
 
 #### `_get_user_info.py`
 
 ```python
-func(dataFB, userID)
+async def func_async(dataFB, userID)
 ```
 
 Fetch user info via the chat user-info endpoint.
@@ -191,10 +191,10 @@ Fetch user info via the chat user-info endpoint.
 
 | Module | Function | Purpose |
 |---|---|---|
-| `_changeNameThread.py` | `func(dataFB, threadID, newNameThread)` | Rename the group/thread. |
-| `_changeEmoji.py` | `func(dataFB, threadID, newEmoji)` | Change the default thread emoji. |
-| `_addAdmin.py` | `func(dataFB, threadID, idUser, statusChoice=True)` | Promote / demote admin. |
-| `_changeNickname.py` | `func(dataFB, threadID, idUser, NewNickname)` | Change a member's nickname. |
+| `_changeNameThread.py` | `async def func_async(dataFB, threadID, newNameThread)` | Rename the group/thread. |
+| `_changeEmoji.py` | `async def func_async(dataFB, threadID, newEmoji)` | Change the default thread emoji. |
+| `_addAdmin.py` | `async def func_async(dataFB, threadID, idUser, statusChoice=True)` | Promote / demote admin. |
+| `_changeNickname.py` | `async def func_async(dataFB, threadID, idUser, NewNickname)` | Change a member's nickname. |
 
 All return `formatResults("success" \| "error", message)` from `_core._utils`.
 
@@ -202,8 +202,8 @@ All return `formatResults("success" \| "error", message)` from `_core._utils`.
 
 | Function | Purpose |
 |---|---|
-| `func(dataFB)` | Fetch INBOX list + `last_seq_id`. Returns `dataGet`, `ProcessingTime`, `last_seq_id`, `dataAllThread`. |
-| `features(dataGet, threadID, commandUse)` | Drill into `dataGet`. `commandUse` ∈ `{"getAdmin", "threadInfomation", "exportMemberListToJson"}`. |
+| `async def func_async(dataFB)` | Fetch INBOX list + `last_seq_id`. Returns `dataGet`, `ProcessingTime`, `last_seq_id`, `dataAllThread`. |
+| `async def features_async(dataGet, threadID, commandUse)` | Drill into `dataGet`. `commandUse` ∈ `{"getAdmin", "threadInfomation", "exportMemberListToJson"}`. |
 
 ---
 
@@ -224,24 +224,28 @@ _core._utils  →  formAll · mainRequests · parse_cookie_string
 ## 💡 Examples
 
 ```python
+import asyncio
 from _core._session import dataGetHome
 from _features._facebook import _notification, _blocking
 from _features._thread import _changeEmoji, _all_thread_data
 
-dataFB = dataGetHome("c_user=...; xs=...;")
+async def main():
+    dataFB = dataGetHome("c_user=...; xs=...;")
 
-# Fetch notifications
-print(_notification.func(dataFB))
+    # Fetch notifications
+    print(await _notification.func_async(dataFB))
 
-# Block a user
-print(_blocking.func(dataFB, idUser="1000...", choiceInteract="block"))
+    # Block a user
+    print(await _blocking.func_async(dataFB, idUser="1000...", choiceInteract="block"))
 
-# Change thread emoji
-print(_changeEmoji.func(dataFB, threadID="1234567890", newEmoji="🔥"))
+    # Change thread emoji
+    print(await _changeEmoji.func_async(dataFB, threadID="1234567890", newEmoji="🔥"))
 
-# Fetch the entire inbox
-threads = _all_thread_data.func(dataFB)
-print(threads["dataAllThread"])
+    # Fetch the entire inbox
+    threads = await _all_thread_data.func_async(dataFB)
+    print(threads["dataAllThread"])
+
+asyncio.run(main())
 ```
 
 ---

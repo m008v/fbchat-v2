@@ -213,25 +213,29 @@ print(dataFB["fb_dtsg"])
 
 ```python
 import json
-from _core._utils import formAll, mainRequests, send_request
+import asyncio
+from _core._utils import formAll, mainRequests, send_request_async
 
-dataForm = formAll(
-    dataFB,
-    FBApiReqFriendlyName="CometNotificationsDropdownQuery",
-    docID=6770067089747450,
-)
-dataForm["variables"] = json.dumps({
-    "count": 10,
-    "environment": "MAIN_SURFACE",
-    "scale": 1,
-})
+async def main():
+    dataForm = formAll(
+        dataFB,
+        FBApiReqFriendlyName="CometNotificationsDropdownQuery",
+        docID=6770067089747450,
+    )
+    dataForm["variables"] = json.dumps({
+        "count": 10,
+        "environment": "MAIN_SURFACE",
+        "scale": 1,
+    })
 
-resp = send_request(mainRequests(
-    "https://www.facebook.com/api/graphql/",
-    dataForm,
-    dataFB["cookieFacebook"],
-))
-print(resp.status_code)
+    resp = await send_request_async(mainRequests(
+        "https://www.facebook.com/api/graphql/",
+        dataForm,
+        dataFB["cookieFacebook"],
+    ))
+    print(resp.status_code)
+
+asyncio.run(main())
 ```
 
 ### Payload tối giản (non-GraphQL)

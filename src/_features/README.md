@@ -100,7 +100,7 @@ Trường thường dùng: `fb_dtsg` · `jazoest` · `FacebookID` · `clientRevi
 #### `_changeBio.py`
 
 ```python
-func(dataFB, newContents, uploadPost=False)
+async def func_async(dataFB, newContents, uploadPost=False)
 ```
 
 Đổi bio tài khoản. `uploadPost=True` sẽ đăng feed story kèm theo.
@@ -111,7 +111,7 @@ func(dataFB, newContents, uploadPost=False)
 #### `_createPost.py`
 
 ```python
-func(dataFB, newContents, attachmentID=None)
+async def func_async(dataFB, newContents, attachmentID=None)
 ```
 
 Tạo bài viết mới trên timeline. `attachmentID` là tham số dự phòng (chưa hoạt động trong flow hiện tại).
@@ -122,7 +122,7 @@ Tạo bài viết mới trên timeline. `attachmentID` là tham số dự phòng
 #### `_professional.py`
 
 ```python
-func(dataFB, statusBusiness=None)
+async def func_async(dataFB, statusBusiness=None)
 ```
 
 Bật/tắt **Professional Mode**. `statusBusiness` chấp nhận: `"on"`, `"off"`, `"bật"`, `"tắt"`, `True`, `False`.
@@ -130,7 +130,7 @@ Bật/tắt **Professional Mode**. `statusBusiness` chấp nhận: `"on"`, `"off
 #### `_search.py`
 
 ```python
-func(dataFB, keywordSearch)
+async def func_async(dataFB, keywordSearch)
 ```
 
 Tìm kiếm người dùng. Trả về:
@@ -141,7 +141,7 @@ Tìm kiếm người dùng. Trả về:
 #### `_blocking.py`
 
 ```python
-func(dataFB, idUser, choiceInteract)
+async def func_async(dataFB, idUser, choiceInteract)
 ```
 
 Chặn / bỏ chặn user. `choiceInteract`: `"block"` hoặc `"unblock"`.
@@ -149,7 +149,7 @@ Chặn / bỏ chặn user. `choiceInteract`: `"block"` hoặc `"unblock"`.
 #### `_registerOnProfile.py`
 
 ```python
-func(dataFB, newName, newUsername)
+async def func_async(dataFB, newName, newUsername)
 ```
 
 Tạo **profile phụ** trên cùng tài khoản.
@@ -160,7 +160,7 @@ Tạo **profile phụ** trên cùng tài khoản.
 #### `_notification.py`
 
 ```python
-func(dataFB)
+async def func_async(dataFB)
 ```
 
 Lấy danh sách thông báo.
@@ -172,13 +172,13 @@ Lấy danh sách thông báo.
 
 | Hàm | Mục đích |
 |---|---|
-| `createItem(dataFB, nameItem, brandItem, priceItem, currencyItem, decriptionItem, hashtagList, typeItem, photoIDList, locationSeller)` | Đăng sản phẩm Marketplace mới. `photoIDList` lấy từ `_messaging._attachments`. |
-| `getInformationProductItemMarketPlace(dataFB, idProductItem)` | Lấy chi tiết sản phẩm theo ID. |
+| `async def createItem_async(...)` | Đăng sản phẩm Marketplace mới. `photoIDList` lấy từ `_messaging._attachments`. |
+| `async def getInformationProductItemMarketPlace_async(...)` | Lấy chi tiết sản phẩm theo ID. |
 
 #### `_get_user_info.py`
 
 ```python
-func(dataFB, userID)
+async def func_async(dataFB, userID)
 ```
 
 Lấy thông tin người dùng qua endpoint chat user info.
@@ -192,10 +192,10 @@ Lấy thông tin người dùng qua endpoint chat user info.
 
 | Module | Hàm | Mục đích |
 |---|---|---|
-| `_changeNameThread.py` | `func(dataFB, threadID, newNameThread)` | Đổi tên nhóm. |
-| `_changeEmoji.py` | `func(dataFB, threadID, newEmoji)` | Đổi emoji mặc định của thread. |
-| `_addAdmin.py` | `func(dataFB, threadID, idUser, statusChoice=True)` | Thêm / bỏ quyền admin. |
-| `_changeNickname.py` | `func(dataFB, threadID, idUser, NewNickname)` | Đổi biệt danh thành viên. |
+| `_changeNameThread.py` | `async def func_async(dataFB, threadID, newNameThread)` | Đổi tên nhóm. |
+| `_changeEmoji.py` | `async def func_async(dataFB, threadID, newEmoji)` | Đổi emoji mặc định của thread. |
+| `_addAdmin.py` | `async def func_async(dataFB, threadID, idUser, statusChoice=True)` | Thêm / bỏ quyền admin. |
+| `_changeNickname.py` | `async def func_async(dataFB, threadID, idUser, NewNickname)` | Đổi biệt danh thành viên. |
 
 Tất cả trả về `formatResults("success" \| "error", message)` từ `_core._utils`.
 
@@ -203,8 +203,8 @@ Tất cả trả về `formatResults("success" \| "error", message)` từ `_core
 
 | Hàm | Mục đích |
 |---|---|
-| `func(dataFB)` | Lấy danh sách INBOX + `last_seq_id`. Trả về `dataGet`, `ProcessingTime`, `last_seq_id`, `dataAllThread`. |
-| `features(dataGet, threadID, commandUse)` | Bóc tách dữ liệu từ `dataGet`. `commandUse` ∈ `{"getAdmin", "threadInfomation", "exportMemberListToJson"}`. |
+| `async def func_async(dataFB)` | Lấy danh sách INBOX + `last_seq_id`. Trả về `dataGet`, `ProcessingTime`, `last_seq_id`, `dataAllThread`. |
+| `async def features_async(dataGet, threadID, commandUse)` | Bóc tách dữ liệu từ `dataGet`. `commandUse` ∈ `{"getAdmin", "threadInfomation", "exportMemberListToJson"}`. |
 
 ---
 
@@ -225,24 +225,28 @@ _core._utils  →  formAll · mainRequests · parse_cookie_string
 ## 💡 Ví dụ
 
 ```python
+import asyncio
 from _core._session import dataGetHome
 from _features._facebook import _notification, _blocking
 from _features._thread import _changeEmoji, _all_thread_data
 
-dataFB = dataGetHome("c_user=...; xs=...;")
+async def main():
+    dataFB = dataGetHome("c_user=...; xs=...;")
 
-# Lấy thông báo
-print(_notification.func(dataFB))
+    # Lấy thông báo
+    print(await _notification.func_async(dataFB))
 
-# Chặn người dùng
-print(_blocking.func(dataFB, idUser="1000...", choiceInteract="block"))
+    # Chặn người dùng
+    print(await _blocking.func_async(dataFB, idUser="1000...", choiceInteract="block"))
 
-# Đổi emoji nhóm
-print(_changeEmoji.func(dataFB, threadID="1234567890", newEmoji="🔥"))
+    # Đổi emoji nhóm
+    print(await _changeEmoji.func_async(dataFB, threadID="1234567890", newEmoji="🔥"))
 
-# Lấy toàn bộ inbox
-threads = _all_thread_data.func(dataFB)
-print(threads["dataAllThread"])
+    # Lấy toàn bộ inbox
+    threads = await _all_thread_data.func_async(dataFB)
+    print(threads["dataAllThread"])
+
+asyncio.run(main())
 ```
 
 ---

@@ -445,17 +445,21 @@ The extra Messenger actions live in `_messaging` and share the same `dataFB`
 object returned by `_core._session.dataGetHome(...)`:
 
 ```python
+import asyncio
 from _messaging import _editMessage, _changeTheme, _createNotes
 
-# Edit a sent message (usually only messages sent by the current account)
-_editMessage.editMessage(dataFB, "mid.$abc...", "Edited content")
+async def main():
+    # Edit a sent message (usually only messages sent by the current account)
+    await _editMessage.func_async(dataFB, "mid.$abc...", "Edited content")
 
-# List themes and change a thread theme/background
-themes = _changeTheme.listThemes(dataFB)
-_changeTheme.changeTheme(dataFB, "1234567890", "love")
+    # List themes and change a thread theme/background
+    themes = await _changeTheme.func_async(dataFB, action="list")
+    await _changeTheme.func_async(dataFB, "1234567890", "love")
 
-# Create a 24-hour Messenger Note
-_createNotes.createNote(dataFB, "Coding fbchat-v2", privacy="FRIENDS")
+    # Create a 24-hour Messenger Note
+    await _createNotes.func_async(dataFB, action="create", text="Coding fbchat-v2", privacy="FRIENDS")
+
+asyncio.run(main())
 ```
 
 Full API details: [`src/_messaging/README_EN.md`](src/_messaging/README_EN.md)

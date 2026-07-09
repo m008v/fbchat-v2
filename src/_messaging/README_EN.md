@@ -153,7 +153,7 @@ Frequently used keys: `fb_dtsg` · `jazoest` · `FacebookID` · `clientRevision`
 The main message-sending module.
 
 ```python
-api().send(
+await api().send_async(
     dataFB,
     contentSend,
     threadID,
@@ -189,18 +189,22 @@ Edit a sent message by publishing an MQTT LS task with
 `queue_name="edit_message"`.
 
 ```python
+import asyncio
 from _messaging import _editMessage
 
-_editMessage.editMessage(dataFB, messageID="mid.$abc...", newText="Edited content")
+async def main():
+    await _editMessage.editMessage_async(dataFB, messageID="mid.$abc...", newText="Edited content")
 
-# Or use the unified entry point:
-_editMessage.func(dataFB, "mid.$abc...", "Edited content")
+    # Or use the unified entry point:
+    await _editMessage.func_async(dataFB, "mid.$abc...", "Edited content")
+
+asyncio.run(main())
 ```
 
 | Function | Description |
 |---|---|
-| `editMessage(dataFB, messageID, newText, timeout=20)` | Publishes the LS task that edits a message. |
-| `func(dataFB, messageID, newText, timeout=20)` | Alias matching the fbchat-v2 module style. |
+| `async def editMessage_async(dataFB, messageID, newText, timeout=20)` | Publishes the LS task that edits a message. |
+| `async def func_async(dataFB, messageID, newText, timeout=20)` | Alias matching the fbchat-v2 module style. |
 
 **Returns:**
 
@@ -241,9 +245,9 @@ sender.connect()             # blocking pairing — only for standalone
 
 | Method | Description |
 |---|---|
-| `send(chat_jid, contentSend, replyMessage="", replySenderJid="")` | Send one E2EE text message. `chat_jid` can be a Messenger JID `<facebook_id>@msgr` or just the Facebook numeric user ID; the module normalizes it to `@msgr`. Do **not** pass a group `threadID`. |
-| `send_to_user(user_id, contentSend, replyMessage="", replySenderJid="")` | Proactively send by Facebook numeric ID, for example `send_to_user("100012345678", "hello")`. |
-| `reply(evt_data, contentSend)` | Helper that pulls `chatJid`, `id`, `senderJid` from a listener event and quote-replies in one call. |
+| `async def send_async(chat_jid, contentSend, replyMessage="", replySenderJid="")` | Send one E2EE text message. `chat_jid` can be a Messenger JID `<facebook_id>@msgr` or just the Facebook numeric user ID; the module normalizes it to `@msgr`. Do **not** pass a group `threadID`. |
+| `async def send_to_user_async(user_id, contentSend, replyMessage="", replySenderJid="")` | Proactively send by Facebook numeric ID, for example `await send_to_user_async("100012345678", "hello")`. |
+| `async def reply_async(evt_data, contentSend)` | Helper that pulls `chatJid`, `id`, `senderJid` from a listener event and quote-replies in one call. |
 | `connect(*, enable_e2ee=True, timeout=120)` | Standalone-only. Calls `newClient` → `connect` → `connectE2EE` on the bridge. |
 | `close()` | Standalone-only. Stops the owned bridge subprocess. |
 | `__enter__` / `__exit__` | Standalone context-manager support — auto `connect()` + `close()`. |
@@ -323,7 +327,7 @@ attachments.id · attachments.url
 ### `_attachments.py`
 
 ```python
-_uploadAttachment(filenames, dataFB)
+async def _uploadAttachment_async(filenames, dataFB)
 ```
 
 Uploads files to `https://upload.facebook.com/ajax/mercury/upload.php` and returns the `attachmentID`.
@@ -346,7 +350,7 @@ Uploads files to `https://upload.facebook.com/ajax/mercury/upload.php` and retur
 ### `_reactions.py`
 
 ```python
-func(dataFB, typeAdded, messageID, emojiChoice)
+async def func_async(dataFB, typeAdded, messageID, emojiChoice)
 ```
 
 Add / remove a reaction on a message.
@@ -367,23 +371,27 @@ List Messenger themes and change a thread theme / background through MQTT LS
 tasks. This ports the `ws3-fca/theme.js` flow into the fbchat-v2 style.
 
 ```python
+import asyncio
 from _messaging import _changeTheme
 
-_changeTheme.listThemes(dataFB)
-_changeTheme.findTheme(dataFB, "love")
-_changeTheme.changeTheme(dataFB, threadID="1234567890", themeName="love")
+async def main():
+    await _changeTheme.listThemes_async(dataFB)
+    await _changeTheme.findTheme_async(dataFB, "love")
+    await _changeTheme.changeTheme_async(dataFB, threadID="1234567890", themeName="love")
 
-# Unified entry point:
-_changeTheme.func(dataFB, action="list")
-_changeTheme.func(dataFB, "1234567890", "default")
+    # Unified entry point:
+    await _changeTheme.func_async(dataFB, action="list")
+    await _changeTheme.func_async(dataFB, "1234567890", "default")
+
+asyncio.run(main())
 ```
 
 | Function | Description |
 |---|---|
-| `listThemes(dataFB)` | Calls GraphQL `MWPThreadThemeQuery_AllThemesQuery` to fetch available themes. |
-| `findTheme(dataFB, themeName)` | Matches by ID, exact name, or partial keyword. |
-| `changeTheme(dataFB, threadID, themeName, initiatorID=None, timeout=20)` | Publishes 4 LS tasks that update the thread theme. |
-| `func(dataFB, threadID=None, themeName=None, action="set", **kwargs)` | Unified entry point: `list` / `find` / `set`. |
+| `async def listThemes_async(dataFB)` | Calls GraphQL `MWPThreadThemeQuery_AllThemesQuery` to fetch available themes. |
+| `async def findTheme_async(dataFB, themeName)` | Matches by ID, exact name, or partial keyword. |
+| `async def changeTheme_async(dataFB, threadID, themeName, initiatorID=None, timeout=20)` | Publishes 4 LS tasks that update the thread theme. |
+| `async def func_async(dataFB, threadID=None, themeName=None, action="set", **kwargs)` | Unified entry point: `list` / `find` / `set`. |
 
 **Returns:**
 
@@ -401,7 +409,7 @@ _changeTheme.func(dataFB, "1234567890", "default")
 ### `_unsend.py`
 
 ```python
-func(messageID, dataFB)
+async def func_async(messageID, dataFB)
 ```
 
 Unsend a message by `messageID`. Endpoint: `/messaging/unsend_message/`.
@@ -414,7 +422,7 @@ Unsend a message by `messageID`. Endpoint: `/messaging/unsend_message/`.
 ### `_message_requests.py`
 
 ```python
-func(dataFB)
+async def func_async(dataFB)
 ```
 
 Fetch pending message requests (`PENDING`).
@@ -432,27 +440,31 @@ top of the Messenger inbox. Ported from `ws3-fca/notes.js`
 (@ChoruOfficial) into the fbchat-v2 style.
 
 ```python
+import asyncio
 from _messaging import _createNotes
 
-_createNotes.checkNote(dataFB)
-_createNotes.createNote(dataFB, text, privacy="FRIENDS")
-_createNotes.deleteNote(dataFB, noteID)
-_createNotes.recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS")
+async def main():
+    await _createNotes.checkNote_async(dataFB)
+    await _createNotes.createNote_async(dataFB, text, privacy="FRIENDS")
+    await _createNotes.deleteNote_async(dataFB, noteID)
+    await _createNotes.recreateNote_async(dataFB, oldNoteID, newText, privacy="FRIENDS")
 
-# Or use the unified entry point:
-_createNotes.func(dataFB, action="check")
-_createNotes.func(dataFB, action="create",   text="Hello", privacy="FRIENDS")
-_createNotes.func(dataFB, action="delete",   noteID="<note_id>")
-_createNotes.func(dataFB, action="recreate", oldNoteID="<id>", newText="...")
+    # Or use the unified entry point:
+    await _createNotes.func_async(dataFB, action="check")
+    await _createNotes.func_async(dataFB, action="create",   text="Hello", privacy="FRIENDS")
+    await _createNotes.func_async(dataFB, action="delete",   noteID="<note_id>")
+    await _createNotes.func_async(dataFB, action="recreate", oldNoteID="<id>", newText="...")
+
+asyncio.run(main())
 ```
 
 | Function | Description |
 |---|---|
-| `checkNote(dataFB)` | Returns the current note of the logged-in account (`msgr_user_rich_status`). |
-| `createNote(dataFB, text, privacy="FRIENDS")` | Creates a new text note with a 86400s (24h) lifetime. |
-| `deleteNote(dataFB, noteID)` | Deletes a note by `rich_status_id`. |
-| `recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS")` | Deletes the old note then creates a new one (atomic 2-step). |
-| `func(dataFB, action, **kwargs)` | Unified entry point — `action` ∈ `"check" / "create" / "delete" / "recreate"`. |
+| `async def checkNote_async(dataFB)` | Returns the current note of the logged-in account (`msgr_user_rich_status`). |
+| `async def createNote_async(dataFB, text, privacy="FRIENDS")` | Creates a new text note with a 86400s (24h) lifetime. |
+| `async def deleteNote_async(dataFB, noteID)` | Deletes a note by `rich_status_id`. |
+| `async def recreateNote_async(dataFB, oldNoteID, newText, privacy="FRIENDS")` | Deletes the old note then creates a new one (atomic 2-step). |
+| `async def func_async(dataFB, action, **kwargs)` | Unified entry point — `action` ∈ `"check" / "create" / "delete" / "recreate"`. |
 
 **`privacy` argument** (case-insensitive):
 
@@ -500,86 +512,120 @@ _core._utils  →  formAll · send_request · send_request_async · mainRequests
 ### Send a text message
 
 ```python
+import asyncio
 from _messaging._send import api
 
-sender = api()
-print(sender.send(dataFB, "Hello", "1234567890"))
+async def main():
+    sender = api()
+    print(await sender.send_async(dataFB, "Hello", "1234567890"))
+
+asyncio.run(main())
 ```
 
 ### Upload an image then send it
 
 ```python
-from _messaging._attachments import _uploadAttachment
+import asyncio
+from _messaging._attachments import _uploadAttachment_async
 from _messaging._send import api
 
-uploaded = _uploadAttachment("path/to/image.jpg", dataFB)
-sender = api()
-print(sender.send(
-    dataFB,
-    "Here is your image",
-    "1234567890",
-    typeAttachment="image",
-    attachmentID=uploaded["attachmentID"],
-))
+async def main():
+    uploaded = await _uploadAttachment_async("path/to/image.jpg", dataFB)
+    sender = api()
+    print(await sender.send_async(
+        dataFB,
+        "Here is your image",
+        "1234567890",
+        typeAttachment="image",
+        attachmentID=uploaded["attachmentID"],
+    ))
+
+asyncio.run(main())
 ```
 
 ### React to a message
 
 ```python
-from _messaging._reactions import func
+import asyncio
+from _messaging._reactions import func_async
 
-resp = func(dataFB, "add", "mid.$abc...", "👍")
-print(resp.status_code, resp.text)
+async def main():
+    resp = await func_async(dataFB, "add", "mid.$abc...", "👍")
+    print(resp.status_code, resp.text)
+
+asyncio.run(main())
 ```
 
 ### Edit a sent message
 
 ```python
+import asyncio
 from _messaging import _editMessage
 
-print(_editMessage.editMessage(dataFB, "mid.$abc...", "Edited content"))
+async def main():
+    print(await _editMessage.editMessage_async(dataFB, "mid.$abc...", "Edited content"))
+
+asyncio.run(main())
 ```
 
 ### Change a thread theme / background
 
 ```python
+import asyncio
 from _messaging import _changeTheme
 
-print(_changeTheme.func(dataFB, action="list"))
-print(_changeTheme.changeTheme(dataFB, "1234567890", "love"))
+async def main():
+    print(await _changeTheme.func_async(dataFB, action="list"))
+    print(await _changeTheme.changeTheme_async(dataFB, "1234567890", "love"))
+
+asyncio.run(main())
 ```
 
 ### Unsend a message
 
 ```python
-from _messaging._unsend import func
-print(func("mid.$abc...", dataFB))
+import asyncio
+from _messaging._unsend import func_async
+
+async def main():
+    print(await func_async("mid.$abc...", dataFB))
+
+asyncio.run(main())
 ```
 
 ### Fetch pending requests
 
 ```python
-from _messaging._message_requests import func
-print(func(dataFB))
+import asyncio
+from _messaging._message_requests import func_async
+
+async def main():
+    print(await func_async(dataFB))
+
+asyncio.run(main())
 ```
 
 ### Create / delete a Messenger Note (24h status)
 
 ```python
+import asyncio
 from _messaging import _createNotes
 
-# Inspect the current note
-print(_createNotes.checkNote(dataFB))
+async def main():
+    # Inspect the current note
+    print(await _createNotes.checkNote_async(dataFB))
 
-# Create a new note (default 24h lifetime, privacy FRIENDS)
-created = _createNotes.createNote(dataFB, "Coding fbchat-v2 ❤️")
-note_id = created["data"]["id"]
+    # Create a new note (default 24h lifetime, privacy FRIENDS)
+    created = await _createNotes.createNote_async(dataFB, "Coding fbchat-v2 ❤️")
+    note_id = created["data"]["id"]
 
-# Delete the note
-_createNotes.deleteNote(dataFB, note_id)
+    # Delete the note
+    await _createNotes.deleteNote_async(dataFB, note_id)
 
-# Or replace the old note with a new one in a single call
-_createNotes.recreateNote(dataFB, note_id, "Shipped v2.1.3 🎉")
+    # Or replace the old note with a new one in a single call
+    await _createNotes.recreateNote_async(dataFB, note_id, "Shipped v2.1.3 🎉")
+
+asyncio.run(main())
 ```
 
 ### Listen in realtime
@@ -614,6 +660,7 @@ threading.Thread(target=listener.connect_mqtt, daemon=True).start()
 
 ```python
 import threading
+import asyncio
 from _messaging._listening_e2ee import listeningE2EEEvent
 from _messaging._send_e2ee import api as E2EESender
 
@@ -626,21 +673,25 @@ sender = E2EESender(listener=listener)
 @listener.on_message
 def on_msg(evt):
     if evt["type"] == "e2eeMessage" and evt["data"].get("text") == "ping":
-        print(sender.reply(evt["data"], "pong"))
+        asyncio.run(sender.reply_async(evt["data"], "pong"))
         # → {'success': 1, 'payload': {'messageID': '3EB0…', 'timestamp': 1715000000000}}
 ```
 
 ### Send an E2EE message (standalone — no listener)
 
 ```python
+import asyncio
 from _messaging._send_e2ee import api as E2EESender
 
-with E2EESender(dataFB=dataFB, log_level="warn") as sender:
-    sender.send(
-        chat_jid    = "100012345678",
-        contentSend = "hello E2EE",
-    )
-    sender.send_to_user("100012345678", "proactive hello")
+async def main():
+    with E2EESender(dataFB=dataFB, log_level="warn") as sender:
+        await sender.send_async(
+            chat_jid    = "100012345678",
+            contentSend = "hello E2EE",
+        )
+        await sender.send_to_user_async("100012345678", "proactive hello")
+
+asyncio.run(main())
 ```
 
 ---
