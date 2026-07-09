@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 from _messaging._editMessage import _build_ls_context, _rc_success, _error_response
 
 def test_rc_success():
