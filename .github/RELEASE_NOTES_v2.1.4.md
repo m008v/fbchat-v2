@@ -1,5 +1,7 @@
 ### 🎉 Cập nhật quan trọng: Đóng gói hiện đại & Tự động tải E2EE Bridge
 
+> Tài liệu lịch sử. Cách dùng hiện hành nằm trong `README.md` và `DOCS.md`, ưu tiên async/await.
+
 Bản phát hành `v2.1.4` mang đến những cải tiến lớn về trải nghiệm cài đặt và tự động hóa cho cả Dev và User.
 
 #### 🚀 Tính năng mới (Features)

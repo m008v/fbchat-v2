@@ -33,17 +33,23 @@ Author: MinhHuyDev
 
 from __future__ import annotations
 
+import asyncio
 import datetime
-import time
+import hashlib
+import hmac
 import itertools
 import json
 import os
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 from queue import Empty, Queue
 from typing import Any, Callable, Optional
+from urllib.parse import urlparse
+
+import httpx
 
 from _core._utils import parse_cookie_string
 
@@ -51,27 +57,31 @@ from _core._utils import parse_cookie_string
 # Binary discovery
 # ---------------------------------------------------------------------------
 
+
 def _default_binary_path() -> Path:
-    name = "fbchat-bridge-e2ee.exe" if sys.platform.startswith("win") else "fbchat-bridge-e2ee"
+    name = (
+        "fbchat-bridge-e2ee.exe"
+        if sys.platform.startswith("win")
+        else "fbchat-bridge-e2ee"
+    )
     here = Path(__file__).resolve()
     # fbchat-v2/src/_messaging/_listening_e2ee.py -> fbchat-v2/build/<name>
     return here.parents[2] / "build" / name
 
 
+_MAX_BRIDGE_SIZE = 200 * 1024 * 1024
+
+
 def _download_bridge(target_path: Path) -> None:
+    import logging
     import platform
     import stat
-    import logging
-    try:
-        import requests
-    except ImportError:
-        raise RuntimeError("Thư viện 'requests' chưa được cài đặt. Không thể tải tự động bridge E2EE.")
 
     logger = logging.getLogger("fbchat")
 
     system = platform.system().lower()
     machine = platform.machine().lower()
-    
+
     if system == "darwin":
         goos = "darwin"
     elif system == "linux":
@@ -80,7 +90,7 @@ def _download_bridge(target_path: Path) -> None:
         goos = "windows"
     else:
         raise RuntimeError(f"Hệ điều hành không được hỗ trợ để tự động tải: {system}")
-        
+
     if machine in ["x86_64", "amd64"]:
         goarch = "amd64"
     elif machine in ["arm64", "aarch64"]:
@@ -89,44 +99,74 @@ def _download_bridge(target_path: Path) -> None:
         raise RuntimeError(f"Kiến trúc không được hỗ trợ để tự động tải: {machine}")
 
     if goos == "windows" and goarch == "arm64":
-         raise RuntimeError("Windows ARM64 không có sẵn prebuilt binary. Hãy tự build.")
+        raise RuntimeError("Windows ARM64 không có sẵn prebuilt binary. Hãy tự build.")
 
     binary_name = f"fbchat-bridge-e2ee-{goos}-{goarch}"
     if goos == "windows":
         binary_name += ".exe"
 
     logger.info(f"Đang tự động tải bridge E2EE ({binary_name}) từ GitHub Releases...")
-    
+
     api_url = "https://api.github.com/repos/MinhHuyDev/fbchat-v2/releases/latest"
+    temporary_path = target_path.with_name(f".{target_path.name}.download")
     try:
-        resp = requests.get(api_url, timeout=10)
+        resp = httpx.get(api_url, timeout=10, follow_redirects=True)
         resp.raise_for_status()
         assets = resp.json().get("assets", [])
         download_url = None
+        expected_digest = None
         for asset in assets:
-            if asset["name"] == binary_name:
+            if asset.get("name") == binary_name:
                 download_url = asset["browser_download_url"]
+                expected_digest = asset.get("digest")
                 break
-                
+
         if not download_url:
-            raise RuntimeError(f"Không tìm thấy {binary_name} trên bản release mới nhất.")
-            
-        logger.info(f"Đang tải từ: {download_url}")
+            raise RuntimeError(
+                f"Không tìm thấy {binary_name} trên bản release mới nhất."
+            )
+
+        parsed_url = urlparse(download_url)
+        if parsed_url.scheme != "https" or parsed_url.hostname != "github.com":
+            raise RuntimeError("GitHub API trả về URL tải bridge không hợp lệ.")
+
+        logger.info("Đang tải bridge từ GitHub Releases...")
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with requests.get(download_url, stream=True, timeout=30) as r:
-            r.raise_for_status()
-            with open(target_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-                    
+
+        digest = hashlib.sha256()
+        downloaded = 0
+        with httpx.stream(
+            "GET", download_url, timeout=60, follow_redirects=True
+        ) as response:
+            response.raise_for_status()
+            declared_size = int(response.headers.get("content-length", "0") or 0)
+            if declared_size > _MAX_BRIDGE_SIZE:
+                raise RuntimeError("Bridge vượt quá giới hạn tải 200 MiB.")
+            with temporary_path.open("wb") as file_handle:
+                for chunk in response.iter_bytes(chunk_size=64 * 1024):
+                    downloaded += len(chunk)
+                    if downloaded > _MAX_BRIDGE_SIZE:
+                        raise RuntimeError("Bridge vượt quá giới hạn tải 200 MiB.")
+                    digest.update(chunk)
+                    file_handle.write(chunk)
+
+        if expected_digest and expected_digest.startswith("sha256:"):
+            expected_sha256 = expected_digest.partition(":")[2].lower()
+            if not hmac.compare_digest(digest.hexdigest(), expected_sha256):
+                raise RuntimeError(
+                    "Checksum SHA-256 của bridge không khớp GitHub Release."
+                )
+
+        temporary_path.replace(target_path)
+
         if goos != "windows":
             st = os.stat(target_path)
             os.chmod(target_path, st.st_mode | stat.S_IEXEC)
-            
+
         logger.info(f"Đã tải thành công bridge E2EE vào {target_path}")
-    except Exception as e:
-        raise RuntimeError(f"Lỗi khi tải tự động bridge E2EE: {e}")
+    except Exception as error:
+        temporary_path.unlink(missing_ok=True)
+        raise RuntimeError(f"Lỗi khi tải tự động bridge E2EE: {error}") from error
 
 
 def _resolve_binary() -> Path:
@@ -134,8 +174,11 @@ def _resolve_binary() -> Path:
     candidate = Path(override) if override else _default_binary_path()
     if not candidate.exists():
         if override:
-            raise FileNotFoundError(f"Không tìm thấy bridge binary tại {candidate} (do FBCHAT_E2EE_BIN chỉ định).")
+            raise FileNotFoundError(
+                f"Không tìm thấy bridge binary tại {candidate} (do FBCHAT_E2EE_BIN chỉ định)."
+            )
         import logging
+
         logger = logging.getLogger("fbchat")
         logger.info(f"Không tìm thấy bridge tại {candidate}, tiến hành tải tự động...")
         try:
@@ -153,6 +196,7 @@ def _resolve_binary() -> Path:
 # Subprocess RPC client
 # ---------------------------------------------------------------------------
 
+
 class BridgeError(RuntimeError):
     """Bridge trả về `ok:false` hoặc lỗi truyền tải."""
 
@@ -168,12 +212,14 @@ class _BridgeProcess:
 
     MAX_RETRIES: int = 5
     BASE_BACKOFF: float = 2.0  # seconds — exponential: 2, 4, 8, 16, 32
+    MAX_RPC_REQUEST_BYTES: int = 150 * 1024 * 1024
 
     def __init__(self, binary: Path, *, log_stderr: bool = True) -> None:
         self.events: "Queue[dict[str, Any]]" = Queue()
         self._next_id = itertools.count(1)
         self._pending: dict[int, Queue] = {}
         self._lock = threading.Lock()
+        self._write_lock = threading.Lock()
         self._closed = False
         self._stop_event = threading.Event()
         self._binary = binary
@@ -240,8 +286,9 @@ class _BridgeProcess:
         self.events.put({"type": "closed"})
 
     # ------------------------------------------------------------------
-    def call(self, method: str, params: Optional[dict] = None,
-             timeout: float = 60.0) -> dict[str, Any]:
+    def call(
+        self, method: str, params: Optional[dict] = None, timeout: float = 60.0
+    ) -> dict[str, Any]:
         if self._closed or self._proc.poll() is not None:
             raise BridgeError("bridge process is not running")
 
@@ -252,10 +299,15 @@ class _BridgeProcess:
 
         payload = {"id": rid, "method": method, "params": params or {}}
         line = (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
+        if len(line) > self.MAX_RPC_REQUEST_BYTES:
+            with self._lock:
+                self._pending.pop(rid, None)
+            raise BridgeError(f"{method}: request exceeds the 150 MiB JSON-RPC limit")
         assert self._proc.stdin is not None
         try:
-            self._proc.stdin.write(line)
-            self._proc.stdin.flush()
+            with self._write_lock:
+                self._proc.stdin.write(line)
+                self._proc.stdin.flush()
         except (BrokenPipeError, OSError) as exc:
             with self._lock:
                 self._pending.pop(rid, None)
@@ -272,13 +324,23 @@ class _BridgeProcess:
             raise BridgeError(f"{method}: {resp.get('error', 'unknown')}")
         return resp.get("data") or {}
 
+    async def call_async(
+        self,
+        method: str,
+        params: Optional[dict] = None,
+        timeout: float = 60.0,
+    ) -> dict[str, Any]:
+        """Chờ JSON-RPC trong worker thread để không chặn event loop."""
+        return await asyncio.to_thread(self.call, method, params, timeout)
+
     # ------------------------------------------------------------------
     # Watchdog — auto-respawn
     # ------------------------------------------------------------------
-    def start_watchdog(self, connect_cfg: dict[str, Any] | None = None,
-                       enable_e2ee: bool = True) -> threading.Thread:
+    def start_watchdog(
+        self, connect_cfg: dict[str, Any] | None = None, enable_e2ee: bool = True
+    ) -> threading.Thread:
         """Khởi động watchdog thread giám sát subprocess.
-        
+
         Khi bridge crash, watchdog sẽ:
         1. Đợi exponential backoff (2s, 4s, 8s, 16s, 32s)
         2. Respawn subprocess
@@ -288,7 +350,9 @@ class _BridgeProcess:
         self._connect_cfg = connect_cfg or {}
         self._enable_e2ee = enable_e2ee
 
-        t = threading.Thread(target=self._watchdog_loop, daemon=True, name="bridge-watchdog")
+        t = threading.Thread(
+            target=self._watchdog_loop, daemon=True, name="bridge-watchdog"
+        )
         t.start()
         return t
 
@@ -305,17 +369,23 @@ class _BridgeProcess:
                 break
 
             if retries >= self.MAX_RETRIES:
-                print(f"[{datetime.datetime.now()}] Bridge exceeded max retries ({self.MAX_RETRIES}). Giving up.")
-                self.events.put({
-                    "type": "bridge_fatal",
-                    "error": f"max retries exceeded ({self.MAX_RETRIES})",
-                    "retries": retries,
-                })
+                print(
+                    f"[{datetime.datetime.now()}] Bridge exceeded max retries ({self.MAX_RETRIES}). Giving up."
+                )
+                self.events.put(
+                    {
+                        "type": "bridge_fatal",
+                        "error": f"max retries exceeded ({self.MAX_RETRIES})",
+                        "retries": retries,
+                    }
+                )
                 break
 
             backoff = self.BASE_BACKOFF ** (retries + 1)
-            print(f"[{datetime.datetime.now()}] Bridge crashed. "
-                  f"Respawning in {backoff:.0f}s (attempt {retries + 1}/{self.MAX_RETRIES})")
+            print(
+                f"[{datetime.datetime.now()}] Bridge crashed. "
+                f"Respawning in {backoff:.0f}s (attempt {retries + 1}/{self.MAX_RETRIES})"
+            )
 
             # Sleep với check stop mỗi 0.5s để có thể cancel nhanh
             sleep_end = time.monotonic() + backoff
@@ -332,7 +402,9 @@ class _BridgeProcess:
                     self.call("connect", timeout=120)
                     if self._enable_e2ee:
                         self.call("connectE2EE", timeout=60)
-                print(f"[{datetime.datetime.now()}] Respawn successful (attempt {retries + 1})")
+                print(
+                    f"[{datetime.datetime.now()}] Respawn successful (attempt {retries + 1})"
+                )
                 retries = 0  # Reset sau khi respawn thành công
             except Exception as exc:
                 print(f"[{datetime.datetime.now()}] Respawn failed: {exc}")
@@ -368,6 +440,7 @@ _REQUIRED_COOKIES = ("c_user", "xs", "datr", "fr")
 # Public listener — API tương thích với _listening.py
 # ---------------------------------------------------------------------------
 
+
 class listeningE2EEEvent:
     """Lắng nghe tin nhắn (regular + E2EE).
 
@@ -383,11 +456,16 @@ class listeningE2EEEvent:
                             reply_to_id=..., reply_to_sender_jid=...)
     """
 
-    def __init__(self, dataFB: dict, *, log_level: str = "none",
-                 device_path: Optional[str] = None,
-                 e2ee_memory_only: bool = True,
-                 enable_e2ee: bool = True,
-                 binary_path: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        dataFB: dict,
+        *,
+        log_level: str = "none",
+        device_path: Optional[str] = None,
+        e2ee_memory_only: bool = True,
+        enable_e2ee: bool = True,
+        binary_path: Optional[str] = None,
+    ) -> None:
         self.dataFB = dataFB
         self.log_level = log_level
         self.device_path = device_path
@@ -446,14 +524,15 @@ class listeningE2EEEvent:
     # ------------------------------------------------------------------
     def connect_mqtt(self) -> None:
         """Khởi động bridge subprocess + connect Messenger (blocking poll loop).
-        
+
         Watchdog thread tự động respawn bridge nếu subprocess crash,
         với exponential backoff (2s→32s, tối đa 5 lần).
         Emit `bridge_fatal` event nếu give up.
         """
         binary = (
             Path(self._binary_path_override)
-            if self._binary_path_override else _resolve_binary()
+            if self._binary_path_override
+            else _resolve_binary()
         )
 
         self._bridge = _BridgeProcess(binary)
@@ -470,8 +549,10 @@ class listeningE2EEEvent:
         self._bridge.call("newClient", cfg)
         info = self._bridge.call("connect", timeout=120)
         user = info.get("user", {})
-        print(f"[{datetime.datetime.now()}] Logged in as "
-              f"{user.get('name')} ({user.get('id')})")
+        print(
+            f"[{datetime.datetime.now()}] Logged in as "
+            f"{user.get('name')} ({user.get('id')})"
+        )
 
         if self.enable_e2ee:
             try:
@@ -485,6 +566,10 @@ class listeningE2EEEvent:
 
         self._poll_loop()
 
+    async def connect_mqtt_async(self) -> None:
+        """Chạy poll loop của bridge ngoài event loop asyncio."""
+        await asyncio.to_thread(self.connect_mqtt)
+
     def stop(self) -> None:
         self._stop.set()
         if self._bridge is not None:
@@ -494,7 +579,7 @@ class listeningE2EEEvent:
     # ------------------------------------------------------------------
     def _poll_loop(self) -> None:
         """Event dispatch loop — chỉ lắng nghe và dispatch events.
-        
+
         Watchdog thread xử lý respawn độc lập, poll loop không cần
         quan tâm đến reconnect logic nữa.
         """
@@ -508,11 +593,13 @@ class listeningE2EEEvent:
                     continue
 
                 if evt.get("type") == "bridge_fatal":
-                    print(f"[{datetime.datetime.now()}] bridge_fatal: {evt.get('error')}")
+                    print(
+                        f"[{datetime.datetime.now()}] bridge_fatal: {evt.get('error')}"
+                    )
                     break
 
                 self._dispatch(evt)
-                    
+
         finally:
             self.stop()
 
@@ -526,8 +613,10 @@ class listeningE2EEEvent:
         elif etype == "e2eeMessage":
             self._populate_e2ee(data)
         elif etype == "ready":
-            print(f"[{datetime.datetime.now()}] ready: "
-                  f"isNewSession={data.get('isNewSession')}")
+            print(
+                f"[{datetime.datetime.now()}] ready: "
+                f"isNewSession={data.get('isNewSession')}"
+            )
         elif etype == "e2eeConnected":
             print(f"[{datetime.datetime.now()}] e2eeConnected")
         elif etype == "disconnected":
@@ -554,7 +643,9 @@ class listeningE2EEEvent:
         atts = msg.get("attachments") or []
         if atts:
             first = atts[0]
-            body["attachments"]["id"] = first.get("stickerId") or first.get("fileSize") or 0
+            body["attachments"]["id"] = (
+                first.get("stickerId") or first.get("fileSize") or 0
+            )
             body["attachments"]["url"] = first.get("url") or first.get("previewUrl")
 
         self.bodyResults = body
@@ -584,8 +675,9 @@ class listeningE2EEEvent:
 
     # ------------------------------------------------------------------
     # Helper sender APIs
-    def send_message(self, thread_id: int, text: str,
-                     reply_to_id: str = "") -> dict[str, Any]:
+    def send_message(
+        self, thread_id: int, text: str, reply_to_id: str = ""
+    ) -> dict[str, Any]:
         if self._bridge is None:
             raise RuntimeError("Chưa kết nối — gọi connect_mqtt() trước.")
         opts: dict[str, Any] = {"threadId": thread_id, "text": text}
@@ -593,16 +685,50 @@ class listeningE2EEEvent:
             opts["replyToId"] = reply_to_id
         return self._bridge.call("sendMessage", opts)
 
-    def send_e2ee_message(self, chat_jid: str, text: str,
-                          reply_to_id: str = "",
-                          reply_to_sender_jid: str = "") -> dict[str, Any]:
+    async def send_message_async(
+        self, thread_id: int, text: str, reply_to_id: str = ""
+    ) -> dict[str, Any]:
+        if self._bridge is None:
+            raise RuntimeError("Chưa kết nối — gọi connect_mqtt_async() trước.")
+        opts: dict[str, Any] = {"threadId": thread_id, "text": text}
+        if reply_to_id:
+            opts["replyToId"] = reply_to_id
+        return await self._bridge.call_async("sendMessage", opts)
+
+    def send_e2ee_message(
+        self,
+        chat_jid: str,
+        text: str,
+        reply_to_id: str = "",
+        reply_to_sender_jid: str = "",
+    ) -> dict[str, Any]:
         if self._bridge is None:
             raise RuntimeError("Chưa kết nối — gọi connect_mqtt() trước.")
-        return self._bridge.call("sendE2EEMessage", {
-            "chatJid": chat_jid,
-            "text": text,
-            "replyToId": reply_to_id,
-            "replyToSenderJid": reply_to_sender_jid,
-        })
+        return self._bridge.call(
+            "sendE2EEMessage",
+            {
+                "chatJid": chat_jid,
+                "text": text,
+                "replyToId": reply_to_id,
+                "replyToSenderJid": reply_to_sender_jid,
+            },
+        )
 
-
+    async def send_e2ee_message_async(
+        self,
+        chat_jid: str,
+        text: str,
+        reply_to_id: str = "",
+        reply_to_sender_jid: str = "",
+    ) -> dict[str, Any]:
+        if self._bridge is None:
+            raise RuntimeError("Chưa kết nối — gọi connect_mqtt_async() trước.")
+        return await self._bridge.call_async(
+            "sendE2EEMessage",
+            {
+                "chatJid": chat_jid,
+                "text": text,
+                "replyToId": reply_to_id,
+                "replyToSenderJid": reply_to_sender_jid,
+            },
+        )

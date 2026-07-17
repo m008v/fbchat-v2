@@ -1,37 +1,86 @@
 from __future__ import annotations
 
-import httpx, json
+import httpx
+import json
 from typing import Any
-from _core._utils import Headers, parse_cookie_string, formAll, send_request, send_request_async
-     
-def _build_request(dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoice: str) -> dict[str, Any]:
-     dataForm: dict[str, Any] = formAll(dataFB, docID=1491398900900362)
-     dataForm["variables"] = json.dumps({"data": {
-          "action": "ADD_REACTION" if (typeAdded == "add") else "REMOVE_REACTION",
-          "client_mutation_id": "1",
-          "actor_id": dataFB["FacebookID"],
-          "message_id": str(messageID),
-          "reaction": emojiChoice
-     }})
-     dataForm["dpr"] = 1
-     
-     return {
-               "headers": Headers(dataForm),
-               "timeout": 30,
-               "url": "https://www.facebook.com/webgraphql/mutation/",
-               "data": dataForm,
-               "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
-               "verify": True
-     }
+from _core._utils import (
+    Headers,
+    parse_cookie_string,
+    formAll,
+    send_request,
+    send_request_async,
+)
 
-def func(dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoice: str) -> httpx.Response:
-     req = _build_request(dataFB, typeAdded, messageID, emojiChoice)
-     return send_request(req)
 
-async def func_async(dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoice: str) -> httpx.Response:
-     req = _build_request(dataFB, typeAdded, messageID, emojiChoice)
-     return await send_request_async(req)
-     
+def _build_request(
+    dataFB: dict[str, Any], typeAdded: str, messageID: str | int, emojiChoice: str
+) -> dict[str, Any]:
+    normalized_action = str(typeAdded).strip().casefold()
+    action_map = {
+        "add": "ADD_REACTION",
+        "add_reaction": "ADD_REACTION",
+        "remove": "REMOVE_REACTION",
+        "remove_reaction": "REMOVE_REACTION",
+    }
+    if normalized_action not in action_map:
+        raise ValueError(
+            "typeAdded chỉ nhận add/ADD_REACTION hoặc remove/REMOVE_REACTION."
+        )
+    if not str(messageID).strip():
+        raise ValueError("messageID không được để trống.")
+    if not emojiChoice:
+        raise ValueError("emojiChoice không được để trống.")
+    dataForm: dict[str, Any] = formAll(dataFB, docID=1491398900900362)
+    dataForm["variables"] = json.dumps(
+        {
+            "data": {
+                "action": action_map[normalized_action],
+                "client_mutation_id": "1",
+                "actor_id": dataFB["FacebookID"],
+                "message_id": str(messageID),
+                "reaction": emojiChoice,
+            }
+        }
+    )
+    dataForm["dpr"] = 1
+
+    return {
+        "headers": Headers(dataForm),
+        "timeout": 30,
+        "url": "https://www.facebook.com/webgraphql/mutation/",
+        "data": dataForm,
+        "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
+        "verify": True,
+    }
+
+
+def func(
+    dataFB: dict[str, Any],
+    typeAdded: str,
+    messageID: str | int,
+    emojiChoice: str,
+    *,
+    client: httpx.Client | None = None,
+) -> httpx.Response:
+    req = _build_request(dataFB, typeAdded, messageID, emojiChoice)
+    response = send_request(req, client=client)
+    response.raise_for_status()
+    return response
+
+
+async def func_async(
+    dataFB: dict[str, Any],
+    typeAdded: str,
+    messageID: str | int,
+    emojiChoice: str,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> httpx.Response:
+    req = _build_request(dataFB, typeAdded, messageID, emojiChoice)
+    response = await send_request_async(req, client=client)
+    response.raise_for_status()
+    return response
+
 
 """ Hướng dẫn sử dụng (Tutorial)
 

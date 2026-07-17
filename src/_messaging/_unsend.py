@@ -1,30 +1,61 @@
 from __future__ import annotations
 
-import json
 from typing import Any
+
 import httpx
-from _core._utils import formAll, mainRequests, send_request, send_request_async
- 
+
+from _core._utils import (
+    formAll,
+    mainRequests,
+    parse_json_response,
+    send_request,
+    send_request_async,
+)
+
+_URL = "https://www.facebook.com/messaging/unsend_message/"
+
+
 def _build_request(messageID: str, dataFB: dict[str, Any]) -> dict[str, Any]:
-     dataForm = formAll(dataFB, requireGraphql=False)
-     dataForm["message_id"] = messageID
-     return mainRequests("https://www.facebook.com/messaging/unsend_message/", dataForm, dataFB["cookieFacebook"])
+    if not str(messageID).strip():
+        raise ValueError("messageID không được để trống.")
+    data_form = formAll(dataFB, requireGraphql=False)
+    data_form["message_id"] = str(messageID)
+    return mainRequests(_URL, data_form, dataFB["cookieFacebook"])
 
-def _parse_response(text: str) -> dict[str, Any] | Exception:
-     sendRequests = json.loads(text.split("for (;;);")[1])
-     if (sendRequests.get("error")):
-          return Exception({"error": str(sendRequests)})
-     return {
-          "success": 1,
-          "messages": "Thu hồi tin nhắn thành công."
-     }
 
-def func(messageID: str, dataFB: dict[str, Any]) -> dict[str, Any] | Exception:
-     res = send_request(_build_request(messageID, dataFB))
-     return _parse_response(res.text)
+def _parse_response(text: str) -> dict[str, Any]:
+    try:
+        payload = parse_json_response(text, strip_for_loop_prefix=True)
+    except (ValueError, TypeError) as error:
+        return {"error": 1, "messages": f"Phản hồi thu hồi không hợp lệ: {error}"}
+    if payload.get("error"):
+        return {
+            "error": 1,
+            "messages": payload.get("errorDescription")
+            or f"Facebook từ chối thu hồi tin nhắn: {payload['error']}",
+        }
+    return {"success": 1, "messages": "Thu hồi tin nhắn thành công."}
 
-async def func_async(messageID: str, dataFB: dict[str, Any]) -> dict[str, Any] | Exception:
-     res = await send_request_async(_build_request(messageID, dataFB))
-     return _parse_response(res.text)
 
-# completed at 09:36 30/06/2023 | last updated at 19:50 13/12/2023
+def func(
+    messageID: str,
+    dataFB: dict[str, Any],
+    *,
+    client: httpx.Client | None = None,
+) -> dict[str, Any]:
+    response = send_request(_build_request(messageID, dataFB), client=client)
+    response.raise_for_status()
+    return _parse_response(response.text)
+
+
+async def func_async(
+    messageID: str,
+    dataFB: dict[str, Any],
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    response = await send_request_async(
+        _build_request(messageID, dataFB), client=client
+    )
+    response.raise_for_status()
+    return _parse_response(response.text)

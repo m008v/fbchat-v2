@@ -1,267 +1,75 @@
-# `_features` — Feature Layer
+# `_features` — async Facebook business features
 
-> Implements user-level Facebook & Messenger business logic: profile, posts, search, notifications, Marketplace, thread administration…
+This layer receives `dataFB` from `_core` and implements account or thread-management operations. Documentation uses async APIs; sync functions remain for compatibility.
 
-[![Layer](https://img.shields.io/badge/layer-features-3B82F6)](.)
-[![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
-[![Vietnamese](https://img.shields.io/badge/docs-Ti%E1%BA%BFng%20Vi%E1%BB%87t-blue)](README.md)
+## Facebook
 
----
-
-## 📑 Table of Contents
-
-- [Responsibilities](#-responsibilities)
-- [Folder Structure](#-folder-structure)
-- [Public API](#-public-api)
-- [The `dataFB` Contract](#-the-datafb-contract)
-- [Module Reference](#-module-reference)
-  - [`_facebook` — Facebook actions](#facebook--facebook-actions)
-  - [`_thread` — Thread administration](#thread--thread-administration)
-- [Dependency Map](#-dependency-map)
-- [Examples](#-examples)
-- [Troubleshooting](#-troubleshooting)
-
----
-
-## 🎯 Responsibilities
-
-`_features` does **not** manage session/token concerns (that lives in `_core`). It focuses purely on **business logic**:
-
-- 👤 Profile actions: bio, posts, secondary profile, professional mode.
-- 🔔 User info & notification retrieval.
-- 🔍 Facebook search · 🚫 block / unblock.
-- 🛒 Create / fetch Marketplace listings.
-- 👥 Group thread management: rename, emoji, nicknames, admin role.
-
----
-
-## 📂 Folder Structure
-
-```text
-src/_features/
-├── _facebook/                # Facebook account actions
-│   ├── __init__.py
-│   ├── _blocking.py
-│   ├── _changeBio.py
-│   ├── _createPost.py
-│   ├── _get_user_info.py
-│   ├── _marketplace.py
-│   ├── _notification.py
-│   ├── _professional.py
-│   ├── _registerOnProfile.py
-│   └── _search.py
-├── _thread/                  # Group chat management
-│   ├── __init__.py
-│   ├── _addAdmin.py
-│   ├── _all_thread_data.py
-│   ├── _changeEmoji.py
-│   ├── _changeNameThread.py
-│   └── _changeNickname.py
-├── README.md
-└── README_EN.md              # ← you are here
-```
-
----
-
-## 📦 Public API
-
-```python
-# src/_features/_facebook/__init__.py
-__all__ = [
-    "_changeBio", "_createPost", "_professional", "_search",
-    "_blocking", "_registerOnProfile", "_notification",
-    "_marketplace", "_get_user_info",
-]
-
-# src/_features/_thread/__init__.py
-__all__ = [
-    "_changeNickname", "_addAdmin", "_changeEmoji", "_changeNameThread",
-]
-```
-
-After `from _features._facebook import *` (or `_thread`), you can call any module listed above directly.
-
----
-
-## 🧩 The `dataFB` Contract
-
-Most functions in `_features` accept **`dataFB`** as the first argument — produced by `_core._session.dataGetHome(setCookies)`.
-
-Frequently used keys: `fb_dtsg` · `jazoest` · `FacebookID` · `clientRevision` · `sessionID` · `cookieFacebook`.
-
-> 📖 Full schema: see [`_core/README_EN.md`](../_core/README_EN.md#-the-datafb-contract).
-
----
-
-## 📚 Module Reference
-
-### `_facebook` — Facebook actions
-
-#### `_changeBio.py`
-
-```python
-async def func_async(dataFB, newContents, uploadPost=False)
-```
-
-Update the account bio. `uploadPost=True` also publishes a feed story.
-
-- ✅ `{ "success": 1, "messages": ... }`
-- ❌ `{ "error": 1, ... }`
-
-#### `_createPost.py`
-
-```python
-async def func_async(dataFB, newContents, attachmentID=None)
-```
-
-Create a timeline post. `attachmentID` is reserved (not active in the current flow).
-
-- ✅ returns `urlPost`.
-- ❌ returns `error` + API message.
-
-#### `_professional.py`
-
-```python
-async def func_async(dataFB, statusBusiness=None)
-```
-
-Toggle **Professional Mode**. `statusBusiness` accepts: `"on"`, `"off"`, `"bật"`, `"tắt"`, `True`, `False`.
-
-#### `_search.py`
-
-```python
-async def func_async(dataFB, keywordSearch)
-```
-
-Search users on Facebook. Returns:
-
-- `searchResults` — pre-formatted string (for bots/CLIs).
-- `searchResultsDict` — list of `{name, id, url}` dicts.
-
-#### `_blocking.py`
-
-```python
-async def func_async(dataFB, idUser, choiceInteract)
-```
-
-Block / unblock a user. `choiceInteract`: `"block"` or `"unblock"`.
-
-#### `_registerOnProfile.py`
-
-```python
-async def func_async(dataFB, newName, newUsername)
-```
-
-Create an **additional profile** under the same account.
-
-> ⚠️ Only works on eligible accounts.
-
-#### `_notification.py`
-
-```python
-async def func_async(dataFB)
-```
-
-Fetch the notification list.
-
-- ✅ `{ "success": 1, "NotificationResults": [...] }`
-- ❌ `{ "error": 1, "messages": ... }`
-
-#### `_marketplace.py`
-
-| Function | Purpose |
-|---|---|
-| `async def createItem_async(...)` | Publish a new Marketplace listing. `photoIDList` comes from `_messaging._attachments`. |
-| `async def getInformationProductItemMarketPlace_async(...)` | Fetch product details by ID. |
-
-#### `_get_user_info.py`
-
-```python
-async def func_async(dataFB, userID)
-```
-
-Fetch user info via the chat user-info endpoint.
-
-- ✅ Detailed info dictionary.
-- ❌ `{ "err": 0 }`.
-
----
-
-### `_thread` — Thread administration
-
-| Module | Function | Purpose |
+| Module | Async API | Notes |
 |---|---|---|
-| `_changeNameThread.py` | `async def func_async(dataFB, threadID, newNameThread)` | Rename the group/thread. |
-| `_changeEmoji.py` | `async def func_async(dataFB, threadID, newEmoji)` | Change the default thread emoji. |
-| `_addAdmin.py` | `async def func_async(dataFB, threadID, idUser, statusChoice=True)` | Promote / demote admin. |
-| `_changeNickname.py` | `async def func_async(dataFB, threadID, idUser, NewNickname)` | Change a member's nickname. |
-
-All return `formatResults("success" \| "error", message)` from `_core._utils`.
-
-#### `_all_thread_data.py`
-
-| Function | Purpose |
-|---|---|
-| `async def func_async(dataFB)` | Fetch INBOX list + `last_seq_id`. Returns `dataGet`, `ProcessingTime`, `last_seq_id`, `dataAllThread`. |
-| `async def features_async(dataGet, threadID, commandUse)` | Drill into `dataGet`. `commandUse` ∈ `{"getAdmin", "threadInfomation", "exportMemberListToJson"}`. |
-
----
-
-## 🔗 Dependency Map
-
-`_features` mainly depends on `_core`:
-
-```text
-_core._session.dataGetHome(setCookies)  →  dataFB
-_core._utils  →  formAll · mainRequests · parse_cookie_string
-                 Headers · formatResults · randStr
-```
-
-> ⚠️ May break when Facebook changes GraphQL schemas or `doc_id`s.
-
----
-
-## 💡 Examples
+| `_changeBio` | `func_async(dataFB, newContents, uploadPost=False)` | Update bio |
+| `_createPost` | `func_async(dataFB, newContents, attachmentID=None)` | Unsupported attachments fail explicitly |
+| `_professional` | `func_async(dataFB, statusBusiness)` | Accepts bool or on/off strings |
+| `_search` | `func_async(dataFB, keywordSearch)` | Up to 5 deduplicated results |
+| `_blocking` | `func_async(dataFB, idUser, choiceInteract)` | `block` / `unblock` |
+| `_registerOnProfile` | `func_async(dataFB, newName, newUsername)` | Create an additional profile |
+| `_notification` | `func_async(dataFB)` | Fetch notifications |
+| `_get_user_info` | `func_async(dataFB, userID)` | Fetch profile details |
+| `_marketplace` | `createItem_async(...)` | Validates category, price, photos, and coordinates |
+| `_marketplace` | `getInformationProductItemMarketPlace_async(...)` | Product details |
 
 ```python
 import asyncio
-from _core._session import dataGetHome
-from _features._facebook import _notification, _blocking
-from _features._thread import _changeEmoji, _all_thread_data
+import httpx
 
-async def main():
-    dataFB = dataGetHome("c_user=...; xs=...;")
+from _core._session import dataGetHome_async
+from _features._facebook import _blocking, _notification, _search
 
-    # Fetch notifications
-    print(await _notification.func_async(dataFB))
 
-    # Block a user
-    print(await _blocking.func_async(dataFB, idUser="1000...", choiceInteract="block"))
+async def main() -> None:
+    data_fb = await dataGetHome_async("c_user=...; xs=...; fr=...; datr=...;")
+    if data_fb is None:
+        raise RuntimeError("Invalid session.")
 
-    # Change thread emoji
-    print(await _changeEmoji.func_async(dataFB, threadID="1234567890", newEmoji="🔥"))
+    async with httpx.AsyncClient(timeout=30) as client:
+        notifications, users = await asyncio.gather(
+            _notification.func_async(data_fb, client=client),
+            _search.func_async(data_fb, "m008v", client=client),
+        )
+        blocked = await _blocking.func_async(
+            data_fb, "100012345678", "block", client=client
+        )
+    print(notifications, users, blocked)
 
-    # Fetch the entire inbox
-    threads = await _all_thread_data.func_async(dataFB)
-    print(threads["dataAllThread"])
 
 asyncio.run(main())
 ```
 
----
+## Thread management
 
-## 🛠 Troubleshooting
-
-| Symptom | Suggested fix |
+| Module | Async API |
 |---|---|
-| Auth/session errors across multiple features | Cookies expired → regenerate `dataFB`. |
-| API returns errors or empty data | Endpoint / `doc_id` changed; verify `variables` against the new schema. |
-| JSON parse errors in responses | Some endpoints prefix `for (;;);` — strip it before `json.loads`. |
+| `_all_thread_data` | `func_async(dataFB)` and `features_async(...)` |
+| `_changeNameThread` | `func_async(dataFB, threadID, newNameThread)` |
+| `_changeEmoji` | `func_async(dataFB, threadID, newEmoji)` |
+| `_addAdmin` | `func_async(dataFB, threadID, idUser, statusChoice=True)` |
+| `_changeNickname` | `func_async(dataFB, threadID, idUser, NewNickname)` |
 
----
+```python
+from _features._thread import _addAdmin, _all_thread_data, _changeEmoji
 
-<div align="right">
+threads = await _all_thread_data.func_async(data_fb)
+details = await _all_thread_data.features_async(
+    threads["dataGet"], "thread-id", "threadInfomation"
+)
+await _addAdmin.func_async(data_fb, "thread-id", "user-id", statusChoice=False)
+await _changeEmoji.func_async(data_fb, "thread-id", "🔥")
+```
 
-⬆️ [Back to main README](../../README_EN.md) · 🇻🇳 [Tiếng Việt](README.md)
+## Rules
 
-</div>
+- Validate inputs before sending a request.
+- Use `post_form_json_async`; never import `requests`.
+- Accept an injected `httpx.AsyncClient` through `client=`.
+- Do not report success when responses omit `data` or contain `errors`.
+- Do not silently ignore unsupported arguments.
+- `features_async()` only parses in-memory data and completes immediately without a worker thread.

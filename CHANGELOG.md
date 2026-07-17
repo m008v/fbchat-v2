@@ -7,6 +7,15 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
+## [Unreleased] — async-first hardening
+
+- Chuyển các feature HTTP còn dùng `requests`/`asyncio.to_thread` sang transport `httpx` sync/async dùng chung.
+- Viết lại bot mẫu, listener thường, listener E2EE và bridge actions với lifecycle async rõ ràng.
+- Loại app access token hardcode; TOTP chạy cục bộ bằng `pyotp`; bridge download có size limit, atomic replace và checksum khi khả dụng.
+- Chặn SSRF ở Go `downloadMedia`; nâng Go 1.26.5 và `golang.org/x/net` v0.55.0 để xử lý toàn bộ vulnerability có call path mà `govulncheck` phát hiện.
+- Sửa lỗi gỡ admin báo sai action, `professional` xử lý bool, profile bổ sung dựng header sai, Marketplace khóa nhầm category và post âm thầm bỏ attachment.
+- Viết lại tài liệu hiện hành theo async/await. Các mục release cũ bên dưới là lịch sử và có thể nhắc API sync đã tồn tại tại thời điểm phát hành.
+
 ## [2.2.0-beta] - 2026-07-06
 
 ### ✨ Added

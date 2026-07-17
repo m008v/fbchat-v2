@@ -11,6 +11,7 @@ lib/
 lib64/
 parts/
 sdist/
+dist/
 var/
 tools/
 wheels/
@@ -44,3 +45,5 @@ logs/
 *.db-journal
 src/config.json
 AGENT_MEMORYs.md
+.vbsec-tmp/
+vbsec-reports/

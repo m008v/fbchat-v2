@@ -2,82 +2,102 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any
+
 
 class SessionStorage(ABC):
-    """Abstract base class for session persistence."""
-    
     @abstractmethod
     def load(self) -> str | None:
-        """Load cookie string. Returns None if not found."""
-        pass
-    
+        """Đọc cookie hoặc trả về None."""
+
     @abstractmethod
     def save(self, cookies: str) -> None:
-        """Persist cookie string."""
-        pass
-    
+        """Lưu cookie."""
+
     @abstractmethod
     def clear(self) -> None:
-        """Delete stored session."""
-        pass
+        """Xóa cookie đã lưu."""
+
 
 class FileSessionStorage(SessionStorage):
-    """JSON file backend for storing cookies."""
-    
-    def __init__(self, filepath: str = "config.json", key: str = "cookies"):
-        self.filepath = filepath
+    """JSON storage ghi atomically để tránh file bị cắt khi tiến trình dừng đột ngột."""
+
+    def __init__(self, filepath: str = "config.json", key: str = "cookies") -> None:
+        self.filepath = Path(filepath)
         self.key = key
-        
+
+    def _read_data(self) -> dict[str, Any] | None:
+        if not self.filepath.exists():
+            return None
+        try:
+            with self.filepath.open("r", encoding="utf-8") as file_handle:
+                data = json.load(file_handle)
+        except (json.JSONDecodeError, OSError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    def _write_data(self, data: dict[str, Any]) -> None:
+        self.filepath.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.filepath.parent,
+                prefix=f".{self.filepath.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as file_handle:
+                temporary_path = Path(file_handle.name)
+                json.dump(data, file_handle, indent=2, ensure_ascii=False)
+                file_handle.write("\n")
+                file_handle.flush()
+                os.fsync(file_handle.fileno())
+            if os.name != "nt":
+                temporary_path.chmod(0o600)
+            os.replace(temporary_path, self.filepath)
+        finally:
+            if temporary_path is not None and temporary_path.exists():
+                temporary_path.unlink(missing_ok=True)
+
     def load(self) -> str | None:
-        if not os.path.exists(self.filepath):
+        data = self._read_data()
+        if data is None:
             return None
-        try:
-            with open(self.filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return data.get(self.key)
-        except (json.JSONDecodeError, OSError):
-            return None
-            
+        value = data.get(self.key)
+        return value if isinstance(value, str) and value else None
+
     def save(self, cookies: str) -> None:
-        data = {}
-        if os.path.exists(self.filepath):
-            try:
-                with open(self.filepath, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-            except (json.JSONDecodeError, OSError):
-                pass
-        
+        if not isinstance(cookies, str) or not cookies.strip():
+            raise ValueError("Cookie lưu vào storage phải là chuỗi không rỗng.")
+        data = self._read_data() or {}
         data[self.key] = cookies
-        with open(self.filepath, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
-            
+        self._write_data(data)
+
     def clear(self) -> None:
-        if not os.path.exists(self.filepath):
+        data = self._read_data()
+        if data is None or self.key not in data:
             return
-        try:
-            with open(self.filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if self.key in data:
-                del data[self.key]
-            with open(self.filepath, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
-        except (json.JSONDecodeError, OSError):
-            pass
+        del data[self.key]
+        self._write_data(data)
+
 
 class EnvSessionStorage(SessionStorage):
-    """Read/Write cookies from environment variable."""
-    
-    def __init__(self, env_var: str = "FB_COOKIES"):
+    """Storage dựa trên biến môi trường của tiến trình hiện tại."""
+
+    def __init__(self, env_var: str = "FB_COOKIES") -> None:
         self.env_var = env_var
-        
+
     def load(self) -> str | None:
         return os.environ.get(self.env_var)
-            
+
     def save(self, cookies: str) -> None:
-        # Saving to process env is mostly ephemeral, but keeps the interface
+        if not isinstance(cookies, str) or not cookies.strip():
+            raise ValueError("Cookie lưu vào storage phải là chuỗi không rỗng.")
         os.environ[self.env_var] = cookies
-        
+
     def clear(self) -> None:
-        if self.env_var in os.environ:
-            del os.environ[self.env_var]
+        os.environ.pop(self.env_var, None)

@@ -1,5 +1,7 @@
 ## 🎉 fbchat-v2 đã có trên PyPI!
 
+> Tài liệu lịch sử. Cách dùng hiện hành nằm trong `README.md` và `DOCS.md`, ưu tiên async/await.
+
 > **Bản vá tài liệu & hạ tầng phân phối.** Không thay đổi runtime — không breaking change.
 > Từ phiên bản này bạn có thể cài đặt trực tiếp:
 >

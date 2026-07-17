@@ -1,5 +1,7 @@
 # 🚀 fbchat-v2 v2.1.0 — Messenger E2EE đã chính thức landed!
 
+> Tài liệu lịch sử. Cách dùng hiện hành nằm trong `README.md` và `DOCS.md`, ưu tiên async/await.
+
 > *Release date: 2026-05-12*
 
 > *Codename: **Labyrinth***

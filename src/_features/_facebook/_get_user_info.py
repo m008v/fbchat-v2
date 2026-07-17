@@ -1,86 +1,75 @@
-import json, requests
-from _core._utils import parse_cookie_string, Headers, formAll
+from __future__ import annotations
 
-def func(dataFB, userID):
-     
-     dataForm = formAll(dataFB, requireGraphql=False)
-     dataForm["ids[0]"] = userID
+from typing import Any
+
+import httpx
+
+from _core._utils import formAll, post_form_json, post_form_json_async
+
+USER_INFO_URL = "https://www.facebook.com/chat/user_info/"
 
 
-     mainRequests = {
-        "headers": Headers(dataForm, "www.facebook.com"),
-        "timeout": 30,
-        "url": "https://www.facebook.com/chat/user_info/",
-        "data": dataForm,
-        "cookies": parse_cookie_string(dataFB["cookieFacebook"]),
-        "verify": True
-    }
-     
-     sendRequests = requests.post(**mainRequests)
-     try:
-        jsonData = json.loads(sendRequests.text.split("for (;;);")[1])["payload"]["profiles"][str(userID)]
-        
-        idUser = jsonData.get("id")
-        nameUser = jsonData.get("name")
-        firstName = jsonData.get("firstName")
-        Username = jsonData.get("vanity")
-        thumbSrc = jsonData.get("thumnSrc")
-        urlProfile = jsonData.get("uri")
-        genderUser = jsonData.get("gender")
-        alternateName = jsonData.get("alternateName")
-        chatWithUSerIsNonFriend = jsonData.get("is_nonfriend_messenger_contact")
+def _build_request(dataFB: dict[str, Any], userID: str | int) -> dict[str, Any]:
+    data_form = formAll(dataFB, requireGraphql=False)
+    data_form["ids[0]"] = str(userID)
+    return data_form
 
-        if (genderUser == 1): genderUser = "Female (Nữ)"
-        elif (genderUser == 2): genderUser = "Male (Nam)"
-        else: genderUser = "Unknown (Không xác định)"
 
+def _parse_response(payload: dict[str, Any], userID: str | int) -> dict[str, Any]:
+    profiles = (payload.get("payload") or {}).get("profiles") or {}
+    profile = profiles.get(str(userID))
+    if not isinstance(profile, dict):
         return {
-            "idUser": idUser,
-            "nameUser": nameUser,
-            "firstName": firstName,
-            "Username": Username,
-            "thumbSrc": thumbSrc,
-            "urlProfile": urlProfile,
-            "genderUser": genderUser,
-            "alternateName": alternateName,
-            "chatWithUSerIsNonFriend": chatWithUSerIsNonFriend
+            "error": 1,
+            "messages": "Không tìm thấy hồ sơ người dùng trong response.",
         }
-     except (IndexError, KeyError, TypeError, json.JSONDecodeError):
-          return {
-               "err": 0
-          }
+
+    gender = profile.get("gender")
+    gender_label = {1: "Female (Nữ)", 2: "Male (Nam)"}.get(
+        gender, "Unknown (Không xác định)"
+    )
+    return {
+        "idUser": profile.get("id"),
+        "nameUser": profile.get("name"),
+        "firstName": profile.get("firstName"),
+        "Username": profile.get("vanity"),
+        "thumbSrc": profile.get("thumbSrc")
+        or profile.get("thumb_src")
+        or profile.get("thumnSrc"),
+        "urlProfile": profile.get("uri"),
+        "genderUser": gender_label,
+        "alternateName": profile.get("alternateName"),
+        "chatWithUSerIsNonFriend": profile.get("is_nonfriend_messenger_contact"),
+    }
 
 
-""" Hướng dẫn sử dụng (Tutorial)
+def func(dataFB: dict[str, Any], userID: str | int) -> dict[str, Any]:
+    try:
+        payload = post_form_json(
+            USER_INFO_URL,
+            _build_request(dataFB, userID),
+            dataFB["cookieFacebook"],
+            strip_for_loop_prefix=True,
+        )
+        return _parse_response(payload, userID)
+    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
+        return {"error": 1, "messages": str(exc)}
 
- * Dữ liệu yêu cầu (args):
- 
-     - dataFB: lấy từ _core._session.dataGetHome(setCookies)
-     - userID: ID người dùng cần lấy thông tin
-     
-* Kết quả trả về:
-     
-     - Khi lấy dữ liệu thành công:
 
-        {'idUser': '1...', 'nameUser': 'Priscilla......', ........}
-     
-     - Khi lấy dữ liệu thất bại:
-
-        {'err': 0}
-     
-     - Ghi chú: nếu không hiểu gì hãy ib tui nhé hehe.
-
-* Thông tin tác giả:
-     Facebook:  m.me/zminhhuydev
-     Telegram: t.me/minhhuydev
-     Github: MinhHuyDev
-
-✓Remake by Nguyễn Minh Huy
-✓Remake from Fbchat Python (https://fbchat.readthedocs.io/en/stable/)
-✓Hoàn thành vào lúc 18:43 ngày 27/6/2023
-✓Tôn trọng tác giả ❤️
-"""
-
-import asyncio
-async def func_async(*args, **kwargs):
-    return await asyncio.to_thread(func, *args, **kwargs)
+async def func_async(
+    dataFB: dict[str, Any],
+    userID: str | int,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    try:
+        payload = await post_form_json_async(
+            USER_INFO_URL,
+            _build_request(dataFB, userID),
+            dataFB["cookieFacebook"],
+            strip_for_loop_prefix=True,
+            client=client,
+        )
+        return _parse_response(payload, userID)
+    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
+        return {"error": 1, "messages": str(exc)}

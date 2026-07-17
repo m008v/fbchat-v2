@@ -1,56 +1,81 @@
-"""Shared HTTP client module — async-first, sync fallback.
+"""HTTP transport dùng chung, ưu tiên async và vẫn giữ tương thích sync."""
 
-Tập trung hoá toàn bộ HTTP transport cho fbchat-v2.
-Mọi module khác nên import từ đây thay vì tự tạo httpx client.
-"""
 from __future__ import annotations
 
-import httpx
 from typing import Any
 
+import httpx
 
-_DEFAULT_TIMEOUT = 30
+
+DEFAULT_TIMEOUT = 60.0
+TimeoutValue = float | httpx.Timeout | None
 
 
-def _clean_kwargs(kwargs: dict[str, Any]) -> tuple[bool, float, dict[str, Any]]:
-    """Tách verify/timeout/proxies ra khỏi request kwargs, trả về (verify, timeout, cleaned_kwargs)."""
-    verify = kwargs.pop("verify", True)
-    timeout = kwargs.pop("timeout", _DEFAULT_TIMEOUT)
-    kwargs.pop("proxies", None)
-    return verify, timeout, kwargs
+def _clean_kwargs(
+    kwargs: dict[str, Any],
+) -> tuple[str, bool, TimeoutValue, dict[str, Any]]:
+    """Sao chép và chuẩn hoá kwargs mà không sửa dict của caller."""
+    cleaned = dict(kwargs)
+    url = str(cleaned.pop("url"))
+    verify = bool(cleaned.pop("verify", True))
+    timeout = cleaned.pop("timeout", DEFAULT_TIMEOUT)
+    cleaned.pop("proxies", None)  # tên cũ của requests, không hợp lệ với httpx
+    return url, verify, timeout, cleaned
 
 
 # ── Sync ────────────────────────────────────────────────────────────────
 
-def post_sync(url: str, *, data: Any = None, headers: dict[str, str] | None = None,
-              cookies: dict[str, str] | None = None, files: Any = None,
-              timeout: float = _DEFAULT_TIMEOUT, verify: bool = True) -> httpx.Response:
-    """Sync POST — dùng cho backward compat hoặc context không hỗ trợ async."""
-    with httpx.Client(verify=verify, timeout=timeout) as client:
-        return client.post(url, data=data, headers=headers, cookies=cookies, files=files)
+
+def post_sync(
+    request_kwargs: dict[str, Any],
+    *,
+    client: httpx.Client | None = None,
+) -> httpx.Response:
+    """Gửi POST đồng bộ; cho phép tái sử dụng ``httpx.Client`` nếu cần."""
+    url, verify, timeout, kwargs = _clean_kwargs(request_kwargs)
+    if client is not None:
+        return client.post(url, timeout=timeout, **kwargs)
+    with httpx.Client(verify=verify, timeout=timeout) as owned_client:
+        return owned_client.post(url, **kwargs)
 
 
-def get_sync(url: str, *, headers: dict[str, str] | None = None,
-             cookies: dict[str, str] | None = None,
-             timeout: float = _DEFAULT_TIMEOUT, verify: bool = True) -> httpx.Response:
-    """Sync GET."""
-    with httpx.Client(verify=verify, timeout=timeout) as client:
-        return client.get(url, headers=headers, cookies=cookies)
+def get_sync(
+    request_kwargs: dict[str, Any],
+    *,
+    client: httpx.Client | None = None,
+) -> httpx.Response:
+    """Gửi GET đồng bộ; cho phép tái sử dụng ``httpx.Client`` nếu cần."""
+    url, verify, timeout, kwargs = _clean_kwargs(request_kwargs)
+    if client is not None:
+        return client.get(url, timeout=timeout, **kwargs)
+    with httpx.Client(verify=verify, timeout=timeout) as owned_client:
+        return owned_client.get(url, **kwargs)
 
 
 # ── Async ───────────────────────────────────────────────────────────────
 
-async def post_async(url: str, *, data: Any = None, headers: dict[str, str] | None = None,
-                     cookies: dict[str, str] | None = None, files: Any = None,
-                     timeout: float = _DEFAULT_TIMEOUT, verify: bool = True) -> httpx.Response:
-    """Async POST — primary transport."""
-    async with httpx.AsyncClient(verify=verify, timeout=timeout) as client:
-        return await client.post(url, data=data, headers=headers, cookies=cookies, files=files)
+
+async def post_async(
+    request_kwargs: dict[str, Any],
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> httpx.Response:
+    """Gửi POST bất đồng bộ, không chặn event loop."""
+    url, verify, timeout, kwargs = _clean_kwargs(request_kwargs)
+    if client is not None:
+        return await client.post(url, timeout=timeout, **kwargs)
+    async with httpx.AsyncClient(verify=verify, timeout=timeout) as owned_client:
+        return await owned_client.post(url, **kwargs)
 
 
-async def get_async(url: str, *, headers: dict[str, str] | None = None,
-                    cookies: dict[str, str] | None = None,
-                    timeout: float = _DEFAULT_TIMEOUT, verify: bool = True) -> httpx.Response:
-    """Async GET."""
-    async with httpx.AsyncClient(verify=verify, timeout=timeout) as client:
-        return await client.get(url, headers=headers, cookies=cookies)
+async def get_async(
+    request_kwargs: dict[str, Any],
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> httpx.Response:
+    """Gửi GET bất đồng bộ, không chặn event loop."""
+    url, verify, timeout, kwargs = _clean_kwargs(request_kwargs)
+    if client is not None:
+        return await client.get(url, timeout=timeout, **kwargs)
+    async with httpx.AsyncClient(verify=verify, timeout=timeout) as owned_client:
+        return await owned_client.get(url, **kwargs)

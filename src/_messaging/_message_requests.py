@@ -2,64 +2,104 @@ from __future__ import annotations
 
 import json
 from typing import Any
+
+import httpx
+
 from _core._utils import formAll, mainRequests, send_request, send_request_async
 
+_URL = "https://www.facebook.com/api/graphqlbatch/"
+
+
 def _build_request(dataFB: dict[str, Any]) -> dict[str, Any]:
-     dataForm = formAll(dataFB, requireGraphql=0)
-     dataForm["queries"] = json.dumps({
-          "o0": {
-               "doc_id": "3336396659757871",
-               "query_params": {
-                    "limit": 10000,
+    data_form = formAll(dataFB, requireGraphql=False)
+    data_form["queries"] = json.dumps(
+        {
+            "o0": {
+                "doc_id": "3336396659757871",
+                "query_params": {
+                    "limit": 100,
                     "before": None,
                     "tags": ["PENDING"],
                     "includeDeliveryReceipts": False,
                     "includeSeqID": True,
-               }
-          }
-     })
-     return mainRequests("https://www.facebook.com/api/graphqlbatch/", dataForm, dataFB["cookieFacebook"])
+                },
+            }
+        },
+        separators=(",", ":"),
+    )
+    return mainRequests(_URL, data_form, dataFB["cookieFacebook"])
+
+
+def _find_batch_root(text: str) -> dict[str, Any] | None:
+    payload = text.strip()
+    if payload.startswith("for (;;);"):
+        payload = payload[len("for (;;);") :].lstrip()
+    decoder = json.JSONDecoder()
+    index = 0
+    while index < len(payload):
+        while index < len(payload) and payload[index].isspace():
+            index += 1
+        if index >= len(payload):
+            break
+        try:
+            item, index = decoder.raw_decode(payload, index)
+        except json.JSONDecodeError:
+            return None
+        if isinstance(item, dict) and "o0" in item:
+            return item
+    return None
+
 
 def _parse_response(text: str) -> dict[str, Any]:
-     dataGet = {}
-     for line in text.splitlines():
-          if not line.strip():
-               continue
-          try:
-               obj = json.loads(line)
-               if "o0" in obj:
-                    dataGet = obj
-                    break
-          except json.JSONDecodeError:
-               pass
-     
-     if not dataGet:
-          return {"error": 1, "messages": "Failed to parse message requests response.", "raw": text}
-     
-     PendingList: list[dict[str, Any]] = dataGet.get('o0', {}).get('data', {}).get('viewer', {}).get('message_threads', {}).get('nodes', [])
-     dictExportData: dict[str | int, Any] = {"data":{}}
-     total: int = 0
-     for i in PendingList:
-          over: list[dict[str, Any]] = i['last_message']['nodes']
-          try:
-               contentMessage, senderID, timestamp_precise = over[0]['snippet'], over[0]['message_sender']['messaging_actor']['id'], over[0]['timestamp_precise']
-               dictExportData[total] = {'senderID': senderID, 'snippet': contentMessage, 'timestamp_precise': timestamp_precise}
-               total += 1
-          except (IndexError, KeyError, TypeError):
-               pass
-     dictExportData['total_count'] = total
-     return {
-          "success": 1,
-          "messages": "Lấy danh sách thành công",
-          "data": dictExportData
-     }
+    root = _find_batch_root(text)
+    if root is None:
+        return {"error": 1, "messages": "Không thể đọc phản hồi message requests."}
 
-def func(dataFB: dict[str, Any]) -> dict[str, Any]:
-     req = _build_request(dataFB)
-     res = send_request(req)
-     return _parse_response(res.text)
+    errors = (root.get("o0") or {}).get("errors") or []
+    if errors:
+        message = errors[0].get("summary") if isinstance(errors[0], dict) else None
+        return {"error": 1, "messages": message or "Facebook trả lỗi message requests."}
 
-async def func_async(dataFB: dict[str, Any]) -> dict[str, Any]:
-     req = _build_request(dataFB)
-     res = await send_request_async(req)
-     return _parse_response(res.text)
+    pending = (
+        (root.get("o0") or {})
+        .get("data", {})
+        .get("viewer", {})
+        .get("message_threads", {})
+        .get("nodes", [])
+    )
+    exported: dict[str | int, Any] = {"data": {}}
+    total = 0
+    for thread in pending:
+        messages = (thread.get("last_message") or {}).get("nodes") or []
+        if not messages or not isinstance(messages[0], dict):
+            continue
+        message = messages[0]
+        actor = (message.get("message_sender") or {}).get("messaging_actor") or {}
+        exported[total] = {
+            "senderID": actor.get("id"),
+            "snippet": message.get("snippet"),
+            "timestamp_precise": message.get("timestamp_precise"),
+        }
+        total += 1
+    exported["total_count"] = total
+    return {
+        "success": 1,
+        "messages": "Lấy danh sách message requests thành công.",
+        "data": exported,
+    }
+
+
+def func(
+    dataFB: dict[str, Any], *, client: httpx.Client | None = None
+) -> dict[str, Any]:
+    response = send_request(_build_request(dataFB), client=client)
+    response.raise_for_status()
+    return _parse_response(response.text)
+
+
+async def func_async(
+    dataFB: dict[str, Any], *, client: httpx.AsyncClient | None = None
+) -> dict[str, Any]:
+    response = await send_request_async(_build_request(dataFB), client=client)
+    response.raise_for_status()
+    return _parse_response(response.text)

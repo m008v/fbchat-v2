@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,35 @@ import (
 	"go.mau.fi/mautrix-meta/pkg/messagix/socket"
 	"go.mau.fi/mautrix-meta/pkg/messagix/table"
 )
+
+const maxDownloadedMediaSize int64 = 100 * 1024 * 1024
+
+var allowedMediaHosts = []string{
+	"facebook.com",
+	"fbcdn.net",
+	"fbsbx.com",
+	"messenger.com",
+}
+
+func validateMediaURL(rawURL string) (*url.URL, error) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid media URL: %w", err)
+	}
+	if parsed.Scheme != "https" || parsed.User != nil || parsed.Hostname() == "" {
+		return nil, fmt.Errorf("media URL must be an HTTPS URL without user info")
+	}
+	if parsed.Port() != "" && parsed.Port() != "443" {
+		return nil, fmt.Errorf("media URL uses a disallowed port")
+	}
+	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
+	for _, allowed := range allowedMediaHosts {
+		if host == allowed || strings.HasSuffix(host, "."+allowed) {
+			return parsed, nil
+		}
+	}
+	return nil, fmt.Errorf("media host is not trusted: %s", host)
+}
 
 // UploadMediaOptions for uploading media
 type UploadMediaOptions struct {
@@ -225,13 +255,40 @@ func (c *Client) SendFile(opts *SendFileOptions) (*SendMessageResult, error) {
 }
 
 // DownloadMedia downloads media from a URL
-func (c *Client) DownloadMedia(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+func (c *Client) DownloadMedia(rawURL string) ([]byte, error) {
+	parsed, err := validateMediaURL(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("too many media redirects")
+			}
+			_, redirectErr := validateMediaURL(req.URL.String())
+			return redirectErr
+		},
+	}
+	resp, err := client.Get(parsed.String())
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("media download returned HTTP %d", resp.StatusCode)
+	}
+	if resp.ContentLength > maxDownloadedMediaSize {
+		return nil, fmt.Errorf("media exceeds the 100 MiB limit")
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDownloadedMediaSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxDownloadedMediaSize {
+		return nil, fmt.Errorf("media exceeds the 100 MiB limit")
+	}
+	return data, nil
 }
 
 // ForwardMessageOptions for forwarding messages

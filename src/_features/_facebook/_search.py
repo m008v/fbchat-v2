@@ -1,38 +1,49 @@
-import requests, json, random
-from _core._utils import formAll, mainRequests, randStr
+from __future__ import annotations
 
-def func(dataFB, keywordSearch): # Tìm kiếm trên Facebook
-    
-    # Được lấy dữ liệu và viết vào lúc: 01:42 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
-    """Args:
-        keywordSearch: Content to search for on FB (eg. Mark Zuckerberg) | typeInput: str
-    """
-    
-    dataForm = formAll(dataFB, "SearchCometResultsInitialResultsQuery", 6866854183333610)
-    dataForm["variables"] = json.dumps(
+import json
+import random
+from typing import Any
+
+import httpx
+
+from _core._utils import (
+    formAll,
+    generate_client_id,
+    post_form_json,
+    post_form_json_async,
+)
+
+GRAPHQL_URL = "https://www.facebook.com/api/graphql/"
+
+
+def _build_request(dataFB: dict[str, Any], keywordSearch: str) -> dict[str, Any]:
+    keyword = str(keywordSearch).strip()
+    if not keyword:
+        raise ValueError("Từ khoá tìm kiếm không được để trống.")
+    data_form = formAll(
+        dataFB, "SearchCometResultsInitialResultsQuery", 6866854183333610
+    )
+    data_form["variables"] = json.dumps(
         {
             "count": 5,
             "allow_streaming": False,
             "args": {
-                    "callsite": "COMET_GLOBAL_SEARCH",
-                    "config": {
-                        "exact_match": False,
-                        "high_confidence_config": None,
-                        "intercept_config": None,
-                        "sts_disambiguation": None,
-                        "watch_config":None
-                    },
-                    "context": {
-                        "bsid": str(randStr(8) + "-" + randStr(4) + "-" + randStr(4) + "-" + randStr(4) + "-" + randStr(12)),
-                        "tsid": str(random.random())
-                    },
-                    "experience": {
-                        "encoded_server_defined_params": None,
-                        "fbid": None,
-                        "type": "GLOBAL_SEARCH"
-                    },
-                    "filters": [],
-                    "text": str(keywordSearch)
+                "callsite": "COMET_GLOBAL_SEARCH",
+                "config": {
+                    "exact_match": False,
+                    "high_confidence_config": None,
+                    "intercept_config": None,
+                    "sts_disambiguation": None,
+                    "watch_config": None,
+                },
+                "context": {"bsid": generate_client_id(), "tsid": str(random.random())},
+                "experience": {
+                    "encoded_server_defined_params": None,
+                    "fbid": None,
+                    "type": "GLOBAL_SEARCH",
+                },
+                "filters": [],
+                "text": keyword,
             },
             "cursor": None,
             "feedbackSource": 23,
@@ -45,34 +56,89 @@ def func(dataFB, keywordSearch): # Tìm kiếm trên Facebook
             "__relay_internal__pv__IsWorkUserrelayprovider": False,
             "__relay_internal__pv__IsMergQAPollsrelayprovider": False,
             "__relay_internal__pv__StoriesArmadilloReplyEnabledrelayprovider": False,
-            "__relay_internal__pv__StoriesRingrelayprovider": False
-        }
+            "__relay_internal__pv__StoriesRingrelayprovider": False,
+        },
+        separators=(",", ":"),
     )
-    
-    listResultSearch = []
-    dictListResultSearch = []
-    
-    
+    return data_form
+
+
+def _parse_response(payload: dict[str, Any], keyword: str) -> dict[str, Any]:
     try:
-        sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/api/graphql/", dataForm, dataFB["cookieFacebook"])).text)
-        getDataResultSearch = sendRequests["data"]["serpResponse"]["results"]["edges"][0]["relay_rendering_strategy"]["result_rendering_strategies"]
-        for dataResults in getDataResultSearch:
-            dictListResultSearch.append({
-                "name": dataResults["view_model"]["profile"]["name"],
-                "id": dataResults["view_model"]["profile"]["id"],
-                "url": dataResults["view_model"]["profile"]["url"]
-            })
-            listResultSearch.append("🔮Tên người dùng: " + dataResults["view_model"]["profile"]["name"] + "\n⚗️ID người dùng: " + dataResults["view_model"]["profile"]["id"] + "\n🏷️Liên kết trang cá nhân: " + dataResults["view_model"]["profile"]["url"] + "\n≈ ≈ ≈ ≈ ≈ ≈ ≈ ≈")
-        return {
-            "success": 1,
-            "searchResults": "≈ ≈ ≈ Tìm Kiếm Facebook ≈ ≈ ≈\n\n" + "\n".join(listResultSearch) + "\n🔎Từ khoá tìm kiếm: " + str(keywordSearch) + "\n📊Số lượng kết quả: 5",
-            "searchResultsDict": dictListResultSearch
-        }
-    except Exception as errLog:
-        return {
-            "error": 1,
-            "messages": "ERR: " + str(errLog)
-        }
-import asyncio
-async def func_async(*args, **kwargs):
-    return await asyncio.to_thread(func, *args, **kwargs)
+        edges = payload["data"]["serpResponse"]["results"]["edges"]
+    except (KeyError, TypeError):
+        message = ((payload.get("errors") or [{}])[0]).get("message")
+        return {"error": 1, "messages": message or "Response tìm kiếm không hợp lệ."}
+
+    results: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for edge in edges if isinstance(edges, list) else []:
+        strategies = (
+            (
+                (edge.get("relay_rendering_strategy") or {}).get(
+                    "result_rendering_strategies"
+                )
+                or []
+            )
+            if isinstance(edge, dict)
+            else []
+        )
+        for strategy in strategies:
+            profile = (
+                ((strategy.get("view_model") or {}).get("profile") or {})
+                if isinstance(strategy, dict)
+                else {}
+            )
+            user_id = str(profile.get("id") or "")
+            if not user_id or user_id in seen_ids:
+                continue
+            seen_ids.add(user_id)
+            results.append(
+                {"name": profile.get("name"), "id": user_id, "url": profile.get("url")}
+            )
+            if len(results) == 5:
+                break
+        if len(results) == 5:
+            break
+
+    lines = [
+        f"{index}. {item.get('name')} — {item.get('id')} — {item.get('url')}"
+        for index, item in enumerate(results, 1)
+    ]
+    return {
+        "success": 1,
+        "searchResults": f"Tìm kiếm Facebook: {keyword}\n"
+        + "\n".join(lines)
+        + f"\nSố lượng kết quả: {len(results)}",
+        "searchResultsDict": results,
+    }
+
+
+def func(dataFB: dict[str, Any], keywordSearch: str) -> dict[str, Any]:
+    try:
+        keyword = str(keywordSearch).strip()
+        payload = post_form_json(
+            GRAPHQL_URL, _build_request(dataFB, keyword), dataFB["cookieFacebook"]
+        )
+        return _parse_response(payload, keyword)
+    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
+        return {"error": 1, "messages": str(exc)}
+
+
+async def func_async(
+    dataFB: dict[str, Any],
+    keywordSearch: str,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    try:
+        keyword = str(keywordSearch).strip()
+        payload = await post_form_json_async(
+            GRAPHQL_URL,
+            _build_request(dataFB, keyword),
+            dataFB["cookieFacebook"],
+            client=client,
+        )
+        return _parse_response(payload, keyword)
+    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
+        return {"error": 1, "messages": str(exc)}

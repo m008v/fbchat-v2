@@ -4,8 +4,9 @@ Shared type definitions cho toàn bộ fbchat-v2 codebase.
 Cung cấp TypedDict và type aliases cho các cấu trúc dữ liệu phổ biến:
 - DataFB: Session data từ Facebook
 - SuccessResponse / ErrorResponse: Chuẩn hoá return shape
-- RequestKwargs: Cấu trúc dict cho requests.post()
+- RequestKwargs: Cấu trúc dict cho HTTP transport dùng chung
 """
+
 from __future__ import annotations
 
 from typing import Any, NotRequired, TypedDict
@@ -45,7 +46,7 @@ class ErrorResponse(TypedDict):
 
 
 class RequestKwargs(TypedDict):
-    """Cấu trúc dict trả về từ ``mainRequests()`` — dùng cho ``requests.post(**kw)``."""
+    """Cấu trúc dict trả về từ ``mainRequests()`` cho HTTP transport dùng chung."""
 
     headers: dict[str, str]
     timeout: int

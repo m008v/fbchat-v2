@@ -1,269 +1,75 @@
-# `_features` — Tầng tính năng
+# `_features` — nghiệp vụ Facebook async
 
-> Triển khai các nghiệp vụ Facebook & Messenger cấp người dùng: hồ sơ, bài viết, tìm kiếm, thông báo, Marketplace, quản trị thread…
+Tầng này nhận `dataFB` từ `_core` và thực hiện nghiệp vụ tài khoản hoặc quản lý thread. Tài liệu chỉ dùng API async; hàm sync giữ lại cho tương thích.
 
-[![Layer](https://img.shields.io/badge/layer-features-3B82F6)](.)
-[![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
-[![English](https://img.shields.io/badge/docs-English-blue)](README_EN.md)
+## Facebook
 
----
-
-## 📑 Mục lục
-
-- [Vai trò](#-vai-trò)
-- [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
-- [Public API](#-public-api)
-- [Hợp đồng `dataFB`](#-hợp-đồng-datafb)
-- [Tham chiếu module](#-tham-chiếu-module)
-  - [`_facebook` — Nghiệp vụ Facebook](#facebook--nghiệp-vụ-facebook)
-  - [`_thread` — Quản trị thread](#thread--quản-trị-thread)
-- [Sơ đồ phụ thuộc](#-sơ-đồ-phụ-thuộc)
-- [Ví dụ](#-ví-dụ)
-- [Khắc phục sự cố](#-khắc-phục-sự-cố)
-
----
-
-## 🎯 Vai trò
-
-`_features` **không** quản lý session/token (đó là việc của `_core`). Tầng này chỉ tập trung vào **business logic**:
-
-- 👤 Thao tác hồ sơ: bio, bài viết, profile phụ, professional mode.
-- 🔔 Truy xuất user info & notification.
-- 🔍 Tìm kiếm Facebook · 🚫 chặn / bỏ chặn.
-- 🛒 Tạo / lấy thông tin Marketplace listing.
-- 👥 Quản trị thread nhóm: đổi tên, emoji, biệt danh, thêm admin.
-
----
-
-## 📂 Cấu trúc thư mục
-
-```text
-src/_features/
-├── _facebook/                # Nghiệp vụ trên tài khoản Facebook
-│   ├── __init__.py
-│   ├── _blocking.py
-│   ├── _changeBio.py
-│   ├── _createPost.py
-│   ├── _get_user_info.py
-│   ├── _marketplace.py
-│   ├── _notification.py
-│   ├── _professional.py
-│   ├── _registerOnProfile.py
-│   └── _search.py
-├── _thread/                  # Quản trị nhóm chat
-│   ├── __init__.py
-│   ├── _addAdmin.py
-│   ├── _all_thread_data.py
-│   ├── _changeEmoji.py
-│   ├── _changeNameThread.py
-│   └── _changeNickname.py
-├── README.md                 # ← bạn đang ở đây
-└── README_EN.md
-```
-
----
-
-## 📦 Public API
-
-```python
-# src/_features/_facebook/__init__.py
-__all__ = [
-    "_changeBio", "_createPost", "_professional", "_search",
-    "_blocking", "_registerOnProfile", "_notification",
-    "_marketplace", "_get_user_info",
-]
-
-# src/_features/_thread/__init__.py
-__all__ = [
-    "_changeNickname", "_addAdmin", "_changeEmoji", "_changeNameThread",
-]
-```
-
-Sau khi `from _features._facebook import *` (hoặc `_thread`), bạn có thể gọi trực tiếp các module liệt kê trên.
-
----
-
-## 🧩 Hợp đồng `dataFB`
-
-Hầu hết các hàm trong `_features` đều nhận **`dataFB`** làm tham số đầu tiên — sinh ra từ `_core._session.dataGetHome(setCookies)`.
-
-Trường thường dùng: `fb_dtsg` · `jazoest` · `FacebookID` · `clientRevision` · `sessionID` · `cookieFacebook`.
-
-> 📖 Chi tiết schema: xem [`_core/README.md`](../_core/README.md#-hợp-đồng-dữ-liệu-datafb).
-
----
-
-## 📚 Tham chiếu module
-
-### `_facebook` — Nghiệp vụ Facebook
-
-#### `_changeBio.py`
-
-```python
-async def func_async(dataFB, newContents, uploadPost=False)
-```
-
-Đổi bio tài khoản. `uploadPost=True` sẽ đăng feed story kèm theo.
-
-- ✅ Thành công: `{ "success": 1, "messages": ... }`
-- ❌ Thất bại: `{ "error": 1, ... }`
-
-#### `_createPost.py`
-
-```python
-async def func_async(dataFB, newContents, attachmentID=None)
-```
-
-Tạo bài viết mới trên timeline. `attachmentID` là tham số dự phòng (chưa hoạt động trong flow hiện tại).
-
-- ✅ Trả về `urlPost`.
-- ❌ Trả `error` + message từ API.
-
-#### `_professional.py`
-
-```python
-async def func_async(dataFB, statusBusiness=None)
-```
-
-Bật/tắt **Professional Mode**. `statusBusiness` chấp nhận: `"on"`, `"off"`, `"bật"`, `"tắt"`, `True`, `False`.
-
-#### `_search.py`
-
-```python
-async def func_async(dataFB, keywordSearch)
-```
-
-Tìm kiếm người dùng. Trả về:
-
-- `searchResults` — chuỗi đã format đẹp (cho bot/CLI).
-- `searchResultsDict` — list các dict `{name, id, url}`.
-
-#### `_blocking.py`
-
-```python
-async def func_async(dataFB, idUser, choiceInteract)
-```
-
-Chặn / bỏ chặn user. `choiceInteract`: `"block"` hoặc `"unblock"`.
-
-#### `_registerOnProfile.py`
-
-```python
-async def func_async(dataFB, newName, newUsername)
-```
-
-Tạo **profile phụ** trên cùng tài khoản.
-
-> ⚠️ Chỉ hoạt động trên một số tài khoản đủ điều kiện.
-> Request GraphQL dùng timeout 30 giây để tránh treo process khi Facebook không trả response.
-
-#### `_notification.py`
-
-```python
-async def func_async(dataFB)
-```
-
-Lấy danh sách thông báo.
-
-- ✅ `{ "success": 1, "NotificationResults": [...] }`
-- ❌ `{ "error": 1, "messages": ... }`
-
-#### `_marketplace.py`
-
-| Hàm | Mục đích |
-|---|---|
-| `async def createItem_async(...)` | Đăng sản phẩm Marketplace mới. `photoIDList` lấy từ `_messaging._attachments`. |
-| `async def getInformationProductItemMarketPlace_async(...)` | Lấy chi tiết sản phẩm theo ID. |
-
-#### `_get_user_info.py`
-
-```python
-async def func_async(dataFB, userID)
-```
-
-Lấy thông tin người dùng qua endpoint chat user info.
-
-- ✅ Dict thông tin chi tiết.
-- ❌ `{ "err": 0 }`.
-
----
-
-### `_thread` — Quản trị thread
-
-| Module | Hàm | Mục đích |
+| Module | API async | Ghi chú |
 |---|---|---|
-| `_changeNameThread.py` | `async def func_async(dataFB, threadID, newNameThread)` | Đổi tên nhóm. |
-| `_changeEmoji.py` | `async def func_async(dataFB, threadID, newEmoji)` | Đổi emoji mặc định của thread. |
-| `_addAdmin.py` | `async def func_async(dataFB, threadID, idUser, statusChoice=True)` | Thêm / bỏ quyền admin. |
-| `_changeNickname.py` | `async def func_async(dataFB, threadID, idUser, NewNickname)` | Đổi biệt danh thành viên. |
-
-Tất cả trả về `formatResults("success" \| "error", message)` từ `_core._utils`.
-
-#### `_all_thread_data.py`
-
-| Hàm | Mục đích |
-|---|---|
-| `async def func_async(dataFB)` | Lấy danh sách INBOX + `last_seq_id`. Trả về `dataGet`, `ProcessingTime`, `last_seq_id`, `dataAllThread`. |
-| `async def features_async(dataGet, threadID, commandUse)` | Bóc tách dữ liệu từ `dataGet`. `commandUse` ∈ `{"getAdmin", "threadInfomation", "exportMemberListToJson"}`. |
-
----
-
-## 🔗 Sơ đồ phụ thuộc
-
-`_features` chủ yếu phụ thuộc vào `_core`:
-
-```text
-_core._session.dataGetHome(setCookies)  →  dataFB
-_core._utils  →  formAll · mainRequests · parse_cookie_string
-                 Headers · formatResults · randStr
-```
-
-> ⚠️ Có thể gãy nếu Facebook đổi schema GraphQL hoặc `doc_id`.
-
----
-
-## 💡 Ví dụ
+| `_changeBio` | `func_async(dataFB, newContents, uploadPost=False)` | Đổi bio |
+| `_createPost` | `func_async(dataFB, newContents, attachmentID=None)` | Attachment chưa hỗ trợ sẽ fail rõ ràng |
+| `_professional` | `func_async(dataFB, statusBusiness)` | Nhận bool hoặc on/off, bật/tắt |
+| `_search` | `func_async(dataFB, keywordSearch)` | Tối đa 5 kết quả đã loại trùng |
+| `_blocking` | `func_async(dataFB, idUser, choiceInteract)` | `block` / `unblock` |
+| `_registerOnProfile` | `func_async(dataFB, newName, newUsername)` | Tạo profile bổ sung |
+| `_notification` | `func_async(dataFB)` | Lấy thông báo |
+| `_get_user_info` | `func_async(dataFB, userID)` | Lấy thông tin profile |
+| `_marketplace` | `createItem_async(...)` | Validate category, giá, ảnh và tọa độ |
+| `_marketplace` | `getInformationProductItemMarketPlace_async(...)` | Chi tiết sản phẩm |
 
 ```python
 import asyncio
-from _core._session import dataGetHome
-from _features._facebook import _notification, _blocking
-from _features._thread import _changeEmoji, _all_thread_data
+import httpx
 
-async def main():
-    dataFB = dataGetHome("c_user=...; xs=...;")
+from _core._session import dataGetHome_async
+from _features._facebook import _blocking, _notification, _search
 
-    # Lấy thông báo
-    print(await _notification.func_async(dataFB))
 
-    # Chặn người dùng
-    print(await _blocking.func_async(dataFB, idUser="1000...", choiceInteract="block"))
+async def main() -> None:
+    data_fb = await dataGetHome_async("c_user=...; xs=...; fr=...; datr=...;")
+    if data_fb is None:
+        raise RuntimeError("Session không hợp lệ.")
 
-    # Đổi emoji nhóm
-    print(await _changeEmoji.func_async(dataFB, threadID="1234567890", newEmoji="🔥"))
+    async with httpx.AsyncClient(timeout=30) as client:
+        notifications, users = await asyncio.gather(
+            _notification.func_async(data_fb, client=client),
+            _search.func_async(data_fb, "m008v", client=client),
+        )
+        blocked = await _blocking.func_async(
+            data_fb, "100012345678", "block", client=client
+        )
+    print(notifications, users, blocked)
 
-    # Lấy toàn bộ inbox
-    threads = await _all_thread_data.func_async(dataFB)
-    print(threads["dataAllThread"])
 
 asyncio.run(main())
 ```
 
----
+## Thread
 
-## 🛠 Khắc phục sự cố
-
-| Triệu chứng | Hướng xử lý |
+| Module | API async |
 |---|---|
-| Lỗi auth/session ở nhiều feature | Cookie hết hạn → tạo lại `dataFB`. |
-| `_registerOnProfile.py` timeout | Kiểm tra mạng, quyền tạo profile phụ và cookie; request hiện giới hạn 30 giây thay vì treo vô hạn. |
-| API trả lỗi hoặc rỗng dữ liệu | Endpoint / `doc_id` đã đổi; verify `variables` đúng schema mới. |
-| Lỗi parse JSON response | Một số endpoint có tiền tố `for (;;);` — split trước khi `json.loads`. |
+| `_all_thread_data` | `func_async(dataFB)` và `features_async(...)` |
+| `_changeNameThread` | `func_async(dataFB, threadID, newNameThread)` |
+| `_changeEmoji` | `func_async(dataFB, threadID, newEmoji)` |
+| `_addAdmin` | `func_async(dataFB, threadID, idUser, statusChoice=True)` |
+| `_changeNickname` | `func_async(dataFB, threadID, idUser, NewNickname)` |
 
----
+```python
+from _features._thread import _addAdmin, _all_thread_data, _changeEmoji
 
-<div align="right">
+threads = await _all_thread_data.func_async(data_fb)
+details = await _all_thread_data.features_async(
+    threads["dataGet"], "thread-id", "threadInfomation"
+)
+await _addAdmin.func_async(data_fb, "thread-id", "user-id", statusChoice=False)
+await _changeEmoji.func_async(data_fb, "thread-id", "🔥")
+```
 
-⬆️ [Về README chính](../../README.md) · 🇬🇧 [English](README_EN.md)
+## Quy tắc
 
-</div>
+- Validate đầu vào trước khi gửi request.
+- Dùng helper `post_form_json_async`; không import `requests`.
+- Cho phép inject `httpx.AsyncClient` bằng `client=`.
+- Không giả thành công khi response thiếu `data` hoặc có `errors`.
+- Không âm thầm bỏ tham số chưa hỗ trợ.
+- `features_async()` chỉ parse dữ liệu trong RAM nên hoàn tất ngay, không cần worker thread.
