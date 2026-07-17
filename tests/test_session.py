@@ -1,31 +1,38 @@
-import pytest
-from unittest.mock import patch, Mock
-from _core._session import dataGetHome
+from unittest.mock import Mock, patch
+
 import httpx
 
+from _core._session import dataGetHome
 
-@pytest.mark.skip(reason="Requires exact HTML fixture from Facebook to parse correctly")
-def test_dataGetHome_success(mock_dataFB):
+
+def test_dataGetHome_success():
     with patch("_core._session.send_get_request") as mock_get:
-        # Mock the HTML response from facebook to contain the necessary script tags
         mock_resp = Mock()
-        mock_resp.text = '["DTSGInitialData",[],{"token":"mock_dtsg"},123]\n{"async_get_token":"mock_dtsg_ag"}\n["LSD",[],{"token":"22421"},123]\n{"client_revision":123456}\n{"USER_ID":"10001234567890"}'
-        mock_resp.cookies.get_dict.return_value = {
-            "c_user": "10001234567890",
-            "xs": "mock_xs",
-            "fr": "mock_fr",
-            "datr": "mock_datr",
-        }
+        mock_resp.text = (
+            'DTSGInitialData",[],{"token":"mock_dtsg"}'
+            ' async_get_token":"mock_dtsg_ag"'
+            ' jazoest=22421"'
+            ' hash":"mock_hash"'
+            ' sessionId":"1234567890"'
+            ' "actorID":"10001234567890"'
+            ' client_revision":123456,'
+        )
         mock_get.return_value = mock_resp
 
-        result = dataGetHome(
-            "c_user=10001234567890; xs=mock_xs; fr=mock_fr; datr=mock_datr;"
-        )
+        cookie = "c_user=10001234567890; xs=mock_xs; fr=mock_fr; datr=mock_datr;"
+        result = dataGetHome(cookie)
 
-        # We can't perfectly mock the brittle string splits in dataGetHome without exact HTML structures,
-        # so this test will likely fail with IndexError if the HTML structure doesn't match perfectly.
-        # But this sets up the scaffolding for unit testing it.
-        assert result is not None
+        assert result == {
+            "fb_dtsg": "mock_dtsg",
+            "fb_dtsg_ag": "mock_dtsg_ag",
+            "jazoest": "22421",
+            "hash": "mock_hash",
+            "sessionID": "1234567890",
+            "FacebookID": "10001234567890",
+            "clientRevision": "123456",
+            "cookieFacebook": cookie,
+        }
+        mock_resp.raise_for_status.assert_called_once()
 
 
 def test_dataGetHome_network_error():
