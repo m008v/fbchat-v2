@@ -476,6 +476,9 @@ class listeningE2EEEvent:
         self._on_message = None
         self._bridge: Optional[_BridgeProcess] = None
         self._stop = threading.Event()
+        self._connected = threading.Event()
+        self._e2ee_connected = threading.Event()
+        self._startup_error: BaseException | None = None
 
         self.bodyResults = self._fresh_body()
         self.e2eeBodyResults: dict[str, Any] = {"chatJid": None, "senderJid": None}
@@ -509,6 +512,31 @@ class listeningE2EEEvent:
         print(f"[{datetime.datetime.now()}] last_seq_id: {self.lastSeqID}")
         return self.lastSeqID
 
+    def wait_until_connected(
+        self, timeout: float = 60.0, *, require_e2ee: bool = False
+    ) -> bool:
+        """Đợi listener handshake xong trước khi gửi/đọc event.
+
+        `connect_mqtt_blocking()` thường chạy trong daemon thread. Nếu caller
+        gửi message ngay sau `Thread.start()` thì rất dễ đụng race: bridge mới
+        spawn nhưng chưa `connect`/`connectE2EE`, poll loop cũng chưa chạy.
+        """
+        deadline = time.monotonic() + timeout
+        if not self._connected.wait(timeout):
+            if self._startup_error is not None:
+                raise RuntimeError("E2EE listener failed to start.") from self._startup_error
+            return False
+        if self._startup_error is not None:
+            raise RuntimeError("E2EE listener failed to start.") from self._startup_error
+        if not require_e2ee or not self.enable_e2ee:
+            return True
+        remaining = max(0.0, deadline - time.monotonic())
+        if not self._e2ee_connected.wait(remaining):
+            if self._startup_error is not None:
+                raise RuntimeError("E2EE listener failed during E2EE handshake.") from self._startup_error
+            return False
+        return True
+
     # ------------------------------------------------------------------
     def _build_cookie_dict(self) -> dict[str, str]:
         cks = parse_cookie_string(self.dataFB["cookieFacebook"])
@@ -534,37 +562,48 @@ class listeningE2EEEvent:
             if self._binary_path_override
             else _resolve_binary()
         )
+        self._startup_error = None
+        self._connected.clear()
+        self._e2ee_connected.clear()
+        self._stop.clear()
 
-        self._bridge = _BridgeProcess(binary)
+        try:
+            self._bridge = _BridgeProcess(binary)
 
-        cfg: dict[str, Any] = {
-            "cookies": self._build_cookie_dict(),
-            "platform": "facebook",
-            "logLevel": self.log_level,
-            "e2eeMemoryOnly": self.e2ee_memory_only,
-        }
-        if self.device_path:
-            cfg["devicePath"] = self.device_path
+            cfg: dict[str, Any] = {
+                "cookies": self._build_cookie_dict(),
+                "platform": "facebook",
+                "logLevel": self.log_level,
+                "e2eeMemoryOnly": self.e2ee_memory_only,
+            }
+            if self.device_path:
+                cfg["devicePath"] = self.device_path
 
-        self._bridge.call_blocking("newClient", cfg)
-        info = self._bridge.call_blocking("connect", timeout=120)
-        user = info.get("user", {})
-        print(
-            f"[{datetime.datetime.now()}] Logged in as "
-            f"{user.get('name')} ({user.get('id')})"
-        )
+            self._bridge.call_blocking("newClient", cfg)
+            info = self._bridge.call_blocking("connect", timeout=120)
+            user = info.get("user", {})
+            print(
+                f"[{datetime.datetime.now()}] Logged in as "
+                f"{user.get('name')} ({user.get('id')})"
+            )
+            self._connected.set()
 
-        if self.enable_e2ee:
-            try:
-                self._bridge.call_blocking("connectE2EE", timeout=60)
-                print(f"[{datetime.datetime.now()}] E2EE connected")
-            except BridgeError as exc:
-                print(f"[{datetime.datetime.now()}] E2EE connect failed: {exc}")
+            if self.enable_e2ee:
+                try:
+                    self._bridge.call_blocking("connectE2EE", timeout=60)
+                    self._e2ee_connected.set()
+                    print(f"[{datetime.datetime.now()}] E2EE connected")
+                except BridgeError as exc:
+                    print(f"[{datetime.datetime.now()}] E2EE connect failed: {exc}")
 
-        # Khởi động watchdog — auto-respawn khi bridge crash
-        self._bridge.start_watchdog(connect_cfg=cfg, enable_e2ee=self.enable_e2ee)
+            # Khởi động watchdog — auto-respawn khi bridge crash
+            self._bridge.start_watchdog(connect_cfg=cfg, enable_e2ee=self.enable_e2ee)
 
-        self._poll_loop()
+            self._poll_loop()
+        except BaseException as exc:
+            self._startup_error = exc
+            self._connected.set()
+            raise
 
     async def connect_mqtt(self) -> None:
         """Chạy poll loop của bridge ngoài event loop asyncio."""
@@ -572,6 +611,8 @@ class listeningE2EEEvent:
 
     def stop(self) -> None:
         self._stop.set()
+        self._connected.clear()
+        self._e2ee_connected.clear()
         if self._bridge is not None:
             self._bridge.close()
             self._bridge = None
