@@ -93,8 +93,8 @@ Of course, there may still be small bugs that are hard to find, or parts of the 
 - ⚡ Full **`async` / `await`** support
 - 📦 E2EE bridge released as prebuilt binaries for Windows / Linux / macOS
 
-> [!WARNING]
-> (*) Cookie / password login carries security risks. Never share your token with anyone.
+> [!CAUTION]
+> (*) May present potential security risks;
 
 ---
 
