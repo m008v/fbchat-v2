@@ -223,10 +223,10 @@ class api:
         if device_path:
             cfg["devicePath"] = device_path
 
-        self._bridge.call("newClient", cfg)
-        info = self._bridge.call("connect", timeout=timeout)
+        self._bridge.call_blocking("newClient", cfg)
+        info = self._bridge.call_blocking("connect", timeout=timeout)
         if enable_e2ee:
-            self._bridge.call("connectE2EE", timeout=timeout)
+            self._bridge.call_blocking("connectE2EE", timeout=timeout)
         self._connected = True
         print(
             f"[{datetime.datetime.now()}] E2EE sender ready "
@@ -285,7 +285,7 @@ class api:
         self.replyToSenderJid = normalized_reply_sender_jid
 
         try:
-            data = self.bridge.call(
+            data = self.bridge.call_blocking(
                 "sendE2EEMessage",
                 {
                     "chatJid": self.chat_jid,

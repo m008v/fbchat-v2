@@ -398,10 +398,10 @@ class _BridgeProcess:
                 self._spawn()
                 # Replay connection state
                 if self._connect_cfg:
-                    self.call("newClient", self._connect_cfg)
-                    self.call("connect", timeout=120)
+                    self.call_blocking("newClient", self._connect_cfg)
+                    self.call_blocking("connect", timeout=120)
                     if self._enable_e2ee:
-                        self.call("connectE2EE", timeout=60)
+                        self.call_blocking("connectE2EE", timeout=60)
                 print(
                     f"[{datetime.datetime.now()}] Respawn successful (attempt {retries + 1})"
                 )
@@ -415,7 +415,7 @@ class _BridgeProcess:
         self._stop_event.set()
         if self._proc.poll() is None:
             try:
-                self.call("disconnect", timeout=5)
+                self.call_blocking("disconnect", timeout=5)
             except BridgeError:
                 pass
             try:
@@ -546,8 +546,8 @@ class listeningE2EEEvent:
         if self.device_path:
             cfg["devicePath"] = self.device_path
 
-        self._bridge.call("newClient", cfg)
-        info = self._bridge.call("connect", timeout=120)
+        self._bridge.call_blocking("newClient", cfg)
+        info = self._bridge.call_blocking("connect", timeout=120)
         user = info.get("user", {})
         print(
             f"[{datetime.datetime.now()}] Logged in as "
@@ -556,7 +556,7 @@ class listeningE2EEEvent:
 
         if self.enable_e2ee:
             try:
-                self._bridge.call("connectE2EE", timeout=60)
+                self._bridge.call_blocking("connectE2EE", timeout=60)
                 print(f"[{datetime.datetime.now()}] E2EE connected")
             except BridgeError as exc:
                 print(f"[{datetime.datetime.now()}] E2EE connect failed: {exc}")
@@ -683,7 +683,7 @@ class listeningE2EEEvent:
         opts: dict[str, Any] = {"threadId": thread_id, "text": text}
         if reply_to_id:
             opts["replyToId"] = reply_to_id
-        return self._bridge.call("sendMessage", opts)
+        return self._bridge.call_blocking("sendMessage", opts)
 
     async def send_message(
         self, thread_id: int, text: str, reply_to_id: str = ""
@@ -704,7 +704,7 @@ class listeningE2EEEvent:
     ) -> dict[str, Any]:
         if self._bridge is None:
             raise RuntimeError("Chưa kết nối — gọi connect_mqtt() trước.")
-        return self._bridge.call(
+        return self._bridge.call_blocking(
             "sendE2EEMessage",
             {
                 "chatJid": chat_jid,
