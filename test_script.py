@@ -118,6 +118,31 @@ def extract_notification_items(result):
     return items
 
 
+def extract_thread_summary(result):
+    if not isinstance(result, dict):
+        raise TypeError(f"All Thread Data phải là dict, nhận {type(result).__name__}")
+
+    data_all_thread = result.get("dataAllThread")
+    if not isinstance(data_all_thread, dict):
+        raise RuntimeError(result.get("messages") or result)
+    if data_all_thread.get("error"):
+        raise RuntimeError(data_all_thread["error"])
+
+    thread_ids = data_all_thread.get("threadIDList") or []
+    thread_names = data_all_thread.get("threadNameList") or []
+    if not isinstance(thread_ids, list) or not isinstance(thread_names, list):
+        raise TypeError("threadIDList/threadNameList phải là list.")
+
+    threads = [
+        {"threadID": str(thread_id), "name": name}
+        for thread_id, name in zip(thread_ids, thread_names, strict=False)
+    ]
+    return {
+        "count": int(data_all_thread.get("countThread") or len(threads)),
+        "threads": threads,
+    }
+
+
 def on_e2ee_message(msg):
     # Callback xử lý tin nhắn E2EE (từ Bridge trả về event có dạng {'type': '...', 'data': {...}})
     msg_type = msg.get('type')
@@ -257,7 +282,15 @@ async def main():
     print("\n16. Test Get All Thread Data (Thread Feature)...")
     try:
         threads = await all_thread_data_async(dataFB)
-        print(f"Kết quả All Thread Data: Đã lấy {len(threads)} nhóm (Hiển thị nhóm đầu tiên): {threads[0] if threads else 'Không có'}")
+        thread_summary = extract_thread_summary(threads)
+        first_thread = (
+            thread_summary["threads"][0] if thread_summary["threads"] else "Không có"
+        )
+        print(
+            "Kết quả All Thread Data: "
+            f"Đã lấy {thread_summary['count']} nhóm "
+            f"(Hiển thị nhóm đầu tiên): {first_thread}"
+        )
     except Exception as e:
         print(f"Lỗi All Thread Data: {e}")
 
