@@ -89,6 +89,19 @@ def test_parse_response_can_return_non_json_upload_error_excerpt():
     assert result["payload"]["raw-excerpt"] == "<html>checkpoint</html>"
 
 
+def test_parse_response_marks_null_metadata_as_file_rejected():
+    resp_text = (
+        'for (;;);{"__ar":1,"payload":{"uploadID":null,'
+        '"metadata":{"0":null}}}'
+    )
+    result = _parse_response(resp_text, include_error=True)
+    assert result is not None
+    assert result["error"] == 1
+    assert result["payload"]["upload-id"] is None
+    assert result["payload"]["metadata"] == {"0": None}
+    assert result["payload"]["file-rejected"] is True
+
+
 @pytest.mark.parametrize(
     ("mime_type", "send_type"),
     [

@@ -88,6 +88,13 @@ def _response_excerpt(text: str, limit: int = 600) -> str:
 def _parse_upload_error(root: Any, text: str) -> dict[str, Any]:
     if isinstance(root, dict):
         payload = root.get("payload") if isinstance(root.get("payload"), dict) else {}
+        metadata = payload.get("metadata") if isinstance(payload, dict) else None
+        metadata_items = list(metadata.values()) if isinstance(metadata, dict) else metadata
+        rejected_all_files = (
+            isinstance(metadata_items, list | tuple)
+            and metadata_items
+            and all(item is None for item in metadata_items)
+        )
         return {
             "error": 1,
             "payload": {
@@ -98,6 +105,9 @@ def _parse_upload_error(root: Any, text: str) -> dict[str, Any]:
                 "error-description": root.get("errorDescription")
                 or payload.get("errorDescription")
                 or payload.get("error-description"),
+                "upload-id": payload.get("uploadID"),
+                "metadata": metadata,
+                "file-rejected": rejected_all_files,
                 "raw-excerpt": _response_excerpt(text),
             },
         }

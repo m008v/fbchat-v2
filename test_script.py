@@ -1,9 +1,10 @@
-import base64
 import asyncio
 import os
+import struct
 import sys
 import threading
 import time
+import zlib
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -38,14 +39,6 @@ from _features._facebook._blocking import func_async as blocking_async
 from _features._facebook._professional import func_async as professional_async
 from _features._facebook._marketplace import createItem_async as marketplace_create_async
 
-SAMPLE_ATTACHMENT_B64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAdUlEQVR4nO3W"
-    "sQ2AMAxEQSLE/teQ7GBNkrBSYtzUil+/8QrZSfd6n5fAZ+oAXgW8CngV8Crg"
-    "VcCrgFcBrwJeBbwKeBXwKuBVwKuAVwGvAl4FvAp4FfAq4FXAq4BXAa8CXgW8"
-    "CngV8CrgVcCrgFcBrwJeBbwKeBXwKuD1A5xsAtGc4iZ8AAAAAElFTkSuQmCC"
-)
-
-
 def read_cookie():
     cookie = os.environ.get("FB_COOKIE", "").strip()
     if cookie:
@@ -56,12 +49,39 @@ def read_cookie():
     return ""
 
 
+def png_chunk(chunk_type, data):
+    crc = zlib.crc32(chunk_type + data) & 0xFFFFFFFF
+    return struct.pack(">I", len(data)) + chunk_type + data + struct.pack(">I", crc)
+
+
+def build_sample_png(width=96, height=96):
+    rows = []
+    for y in range(height):
+        row = bytearray([0])
+        for x in range(width):
+            row.extend(
+                (
+                    32 + (x * 160 // max(width - 1, 1)),
+                    72 + (y * 120 // max(height - 1, 1)),
+                    180,
+                )
+            )
+        rows.append(bytes(row))
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + png_chunk(b"IHDR", ihdr)
+        + png_chunk(b"IDAT", zlib.compress(b"".join(rows), level=9))
+        + png_chunk(b"IEND", b"")
+    )
+
+
 def ensure_sample_attachment():
     sample_dir = Path(".tmp")
     sample_dir.mkdir(exist_ok=True)
     sample_path = sample_dir / "fbchat-upload-sample.png"
-    if not sample_path.is_file():
-        sample_path.write_bytes(base64.b64decode(SAMPLE_ATTACHMENT_B64))
+    sample_path.write_bytes(build_sample_png())
     return sample_path.resolve()
 
 
