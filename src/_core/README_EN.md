@@ -1,261 +1,370 @@
-# `_core` — Foundation Layer
+# `_core` - Async foundation layer
 
-> The foundation of `fbchat-v2`. Bootstraps sessions, builds request payloads, parses cookies, generates IDs — every higher layer depends on this module.
+> Sessions, HTTP transport, storage, credential login, and shared utilities for `fbchat-v2`.
 
-[![Layer](https://img.shields.io/badge/layer-core-6E40C9)](.)
-[![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
-[![Vietnamese](https://img.shields.io/badge/docs-Ti%E1%BA%BFng%20Vi%E1%BB%87t-blue)](README.md)
+[Main README](../../README_EN.md) | [Tiếng Việt](README.md) | [API guide](../../DOCS.md)
 
----
+## Contents
 
-## 📑 Table of Contents
-
-- [Responsibilities](#-responsibilities)
-- [Folder Structure](#-folder-structure)
-- [Public API](#-public-api)
-- [The `dataFB` Contract](#-the-datafb-contract)
-- [Module Reference](#-module-reference)
-  - [`_session.py`](#sessionpy)
-  - [`_utils.py`](#utilspy)
-  - [`_facebookLogin.py`](#facebookloginpy)
-- [Dependency Map](#-dependency-map)
-- [Examples](#-examples)
-- [Troubleshooting](#-troubleshooting)
+- [Responsibilities](#responsibilities)
+- [Directory layout](#directory-layout)
+- [Public API](#public-api)
+- [`dataFB` contract](#datafb-contract)
+- [`_session.py`](#_sessionpy)
+- [`_storage.py`](#_storagepy)
+- [`_http.py`](#_httppy)
+- [`_utils.py`](#_utilspy)
+- [`_facebookLogin.py`](#_facebookloginpy)
+- [Dependency map](#dependency-map)
+- [Development rules](#development-rules)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🎯 Responsibilities
+## Responsibilities
 
-`_core` is the shared technical foundation — it does **not** implement end-user features. Its responsibilities are:
+`_core` is the foundation of the codebase:
 
-- 🔑 Bootstrap a **user session** from cookies.
-- 🧱 Build standardized **payloads / requests** for Facebook endpoints.
-- 🍪 Parse cookies and extract **dynamic tokens** (`fb_dtsg`, `jazoest`, …).
-- 🆔 Generate the various **IDs** required by send/listen flows.
-- 🛠 Provide **utilities** reused by `_features` and `_messaging`.
+- Build a Facebook session from a cookie.
+- Normalize HTTP requests through `httpx`.
+- Build GraphQL and regular form payloads.
+- Parse cookies, `for (;;);` JSON, and HTML tokens.
+- Store cookies behind a storage abstraction.
+- Support credential login and two-factor authentication.
+- Generate IDs used by Messenger requests.
+
+Modules in `_features` and `_messaging` should not bootstrap their own sessions, disable TLS, or create unrelated ad-hoc transports.
 
 ---
 
-## 📂 Folder Structure
+## Directory layout
 
 ```text
 src/_core/
-├── __init__.py
-├── _session.py           # Bootstraps dataFB from cookies
-├── _utils.py             # HTTP helpers, parsers, ID generators…
-├── _facebookLogin.py     # Username/password login (+ 2FA)
+├── __init__.py          # Version and module exports
+├── _http.py             # httpx Client/AsyncClient transport
+├── _session.py          # Cookie -> dataFB
+├── _storage.py          # SessionStorage implementations
+├── _utils.py            # Forms, parsers, cookies, and IDs
+├── _facebookLogin.py    # FB4A credential login and 2FA
+├── _types.py            # Shared types
 ├── README.md
-└── README_EN.md          # ← you are here
+└── README_EN.md
 ```
 
 ---
 
-## 📦 Public API
+## Public API
+
+`src/_core/__init__.py` exports:
 
 ```python
-# src/_core/__init__.py
-__all__ = ["_session", "_utils", "_facebookLogin"]
+__all__ = ["_session", "_utils", "_facebookLogin", "__version__"]
 ```
 
-After `import _core` you can reach every submodule via `_core._session`, `_core._utils`, `_core._facebookLogin`.
-
----
-
-## 🧩 The `dataFB` Contract
-
-`_session.dataGetHome(setCookies)` returns a `dict` (commonly named **`dataFB`**) — the **single source of truth** for every subsequent request.
-
-| Key | Description |
-|---|---|
-| `fb_dtsg` | Runtime CSRF token |
-| `fb_dtsg_ag` | Variant of `fb_dtsg` for certain endpoints |
-| `jazoest` | Companion token to `fb_dtsg` |
-| `hash` | Current session hash |
-| `sessionID` | Runtime session ID |
-| `FacebookID` | UID of the logged-in account |
-| `clientRevision` | Client revision (Facebook updates it) |
-| `cookieFacebook` | Original cookies as a dict, ready for `requests` |
-
-> ⚠️ Almost **every** module in `_features/*` and `_messaging/*` depends on these values.
-
----
-
-## 📚 Module Reference
-
-### `_session.py`
-
-#### `dataGetHome(setCookies: str) -> dict`
-
-Hits `https://www.facebook.com/` with the supplied cookies and extracts the tokens needed for follow-up API calls.
-
-| Param | Type | Description |
-|---|---|---|
-| `setCookies` | `str` | Raw cookie string, e.g. `"c_user=...; xs=...; fr=...; datr=...;"` |
-
-**Returns:** a `dict` matching the `dataFB` schema above, or `None` when the request fails / required tokens are missing.
-
-**Workflow:**
-
-1. Build browser-like GET headers.
-2. Convert the cookie string into a dict (`_utils.parse_cookie_string`).
-3. Download the homepage HTML.
-4. Extract tokens via `_utils.dataSplit`.
-5. Return the session dict.
-
-> ⚠️ Extraction is split-marker based and may break when Facebook changes its HTML. Accounts can also hit **checkpoint** flows.
-
----
-
-### `_utils.py`
-
-The most important module inside `_core`. Five helper groups:
-
-#### A. HTTP / Request
-
-| Function | Description |
-|---|---|
-| `Headers(dataForm=None, Host=None)` | Builds the base headers; auto-sets `Content-Length` when `dataForm` is given. |
-| `parse_cookie_string(cookie_string)` | Cookie string → `dict` for `requests`. |
-| `mainRequests(urlRequests, dataForm, setCookies)` | Returns a `kwargs` dict ready for `requests.post(**kwargs)`. |
-
-#### B. Parse / Format
-
-| Function | Description |
-|---|---|
-| `digitToChar(digit)` | Digit → char mapping. |
-| `str_base(number, base)` | Numeric base conversion. |
-| `dataSplit(...)` | Slice text by delimiter. |
-| `clearHTML(text)` | Strip HTML tags via regex. |
-| `formatResults(type, text)` | Normalize output to `{ "status": ..., "message": ... }`. |
-
-#### C. General Form Builder
+Storage and low-level HTTP transports are imported directly:
 
 ```python
-formAll(dataFB, FBApiReqFriendlyName=None, docID=None, requireGraphql=None)
+from _core._http import get_async, post_async
+from _core._session import dataGetHome
+from _core._storage import EnvSessionStorage, FileSessionStorage
 ```
 
-The backbone of most request flows — supports two modes:
-
-1. **GraphQL** (`requireGraphql is None`): includes `fb_api_req_friendly_name`, `doc_id`, `fb_api_caller_class`, …
-2. **Legacy / minimal** (`requireGraphql != None`): keeps only the fields needed for non-GraphQL endpoints.
-
-#### D. Messaging ID Generators
-
-`generate_session_id()` · `generate_client_id()` · `gen_threading_id()` · `json_minimal(data)` · `_set_chat_on(value)`
-
-> Used heavily by `_messaging._send` and `_messaging._listening`.
-
-#### E. Misc Utilities
-
-`require_list(list_)` · `get_files_from_paths(filenames)` · `randStr(length)`
+Application code usually needs only `dataGetHome`, a storage implementation, and a public feature. Low-level helpers are intended for new modules or special integrations.
 
 ---
 
-### `_facebookLogin.py`
+## `dataFB` contract
 
-Logs into Facebook with **username / password** (+ optional 2FA).
-
-#### Public components
-
-| Symbol | Description |
-|---|---|
-| `class loginFacebook(username, password, AuthenticationGoogleCode=None)` | Login class; call `.main()` to execute. |
-| `GetToken2FA(key2Fa)` | Fetches a 2FA OTP via `https://2fa.live/tok/...`, or accepts a manually entered 6-8 digit code. |
-| `jsonResults(...)` | Normalizes the response shape. |
-
-#### Result shape
-
-| Status | Returned fields |
-|---|---|
-| ✅ Success | `success.setCookies` · `success.accessTokenFB` · `success.cookiesKey-ValueList` |
-| ❌ Failure | `error.title` · `error.description` · `error.error_subcode` · `error.error_code` · `error.fbtrace_id` |
-
-> 🔒 This module handles highly sensitive data. **Strongly prefer** cookie-based login in production.
-
----
-
-## 🔗 Dependency Map
-
-`_core._utils` is widely imported by:
-
-- `src/_features/_facebook/*`
-- `src/_features/_thread/*`
-- `src/_messaging/*`
-
-Most-used helpers:
-
-```text
-formAll · mainRequests · parse_cookie_string · Headers · formatResults
-gen_threading_id · generate_session_id · generate_client_id
-str_base · randStr · get_files_from_paths
-```
-
-> ⚠️ **Warning:** changes to core payload / cookie logic ripple across most features.
-
----
-
-## 💡 Examples
-
-### Bootstrap `dataFB` from cookies
+`dataFB` is the shared session dictionary:
 
 ```python
+{
+    "fb_dtsg": "...",
+    "fb_dtsg_ag": "...",
+    "jazoest": "...",
+    "hash": "...",
+    "sessionID": "...",
+    "FacebookID": "100012345678",
+    "clientRevision": "...",
+    "cookieFacebook": "c_user=...; xs=...; fr=...; datr=...;",
+}
+```
+
+Fields required by `_session.REQUIRED_SESSION_FIELDS`:
+
+- `fb_dtsg`
+- `jazoest`
+- `sessionID`
+- `FacebookID`
+- `clientRevision`
+
+`cookieFacebook` is added after parsing and is required by most HTTP features and the bridge.
+
+> [!WARNING]
+> Treat the whole dictionary as a secret. The cookie and CSRF values may be enough to perform account actions. Never log it, send it to analytics, or expose it through a public exception.
+
+---
+
+## `_session.py`
+
+### `dataGetHome`
+
+```python
+async def dataGetHome(
+    setCookies: str | None = None,
+    storage: SessionStorage | None = None,
+) -> dict[str, Any] | None:
+    ...
+```
+
+Flow:
+
+1. Use `setCookies` when provided.
+2. Otherwise call `storage.load()`.
+3. Parse the cookie string into an HTTP cookie jar.
+4. GET `https://www.facebook.com/` through the async transport.
+5. Call `raise_for_status()`.
+6. Parse required tokens from HTML.
+7. Validate the fields and numeric `FacebookID`.
+8. Return `dataFB` or `None`.
+
+```python
+import asyncio
+
 from _core._session import dataGetHome
 
-setCookies = "c_user=...; xs=...; fr=...; datr=...;"
-dataFB = dataGetHome(setCookies)
 
-print(dataFB["FacebookID"])
-print(dataFB["fb_dtsg"])
+async def main() -> None:
+    data_fb = await dataGetHome("c_user=...; xs=...; fr=...; datr=...;")
+    if data_fb is None:
+        raise RuntimeError("The Facebook session is invalid.")
+    print(data_fb["FacebookID"])
+
+
+asyncio.run(main())
 ```
 
-### Build & send a GraphQL request
-
-```python
-import json, requests
-from _core._utils import formAll, mainRequests
-
-dataForm = formAll(
-    dataFB,
-    FBApiReqFriendlyName="CometNotificationsDropdownQuery",
-    docID=6770067089747450,
-)
-dataForm["variables"] = json.dumps({
-    "count": 10,
-    "environment": "MAIN_SURFACE",
-    "scale": 1,
-})
-
-resp = requests.post(**mainRequests(
-    "https://www.facebook.com/api/graphql/",
-    dataForm,
-    dataFB["cookieFacebook"],
-))
-print(resp.status_code)
-```
-
-### Minimal payload (non-GraphQL)
-
-```python
-from _core._utils import formAll
-
-payload = formAll(dataFB, requireGraphql=False)
-payload["message_id"] = "mid...."
-```
+The function returns `None` for an empty cookie, request errors, HTTP status errors, or missing tokens. Those are ordinary authentication failures that the caller is expected to handle.
 
 ---
 
-## 🛠 Troubleshooting
+## `_storage.py`
 
-| Symptom | Suggested fix |
+### `SessionStorage`
+
+```python
+class SessionStorage(ABC):
+    def load(self) -> str | None: ...
+    def save(self, cookies: str) -> None: ...
+    def clear(self) -> None: ...
+```
+
+### `FileSessionStorage`
+
+```python
+storage = FileSessionStorage("src/config.json", key="cookies")
+storage.save("c_user=...; xs=...;")
+cookie = storage.load()
+storage.clear()
+```
+
+Behavior:
+
+- Preserves unrelated JSON keys when updating a cookie.
+- Returns `None` for a missing file, invalid JSON, or a non-string value.
+- Rejects an empty cookie with `ValueError`.
+- Writes a temporary file in the same directory and replaces atomically.
+- Applies mode `0600` to the temporary file on Unix systems.
+
+Atomic writes reduce corruption risk but do not encrypt the cookie. Configure appropriate file permissions or ACLs.
+
+### `EnvSessionStorage`
+
+```python
+storage = EnvSessionStorage("FB_COOKIES")
+data_fb = await dataGetHome(storage=storage)
+```
+
+`save()` changes only the current process environment. It does not persist a system environment variable.
+
+---
+
+## `_http.py`
+
+Shared transports:
+
+| Function | Client type | Purpose |
+|---|---|---|
+| `post_async` | `httpx.AsyncClient` | Non-blocking POST |
+| `get_async` | `httpx.AsyncClient` | Non-blocking GET |
+| `post_blocking` | `httpx.Client` | Compatibility boundary |
+| `get_blocking` | `httpx.Client` | Compatibility boundary |
+
+```python
+request = {
+    "url": "https://www.facebook.com/api/graphql/",
+    "headers": {"Cookie": data_fb["cookieFacebook"]},
+    "data": {"fb_dtsg": data_fb["fb_dtsg"]},
+    "timeout": 30,
+    "verify": True,
+}
+
+response = await post_async(request)
+response.raise_for_status()
+```
+
+The transport:
+
+- Copies kwargs before normalization.
+- Extracts `url`, `verify`, and `timeout`.
+- Removes the old `requests`-style `proxies` key.
+- Creates and closes a temporary client when no client is injected.
+- Never disables TLS implicitly.
+
+When the caller injects a client, TLS configuration belongs to that client. A request dictionary cannot reconfigure an already-created client.
+
+---
+
+## `_utils.py`
+
+### HTTP and JSON helpers
+
+| Function | Description |
 |---|---|
-| Many requests fail with auth/session errors | Cookies expired → regenerate `dataFB` via `dataGetHome(...)`. |
-| `dataGetHome(...)` returns `None` | Cookies expired, the homepage request failed, or Facebook changed token markup → refresh cookies and inspect split markers in `_session.py`. |
-| Login hits checkpoint | Switch to cookie-based login; if you must keep the login flow, check IP / 2FA. |
+| `mainRequests(url, dataForm, setCookies)` | Build regular POST kwargs |
+| `send_request_async(req_kwargs, client=None)` | Send POST and return `httpx.Response` |
+| `send_get_request_async(req_kwargs, client=None)` | Send GET and return a response |
+| `post_form_json_async(...)` | POST form, validate status, parse JSON |
+| `parse_json_response(text, strip_for_loop_prefix=False)` | Parse optional-prefixed JSON |
+
+```python
+from _core._utils import formAll, post_form_json_async
+
+form = formAll(
+    data_fb,
+    FBApiReqFriendlyName="ExampleQuery",
+    docID="123456789",
+)
+payload = await post_form_json_async(
+    "https://www.facebook.com/api/graphql/",
+    form,
+    data_fb["cookieFacebook"],
+    strip_for_loop_prefix=True,
+)
+```
+
+### Form builder
+
+`formAll(dataFB, friendlyName, docID, requireGraphql=True)` adds common session tokens and Facebook metadata. Pass `requireGraphql=False` for non-GraphQL form endpoints.
+
+Never mutate a shared request form between concurrent coroutines. Build a new dictionary for every call.
+
+### Cookie, parser, and ID helpers
+
+| Function | Description |
+|---|---|
+| `parse_cookie_string` | Convert a cookie string to a dictionary |
+| `dataSplit` | Parse legacy HTML tokens |
+| `clearHTML` | Clean selected HTML markup/entities |
+| `formatResults` | Build a simple success/error result |
+| `gen_threading_id` | Messenger offline/threading ID |
+| `generate_session_id` | Random session ID |
+| `generate_client_id` | Client mutation/session ID |
+| `str_base` | Convert an integer to another base |
+
+These IDs are protocol values, not cryptographic tokens or database identifiers.
 
 ---
 
-<div align="right">
+## `_facebookLogin.py`
 
-⬆️ [Back to main README](../../README_EN.md) · 🇻🇳 [Tiếng Việt](README.md)
+### API
 
-</div>
+```python
+login = loginFacebook(
+    username,
+    password,
+    AuthenticationGoogleCode=None,
+    proxies=None,
+)
+result = await login.main()
+```
+
+`main()` moves `main_blocking()` to a worker thread. The underlying legacy FB4A flow still uses `requests`.
+
+### Two-factor authentication
+
+`AuthenticationGoogleCode` accepts:
+
+- A current 6 to 8 digit OTP.
+- A TOTP shared secret processed locally with `pyotp`.
+
+The module never sends a shared secret to an external OTP service. Invalid base32 input returns a safe error without logging the secret.
+
+### Configuration
+
+Legacy FB4A API key and app access token defaults are built into the module. Optional overrides:
+
+```powershell
+$env:FBCHAT_API_KEY = "<override>"
+$env:FBCHAT_APP_ACCESS_TOKEN = "<override>"
+```
+
+Do not hardcode real overrides in source. `proxies` exists for the legacy login path; async features use the proxy configuration of their `httpx.AsyncClient`.
+
+### Checkpoint failures
+
+Credential login may encounter a 2FA continuation, a device checkpoint, a new error subcode, or a malformed response such as code `-1`. Read the sanitized description and prefer a cookie session when the private login endpoint is unstable. Mocked validation is not proof that a live account flow works.
+
+---
+
+## Dependency map
+
+```mermaid
+flowchart TD
+    A[Application] --> B[_session.dataGetHome]
+    B --> C[_storage.SessionStorage]
+    B --> D[_utils.send_get_request_async]
+    D --> E[_http.get_async]
+    E --> F[httpx.AsyncClient]
+
+    G[_features] --> H[_utils.formAll]
+    G --> I[_utils.post_form_json_async]
+    I --> J[_http.post_async]
+
+    K[_messaging] --> H
+    K --> D
+```
+
+`_core` does not import `_features` or `_messaging`. Keep dependencies one-directional to avoid circular imports.
+
+---
+
+## Development rules
+
+- New public I/O APIs are async-first.
+- Async HTTP uses `httpx.AsyncClient`; do not add new thread-wrapped `requests` code without a protocol-specific reason.
+- Accept `client=` when callers can benefit from connection-pool reuse.
+- Use finite timeouts and call `raise_for_status()`.
+- Separate request building, transport, and parsing for unit tests.
+- Do not mutate caller dictionaries or global per-request state.
+- Keep TLS verification enabled.
+- Never log cookies, passwords, OTP values, access tokens, or full `dataFB` objects.
+- Blocking helpers use `_blocking`; do not add redundant `_sync` or `_async` aliases.
+
+---
+
+## Troubleshooting
+
+| Symptom | Common cause | Check |
+|---|---|---|
+| `dataGetHome()` returns `None` | Expired cookie or changed HTML tokens | Inspect missing field names, never values |
+| HTTP 401/403 | Invalid session or CSRF token | Refresh cookie and inspect account checkpoint |
+| HTTP timeout | Network, proxy, or slow endpoint | Apply explicit timeouts and bounded application retries |
+| JSON parse error | Prefix or response schema changed | Inspect a sanitized excerpt and prefix handling |
+| Coroutine warning | Async API called like sync code | Add `await` or `create_task` |
+| Login code `-1` | Malformed response or transport error | Read description, check overrides, prefer cookie login |
+| File storage returns `None` | Invalid JSON or wrong key | Validate UTF-8 JSON and the `cookies` key |
+
+Session diagnostics must stop at safe metadata. Printing the complete cookie is not debugging; it is an account leak with extra steps.

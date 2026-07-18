@@ -1,151 +1,240 @@
-import json, random, requests, time
-from _core._utils import gen_threading_id, mainRequests, formAll
-     
+from __future__ import annotations
+
+import json
+import random
+import time
+from typing import Any
+
+import httpx
+
+from _core._utils import (
+    formAll,
+    gen_threading_id,
+    mainRequests,
+    send_request,
+    send_request_async,
+)
+
+_SEND_URL = "https://www.facebook.com/messaging/send/"
+_PROPERTIES = (
+    "is_unread",
+    "is_cleared",
+    "is_forward",
+    "is_filtered_content",
+    "is_filtered_content_bh",
+    "is_filtered_content_account",
+    "is_filtered_content_quasar",
+    "is_filtered_content_invalid_app",
+    "is_spoof_warning",
+)
+_ATTACHMENT_FIELDS = {
+    "gif": "gif_ids",
+    "image": "image_ids",
+    "video": "video_ids",
+    "file": "file_ids",
+    "audio": "audio_ids",
+}
+
+
+def _validate_inputs(
+    content: str,
+    thread_id: str | int | list[str | int],
+    attachment_type: str | None,
+    attachment_id: str | int | list[str | int] | None,
+    chat_type: str | None,
+    reply_message: bool | None,
+    message_id: str | None,
+) -> None:
+    if isinstance(thread_id, list):
+        if not thread_id or any(not str(item).strip() for item in thread_id):
+            raise ValueError("Danh sách người nhận không được rỗng hoặc chứa ID rỗng.")
+        if chat_type != "user":
+            raise ValueError("Danh sách người nhận chỉ hợp lệ khi typeChat='user'.")
+    elif not str(thread_id).strip():
+        raise ValueError("threadID không được để trống.")
+    if chat_type not in {None, "user"}:
+        raise ValueError("typeChat chỉ nhận None hoặc 'user'.")
+    if attachment_type is not None and attachment_type not in _ATTACHMENT_FIELDS:
+        raise ValueError(
+            f"typeAttachment không hợp lệ: {attachment_type}. "
+            f"Hỗ trợ: {', '.join(_ATTACHMENT_FIELDS)}."
+        )
+    if (attachment_type is None) != (attachment_id is None):
+        raise ValueError("typeAttachment và attachmentID phải được truyền cùng nhau.")
+    if not content and attachment_id is None:
+        raise ValueError("Tin nhắn phải có nội dung hoặc attachment.")
+    if reply_message and not message_id:
+        raise ValueError("messageID là bắt buộc khi replyMessage=True.")
+
+
+def _build_form(
+    dataFB: dict[str, Any],
+    content: str,
+    thread_id: str | int | list[str | int],
+    attachment_type: str | None,
+    attachment_id: str | int | list[str | int] | None,
+    chat_type: str | None,
+    reply_message: bool | None,
+    message_id: str | None,
+) -> dict[str, Any]:
+    _validate_inputs(
+        content,
+        thread_id,
+        attachment_type,
+        attachment_id,
+        chat_type,
+        reply_message,
+        message_id,
+    )
+    data_form = formAll(dataFB, requireGraphql=False)
+    data_form.update({property_name: False for property_name in _PROPERTIES})
+
+    if chat_type == "user":
+        recipients = thread_id if isinstance(thread_id, list) else [thread_id]
+        for index, recipient in enumerate(recipients):
+            data_form[f"specific_to_list[{index}]"] = f"fbid:{recipient}"
+        data_form[f"specific_to_list[{len(recipients)}]"] = (
+            f"fbid:{dataFB['FacebookID']}"
+        )
+        if len(recipients) == 1:
+            data_form["other_user_fbid"] = str(recipients[0])
+    else:
+        data_form["thread_fbid"] = str(thread_id)
+
+    now_ms = int(time.time() * 1000)
+    offline_id = gen_threading_id()
+    data_form.update(
+        {
+            "action_type": "ma-type:user-generated-message",
+            "body": content,
+            "author": f"fbid:{dataFB['FacebookID']}",
+            "timestamp": now_ms,
+            "timestamp_absolute": "Today",
+            "source": "source:chat:web",
+            "source_tags[0]": "source:chat",
+            "client_thread_id": f"root:{offline_id}",
+            "offline_threading_id": offline_id,
+            "message_id": offline_id,
+            "threading_id": (
+                f"<{now_ms}:{random.randrange(2**32)}-"
+                f"{random.randrange(2**31):x}@mail.projektitan.com>"
+            ),
+            "ephemeral_ttl_mode": "0",
+            "manual_retry_cnt": "0",
+            "ui_push_phase": "V3",
+        }
+    )
+    if reply_message:
+        data_form["replied_to_message_id"] = message_id
+    if attachment_type is not None and attachment_id is not None:
+        data_form["has_attachment"] = True
+        attachment_ids = (
+            attachment_id if isinstance(attachment_id, list) else [attachment_id]
+        )
+        field = _ATTACHMENT_FIELDS[attachment_type]
+        for index, value in enumerate(attachment_ids):
+            data_form[f"{field}[{index}]"] = value
+    return data_form
+
+
+def _parse_response(text: str) -> dict[str, Any]:
+    payload = text.strip()
+    if payload.startswith("for (;;);"):
+        payload = payload[len("for (;;);") :].lstrip()
+    try:
+        response = json.loads(payload)
+    except json.JSONDecodeError:
+        return {
+            "error": 1,
+            "payload": {"error-description": "Facebook trả về JSON không hợp lệ."},
+        }
+
+    actions = (response.get("payload") or {}).get("actions") or []
+    if actions and isinstance(actions[0], dict):
+        action = actions[0]
+        if action.get("message_id"):
+            return {
+                "success": 1,
+                "payload": {
+                    "messageID": action["message_id"],
+                    "timestamp": action.get("timestamp"),
+                },
+            }
+    return {
+        "error": 1,
+        "payload": {
+            "error-description": response.get("errorDescription")
+            or "Facebook không xác nhận tin nhắn đã gửi.",
+            "error-code": response.get("error"),
+        },
+    }
+
+
 class api:
-     
-     def __init__(self):
-     
-          self.dataFB, self.content, self.ID, self.typeAttachment, self.attachmentID, self.typeChat, self.replyStatus, self.messageID = [None] * 8
-          self.properties = ["is_unread", "is_cleared", "is_forward", "is_filtered_content", "is_filtered_content_bh", "is_filtered_content_account", "is_filtered_content_quasar", "is_filtered_content_invalid_app", "is_spoof_warning"]
-          self.dictAttachment = {
-               # key: value
-               "gif": "gif_ids",
-               "image": "image_ids",
-               "video": "video_ids",
-               "file": "file_ids",
-               "audio": "audio_ids",
-               None: "this is not a Attachment we requested, try again later (đây không phải là Tệp đính kèm mà chúng tôi đã yêu cầu, hãy thử lại sau)"
-          }
-          
-          
-     def send(self, dataFB, contentSend, threadID, typeAttachment=None, attachmentID=None, typeChat=None, replyMessage=None, messageID=None):
-          
-          self.dataFB = dataFB # --> data from home Facebook
-          self.content = str(contentSend) # --> contents message
-          self.ID = threadID # --> ID of thread or user
-          self.typeAttachment = typeAttachment # --> type attachment send with message (see <key> at self.dictAttachment)
-          self.attachmentID = attachmentID # --> ID of attachment uploaded.
-          self.typeChat = typeChat # --> type chat with user/thread (If you want to send to user, let its value be "user". If you want to send to a thread, keep the same value (None))
-          self.replyStatus = replyMessage # --> You want to send a message or reply to someone = Set "true" and set messageID. If you want to send a message normally, keep the same value (None)
-          self.messageID = messageID # --> ID of message that you need to answer
-          
-          self.sendMessage()
-          self.removeValueToInputed()
-          
-          return self.results
-     
-     def removeValueToInputed(self):
-          self.typeAttachment, self.attachmentID, self.typeChat, self.replyStatus, self.messageID = [None] * 5
-     
-     def attributeValues(self):
-     
-          for properties in self.properties:
-               if self.dataForm.get(properties) is None:
-                    self.dataForm[properties] = False
-               
-     def attachmentCheck(self):
-          
-          if (self.typeAttachment != None and self.attachmentID != None):
-               self.dataForm["has_attachment"] = True
-               self.dictItemAttachment = self.dictAttachment[self.typeAttachment]
-               if (isinstance(self.attachmentID, list)):
-                    for j, idAttach in enumerate(self.attachmentID):
-                         self.dataForm[f"{self.dictItemAttachment}[{j}]"] = idAttach
-               else:
-                    if (isinstance(self.attachmentID, str) or isinstance(self.attachmentID, int)):
-                         self.dataForm[f"{self.dictItemAttachment}[0]"] = self.attachmentID
-     
-     def removeDataAttachmentCheck(self):
-     
-          if self.dataForm.get('has_attachment'):
-               if (isinstance(self.attachmentID, list)):
-                    for ij, idAttach in enumerate(self.attachmentID):
-                         del self.dataForm[f"{self.dictItemAttachment}[{ij}]"]
-                    del self.dataForm["has_attachment"]
-                    return
-               del self.dataForm[f"{self.dictItemAttachment}[0]"], self.dataForm["has_attachment"]
-               return
-               
-     
-     def replyCheck(self):
-          
-          if (self.replyStatus is True and self.messageID != None):
-               self.dataForm["replied_to_message_id"] = self.messageID
-          
-          
+    """Messenger sender; mỗi lời gọi xây request độc lập và an toàn khi await."""
 
-     def sendMessage(self):
-          
-          self.dataForm = formAll(self.dataFB, requireGraphql=False)
-          
-          if (self.typeChat == "user"):
-               if (isinstance(self.ID, list)):
-                    for i,threadID in enumerate(self.ID):
-                         self.dataForm["specific_to_list[" + str(i)+ "]"] = "fbid:" + threadID
-                    self.dataForm["specific_to_list[" + str(len(self.ID)) + "]"] = "fbid:" + self.dataFB["FacebookID"]
-               else:
-                    self.dataForm["specific_to_list[0]"] = "fbid:" + self.ID
-                    self.dataForm["specific_to_list[1]"] = "fbid:" + self.dataFB["FacebookID"]
-                    self.dataForm["other_user_fbid"] = self.ID
-          else:
-               self.dataForm["thread_fbid"] = self.ID
+    def __init__(self) -> None:
+        self.properties = list(_PROPERTIES)
+        self.results: dict[str, Any] = {}
 
-          self.attributeValues()
-          self.dataForm["action_type"] = "ma-type:user-generated-message"
-          self.dataForm["client"] = "mercury"
-          self.dataForm["body"] = self.content
-          self.dataForm["author"] = "fbid:" + self.dataFB["FacebookID"]
-          self.dataForm["timestamp"] =  int(time.time() * 1000)
-          self.dataForm["timestamp_absolute"] = "Today"
-          self.dataForm["source"] = "source:chat:web"
-          self.dataForm["source_tags[0]"] = "source:chat"
-          self.dataForm["client_thread_id"] = "root:" + gen_threading_id()
-          self.dataForm["offline_threading_id"] = gen_threading_id()
-          self.dataForm["message_id"] = gen_threading_id()
-          self.dataForm["threading_id"] = "<{}:{}-{}@mail.projektitan.com>".format(int(time.time() * 1000), int(random.random() * 4294967295), hex(int(random.random() * 2 ** 31))[2:])
-          self.dataForm["ephemeral_ttl_mode"] = "0"
-          self.dataForm["manual_retry_cnt"] = "0"
-          self.dataForm["ui_push_phase"] = "V3"
-          
-          self.replyCheck()
-          self.attachmentCheck()
-          self.sendRequests()
-          self.removeDataAttachmentCheck()
+    def send_blocking(
+        self,
+        dataFB: dict[str, Any],
+        contentSend: str | int,
+        threadID: str | int | list[str | int],
+        typeAttachment: str | None = None,
+        attachmentID: str | int | list[str | int] | None = None,
+        typeChat: str | None = None,
+        replyMessage: bool | None = None,
+        messageID: str | None = None,
+        *,
+        client: httpx.Client | None = None,
+    ) -> dict[str, Any]:
+        form = _build_form(
+            dataFB,
+            str(contentSend),
+            threadID,
+            typeAttachment,
+            attachmentID,
+            typeChat,
+            replyMessage,
+            messageID,
+        )
+        response = send_request(
+            mainRequests(_SEND_URL, form, dataFB["cookieFacebook"]), client=client
+        )
+        response.raise_for_status()
+        result = _parse_response(response.text)
+        self.results = result
+        return result
 
-     def sendRequests(self):
-     
-          _main = mainRequests("https://www.facebook.com/messaging/send/", self.dataForm, self.dataFB["cookieFacebook"])
-          sendRequests = requests.post(**_main).text
-          sendRequests = json.loads(sendRequests.split("for (;;);")[1])
-          if sendRequests.get('payload'):
-               _ = sendRequests["payload"]["actions"][0]
-               self.results = {
-                    "success": 1,
-                    "payload": {
-                         "messageID": _["message_id"],
-                         "timestamp": _["timestamp"]
-                    }
-               }
-               return
-          self.results = {
-               "error": 1,
-               "payload": {
-                    "error-decription": sendRequests["errorDescription"],
-                    "error-code": sendRequests["error"]
-               }
-          }
-          return
-          
-          # Thread(target=sendRequests, args=()).start()
-     
-
-# _ = api()
-# from _core._session import dataGetHome
-# dataFB = dataGetHome('this is cookie Facebook')
-# _.send(dataFB, "<contents message>", "<userID/threadID>", ...[args])
-# test1_sendImage = _.send(dataFB, "test send image", "100034261636200", typeAttachment="image", attachmentID=757191223105185, typeChat="user", replyMessage=1)
-# test2_sendMessage = _.send(dataFB, "test send msg", "100034261636200", typeChat="user", replyMessage=1)
-# print(test1_sendImage)
-# print(test2_sendMessage)
-
-#Last updated: 23:07 Friday, 13/12/2023
+    async def send(
+        self,
+        dataFB: dict[str, Any],
+        contentSend: str | int,
+        threadID: str | int | list[str | int],
+        typeAttachment: str | None = None,
+        attachmentID: str | int | list[str | int] | None = None,
+        typeChat: str | None = None,
+        replyMessage: bool | None = None,
+        messageID: str | None = None,
+        *,
+        client: httpx.AsyncClient | None = None,
+    ) -> dict[str, Any]:
+        form = _build_form(
+            dataFB,
+            str(contentSend),
+            threadID,
+            typeAttachment,
+            attachmentID,
+            typeChat,
+            replyMessage,
+            messageID,
+        )
+        response = await send_request_async(
+            mainRequests(_SEND_URL, form, dataFB["cookieFacebook"]), client=client
+        )
+        response.raise_for_status()
+        result = _parse_response(response.text)
+        self.results = result
+        return result

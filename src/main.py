@@ -1,67 +1,36 @@
-"""
-fbchat-v2 — Minimal bot
-=================================================
-
-Bot này minh hoạ cách kết hợp 3 tầng `_core` / `_features` / `_messaging`
-để tạo một con bot chat đơn giản phản hồi lệnh trong nhóm hoặc DM.
-
-This bot demonstrates how to combine the three layers
-(`_core` / `_features` / `_messaging`) into a small command-driven bot.
-
-Lệnh hỗ trợ / Supported commands:
-    /ping              -> trả lời "pong" (latency check)
-    /help              -> hiển thị danh sách lệnh
-    /id                -> in threadID + userID của người gửi
-    /echo <text>       -> lặp lại nội dung
-    /search <keyword>  -> tìm người dùng Facebook
-    /unsend            -> thu hồi tin nhắn cuối của bot trong thread
-
-Cấu hình / Configuration:
-    Tạo file `config.json` cùng thư mục với main.py:
-        {
-            "cookies": "c_user=...; xs=...; fr=...; datr=...;",
-            "prefix":  "/",
-            "admins":  ["1000xxxxxxxxxx"]
-        }
-
-@MinhHuyDev (Claude Opus 4.7) | Telegram: @minhhuydev
-"""
+"""Bot mẫu async-first cho fbchat-v2."""
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
-import os
 import sys
 import time
-import threading
 import traceback
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-# ---------------------------------------------------------------------------
-# Bảo đảm `src/` nằm trong sys.path khi chạy file này trực tiếp
-# Ensure `src/` is on sys.path when running this file directly
-# ---------------------------------------------------------------------------
-HERE = Path(__file__).resolve().parent
-if str(HERE) not in sys.path:
-    sys.path.insert(0, str(HERE))
+import httpx
 
 from _core._session import dataGetHome
+from _core._storage import FileSessionStorage
 from _features._facebook import _search
-from _messaging._send import api as SendAPI
-from _messaging._unsend import func as unsend_message
-from _messaging._listening import listeningEvent
+from _messaging._bridge_actions import BridgeActions
+from _messaging._listening_e2ee import listeningE2EEEvent
 
-
-# ---------------------------------------------------------------------------
-# Config helpers
-# ---------------------------------------------------------------------------
-
+HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.json"
+Handler = Callable[[dict[str, Any], str], Awaitable[None]]
+DEFAULT_HTTP_TIMEOUT = 30.0
+DEFAULT_E2EE_READY_TIMEOUT = 90.0
+EVENT_QUEUE_MAXSIZE = 1000
 
 
-def load_config() -> dict:
-    """Đọc config.json. Tạo template nếu chưa tồn tại."""
+def load_config() -> dict[str, Any]:
+    """Đọc config và tạo template an toàn nếu chưa tồn tại."""
     if not CONFIG_PATH.exists():
         template = {
             "cookies": "PASTE_YOUR_FACEBOOK_COOKIE_HERE",
@@ -69,262 +38,340 @@ def load_config() -> dict:
             "admins": [],
         }
         CONFIG_PATH.write_text(
-            json.dumps(template, indent=2, ensure_ascii=False),
-            encoding="utf-8",
+            json.dumps(template, indent=2, ensure_ascii=False), encoding="utf-8"
         )
-        print(f"[config] Đã tạo template tại {CONFIG_PATH}. "
-              "Hãy điền 'cookies' rồi chạy lại.")
-        sys.exit(1)
+        raise RuntimeError(
+            f"Đã tạo template tại {CONFIG_PATH}. Điền cookies rồi chạy lại."
+        )
 
-    with CONFIG_PATH.open("r", encoding="utf-8") as f:
-        cfg = json.load(f)
-
-    if not cfg.get("cookies") or "PASTE_YOUR" in cfg["cookies"]:
-        print("[config] Bạn chưa điền cookie Facebook trong config.json.")
-        sys.exit(1)
-
-    cfg.setdefault("prefix", "/")
-    cfg.setdefault("admins", [])
-    return cfg
+    with CONFIG_PATH.open("r", encoding="utf-8") as file_handle:
+        config = json.load(file_handle)
+    config.setdefault("prefix", "/")
+    config.setdefault("admins", [])
+    if not isinstance(config["prefix"], str) or not config["prefix"]:
+        raise ValueError("config.prefix phải là chuỗi không rỗng.")
+    if not isinstance(config["admins"], list):
+        raise ValueError("config.admins phải là một danh sách ID.")
+    return config
 
 
 def is_valid_datafb(dataFB: object) -> bool:
     if not isinstance(dataFB, dict):
         return False
-
     facebook_id = str(dataFB.get("FacebookID") or "").strip()
-    if not facebook_id.isdigit():
-        return False
-
-    required_fields = ("fb_dtsg", "jazoest", "sessionID", "clientRevision", "cookieFacebook")
-    return all(str(dataFB.get(field) or "").strip() for field in required_fields)
-
-
-def log(tag: str, msg: str) -> None:
-    print(f"[{datetime.now():%H:%M:%S}] [{tag}] {msg}")
+    required = ("fb_dtsg", "jazoest", "sessionID", "clientRevision", "cookieFacebook")
+    return facebook_id.isdigit() and all(
+        str(dataFB.get(field) or "").strip() for field in required
+    )
 
 
-# ---------------------------------------------------------------------------
-# Bot
-# ---------------------------------------------------------------------------
+def log(tag: str, message: str) -> None:
+    line = f"[{datetime.now():%H:%M:%S}] [{tag}] {message}"
+    try:
+        print(line)
+    except UnicodeEncodeError:
+        encoding = sys.stdout.encoding or "utf-8"
+        safe_line = line.encode(encoding, errors="backslashreplace").decode(
+            encoding, errors="replace"
+        )
+        print(safe_line)
+
 
 class SimpleBot:
-    """Bot tối giản — poll `listener.bodyResults` và phản hồi theo lệnh."""
-
-    def __init__(self, dataFB: dict, prefix: str = "/", admins: list | None = None):
+    def __init__(
+        self,
+        dataFB: dict[str, Any],
+        *,
+        prefix: str = "/",
+        admins: list[Any] | None = None,
+        http_client: httpx.AsyncClient | None = None,
+    ) -> None:
         self.dataFB = dataFB
         self.prefix = prefix
-        self.admins = set(map(str, admins or []))
-
-        self.sender = SendAPI()
-        self.listener = listeningEvent(dataFB)
-
-        # Theo dõi messageID đã xử lý → tránh phản hồi 2 lần cùng 1 tin
+        self.admins = {str(admin_id) for admin_id in admins or []}
+        self.http_client = http_client
+        self.listener = listeningE2EEEvent(dataFB)
+        self._event_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
+            maxsize=EVENT_QUEUE_MAXSIZE
+        )
         self._last_seen_message_id: str | None = None
-        # Lưu messageID cuối cùng bot đã gửi vào mỗi thread (cho /unsend)
-        self._last_bot_message: dict[str, str] = {}
-
-        # Map prefix-less command -> handler
-        self._handlers = {
-            "ping":   self._cmd_ping,
-            "help":   self._cmd_help,
-            "id":     self._cmd_id,
-            "echo":   self._cmd_echo,
+        self._last_bot_message: dict[str, tuple[str, str]] = {}
+        self._handlers: dict[str, Handler] = {
+            "ping": self._cmd_ping,
+            "help": self._cmd_help,
+            "id": self._cmd_id,
+            "echo": self._cmd_echo,
             "search": self._cmd_search,
             "unsend": self._cmd_unsend,
         }
 
-    # -- public ---------------------------------------------------------------
-
-    def run(self) -> None:
-        """Khởi động listener trong thread riêng và poll sự kiện."""
-        log("bot", f"Đăng nhập với UID = {self.dataFB.get('FacebookID')}")
-        self.listener.get_last_seq_id()
-
-        # `connect_mqtt()` là blocking (loop_forever) → chạy trong thread daemon
-        t = threading.Thread(
-            target=self.listener.connect_mqtt,
-            name="fbchat-listener",
-            daemon=True,
+    async def run(self) -> None:
+        log("bot", f"Đăng nhập E2EE với UID = {self.dataFB.get('FacebookID')}")
+        loop = asyncio.get_running_loop()
+        self.listener.on_message(
+            lambda event: loop.call_soon_threadsafe(self._queue_event, event)
         )
-        t.start()
-        log("bot", "Listener đã khởi động. Nhấn Ctrl+C để thoát.")
-
+        listener_task = asyncio.create_task(
+            self.listener.connect_mqtt(), name="fbchat-e2ee-listener"
+        )
+        ready = await asyncio.to_thread(
+            self.listener.wait_until_connected,
+            DEFAULT_E2EE_READY_TIMEOUT,
+            require_e2ee=True,
+        )
+        if not ready:
+            raise RuntimeError("E2EE listener chưa sẵn sàng trước timeout.")
+        log("bot", "E2EE listener đã sẵn sàng. Nhấn Ctrl+C để thoát.")
         try:
             while True:
-                self._poll_once()
-                time.sleep(0.3)
-        except KeyboardInterrupt:
-            log("bot", "Đã dừng theo yêu cầu người dùng.")
+                if listener_task.done():
+                    listener_task.result()
+                    raise RuntimeError("E2EE listener đã dừng ngoài dự kiến.")
+                event = await self._get_event(timeout=1.0)
+                message = self._message_from_event(event) if event else None
+                if message is not None:
+                    await self._dispatch(message)
+        finally:
+            await self._shutdown_listener(listener_task)
 
-    # -- internal -------------------------------------------------------------
+    def run_blocking(self) -> None:
+        """Wrapper CLI tương thích; trong ứng dụng async hãy await run()."""
+        asyncio.run(self.run())
 
-    def _poll_once(self) -> None:
-        """Quét bodyResults; nếu có tin mới chưa xử lý → dispatch."""
-        get_message = getattr(self.listener, "get_message", None)
-        snap = get_message() if callable(get_message) else self.listener.bodyResults
-        if snap is None:
-            return
-        mid = snap.get("messageID")
-        body = snap.get("body")
-
-        if not mid or mid == self._last_seen_message_id:
-            return
-        self._last_seen_message_id = mid
-
-        # Bỏ qua tin do chính bot gửi
-        sender_id = str(snap.get("userID") or "")
-        if sender_id == str(self.dataFB.get("FacebookID")):
-            return
-
-        if not body:
-            return
-
-        log("recv", f"[{snap.get('type')}] {sender_id}@{snap.get('replyToID')}: {body!r}")
-
-        if not body.startswith(self.prefix):
-            return
-
-        # Tách lệnh
-        without_prefix = body[len(self.prefix):].strip()
-        if not without_prefix:
-            return
-        parts = without_prefix.split(maxsplit=1)
-        cmd = parts[0].lower()
-        arg = parts[1] if len(parts) > 1 else ""
-
-        handler = self._handlers.get(cmd)
-        if handler is None:
-            return  # im lặng cho lệnh không biết
-
+    async def _shutdown_listener(self, listener_task: asyncio.Task[None]) -> None:
+        """Dừng bridge E2EE và chờ task listener thoát gọn."""
+        self.listener.stop()
         try:
-            handler(snap, arg)
-        except Exception as exc:  # noqa: BLE001 - tránh crash listener thread
-            log("err", f"Lỗi khi xử lý lệnh /{cmd}: {exc}")
+            await asyncio.wait_for(listener_task, timeout=5)
+        except asyncio.TimeoutError:
+            listener_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await listener_task
+        except asyncio.CancelledError:
+            listener_task.cancel()
+            raise
+
+    def _queue_event(self, event: dict[str, Any]) -> None:
+        try:
+            self._event_queue.put_nowait(event)
+        except asyncio.QueueFull:
+            with contextlib.suppress(asyncio.QueueEmpty):
+                self._event_queue.get_nowait()
+            self._event_queue.put_nowait(event)
+
+    async def _get_event(self, timeout: float | None = None) -> dict[str, Any] | None:
+        try:
+            return await asyncio.wait_for(self._event_queue.get(), timeout=timeout)
+        except asyncio.TimeoutError:
+            return None
+
+    @staticmethod
+    def _message_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
+        event_type = event.get("type")
+        data = event.get("data") or {}
+
+        if event_type in {
+            "ready",
+            "e2eeConnected",
+            "reconnected",
+            "disconnected",
+            "closed",
+        }:
+            log("e2ee", f"{event_type}: {data}")
+            return None
+        if event_type == "error":
+            log("e2ee", f"bridge error: {data}")
+            return None
+        if event_type == "raw":
+            return None
+        if event_type not in {"e2eeMessage", "message"}:
+            log("e2ee", f"Bỏ qua event không phải message: {event_type}")
+            return None
+
+        chat_jid = data.get("chatJid")
+        sender_jid = data.get("senderJid")
+        message_type = "e2ee" if event_type == "e2eeMessage" else "thread"
+        return {
+            "body": data.get("text"),
+            "timestamp": data.get("timestampMs", 0),
+            "userID": data.get("senderId", 0),
+            "messageID": data.get("id"),
+            "replyToID": data.get("threadId", 0),
+            "type": message_type,
+            "chatJid": chat_jid,
+            "senderJid": sender_jid,
+            "attachments": data.get("attachments") or [],
+            "raw": data,
+        }
+
+    async def _dispatch(self, message: dict[str, Any]) -> None:
+        message_id = message.get("messageID")
+        body = message.get("body")
+        if not message_id or message_id == self._last_seen_message_id:
+            return
+        self._last_seen_message_id = str(message_id)
+
+        sender_id = str(message.get("userID") or "")
+        if sender_id == str(self.dataFB.get("FacebookID")) or not body:
+            return
+        target = message.get("chatJid") or message.get("replyToID")
+        log("recv", f"[{message.get('type')}] {sender_id}@{target}: {body!r}")
+        if not str(body).startswith(self.prefix):
+            return
+
+        command_line = str(body)[len(self.prefix) :].strip()
+        if not command_line:
+            return
+        parts = command_line.split(maxsplit=1)
+        command = parts[0].lower()
+        argument = parts[1] if len(parts) > 1 else ""
+        handler = self._handlers.get(command)
+        if handler is None:
+            log("cmd", f"Bỏ qua lệnh không tồn tại: {command}")
+            return
+        try:
+            await handler(message, argument)
+        except Exception as error:  # bot không được chết vì một lệnh lỗi
+            log("err", f"Lỗi khi xử lý /{command}: {error}")
             traceback.print_exc()
 
-    # -- send wrapper ---------------------------------------------------------
+    async def _reply(self, message: dict[str, Any], content: str) -> None:
+        chat_jid = message.get("chatJid")
+        if chat_jid:
+            result = await self.listener.send_e2ee_message(
+                str(chat_jid),
+                content,
+                reply_to_id=str(message.get("messageID") or ""),
+                reply_to_sender_jid=str(message.get("senderJid") or ""),
+            )
+            message_id = result.get("messageId") or result.get("id")
+            if message_id:
+                self._last_bot_message[str(chat_jid)] = (str(chat_jid), str(message_id))
+                log("send", f"E2EE -> {chat_jid}: {content!r}")
+            else:
+                log("send", f"E2EE FAIL -> {chat_jid}: {result}")
+            return
 
-    def _reply(self, snap: dict, content: str) -> None:
-        thread_id = snap["replyToID"]
-        type_chat = "user" if snap.get("type") == "user" else None
-
-        result = self.sender.send(
-            self.dataFB,
+        thread_id = message.get("replyToID")
+        if not thread_id:
+            log("send", f"Bỏ qua reply vì thiếu chatJid/threadID: {message}")
+            return
+        result = await self.listener.send_message(
+            int(thread_id),
             content,
-            thread_id,
-            typeChat=type_chat,
-            replyMessage=True,
-            messageID=snap.get("messageID"),
+            reply_to_id=str(message.get("messageID") or ""),
+        )
+        message_id = result.get("messageId") or result.get("id")
+        if message_id:
+            log("send", f"regular -> {thread_id}: {content!r}")
+        else:
+            log("send", f"regular FAIL -> {thread_id}: {result}")
+
+    async def _cmd_ping(self, message: dict[str, Any], argument: str) -> None:
+        sent_ts = int(message.get("timestamp") or 0)
+        latency = max(0, int(time.time() * 1000) - sent_ts) if sent_ts else None
+        await self._reply(
+            message, f"🏓 pong! ({latency} ms)" if latency is not None else "🏓 pong!"
         )
 
-        if isinstance(result, dict) and result.get("success") == 1:
-            try:
-                self._last_bot_message[str(thread_id)] = (
-                    result["payload"]["messageID"]
-                )
-            except (KeyError, TypeError):
-                pass
-            log("send", f"-> {thread_id}: {content!r}")
-        else:
-            log("send", f"FAIL -> {thread_id}: {result}")
-
-    # -- commands -------------------------------------------------------------
-
-    def _cmd_ping(self, snap: dict, arg: str) -> None:
-        sent_ts = int(snap.get("timestamp") or 0)
-        if sent_ts:
-            latency_ms = max(0, int(time.time() * 1000) - sent_ts)
-            self._reply(snap, f"🏓 pong! ({latency_ms} ms)")
-        else:
-            self._reply(snap, "🏓 pong!")
-
-    def _cmd_help(self, snap: dict, arg: str) -> None:
-        p = self.prefix
-        self._reply(snap, (
+    async def _cmd_help(self, message: dict[str, Any], argument: str) -> None:
+        prefix = self.prefix
+        await self._reply(
+            message,
             "📖 Lệnh hỗ trợ:\n"
-            f"• {p}ping            — kiểm tra độ trễ\n"
-            f"• {p}help            — hiển thị trợ giúp\n"
-            f"• {p}id              — xem threadID + userID\n"
-            f"• {p}echo <text>     — lặp lại nội dung\n"
-            f"• {p}search <từ>     — tìm user Facebook\n"
-            f"• {p}unsend          — thu hồi tin nhắn cuối của bot"
-        ))
+            f"• {prefix}ping - kiểm tra độ trễ\n"
+            f"• {prefix}help - hiển thị trợ giúp\n"
+            f"• {prefix}id - xem chatJid/threadID + userID\n"
+            f"• {prefix}echo <text> - lặp lại nội dung\n"
+            f"• {prefix}search <từ> - tìm người dùng Facebook\n"
+            f"• {prefix}unsend - thu hồi tin nhắn E2EE cuối của bot",
+        )
 
-    def _cmd_id(self, snap: dict, arg: str) -> None:
-        self._reply(snap, (
-            f"🆔 type      : {snap.get('type')}\n"
-            f"   threadID  : {snap.get('replyToID')}\n"
-            f"   userID    : {snap.get('userID')}\n"
-            f"   messageID : {snap.get('messageID')}"
-        ))
+    async def _cmd_id(self, message: dict[str, Any], argument: str) -> None:
+        await self._reply(
+            message,
+            f"🆔 type: {message.get('type')}\n"
+            f"chatJid: {message.get('chatJid')}\n"
+            f"threadID: {message.get('replyToID')}\n"
+            f"userID: {message.get('userID')}\n"
+            f"senderJid: {message.get('senderJid')}\n"
+            f"messageID: {message.get('messageID')}",
+        )
 
-    def _cmd_echo(self, snap: dict, arg: str) -> None:
-        if not arg:
-            self._reply(snap, f"Cách dùng: {self.prefix}echo <nội dung>")
+    async def _cmd_echo(self, message: dict[str, Any], argument: str) -> None:
+        await self._reply(
+            message, argument or f"Cách dùng: {self.prefix}echo <nội dung>"
+        )
+
+    async def _cmd_search(self, message: dict[str, Any], argument: str) -> None:
+        if not argument:
+            await self._reply(message, f"Cách dùng: {self.prefix}search <từ khóa>")
             return
-        self._reply(snap, arg)
-
-    def _cmd_search(self, snap: dict, arg: str) -> None:
-        if not arg:
-            self._reply(snap, f"Cách dùng: {self.prefix}search <từ khoá>")
-            return
-        try:
-            res = _search.func(self.dataFB, arg)
-        except Exception as exc:  # noqa: BLE001
-            self._reply(snap, f"❌ Lỗi tìm kiếm: {exc}")
-            return
-
-        users = res.get("searchResultsDict") if isinstance(res, dict) else None
+        result = await _search.func(self.dataFB, argument, client=self.http_client)
+        users = result.get("searchResultsDict") if isinstance(result, dict) else None
         if not users:
-            self._reply(snap, f"🔍 Không tìm thấy kết quả nào cho: {arg}")
+            await self._reply(message, f"🔍 Không tìm thấy kết quả cho: {argument}")
             return
+        lines = [f"🔍 Kết quả cho “{argument}”:"]
+        lines.extend(
+            f"{index}. {user.get('name')} - {user.get('id')}"
+            for index, user in enumerate(users[:5], 1)
+        )
+        await self._reply(message, "\n".join(lines))
 
-        lines = [f"🔍 Kết quả cho “{arg}”:"]
-        for i, u in enumerate(users[:5], 1):
-            lines.append(f"{i}. {u.get('name')} — {u.get('id')}")
-        self._reply(snap, "\n".join(lines))
-
-    def _cmd_unsend(self, snap: dict, arg: str) -> None:
-        # Chỉ admin mới được dùng nếu có cấu hình admins
-        sender_id = str(snap.get("userID") or "")
+    async def _cmd_unsend(self, message: dict[str, Any], argument: str) -> None:
+        sender_id = str(message.get("userID") or "")
         if self.admins and sender_id not in self.admins:
-            self._reply(snap, "⛔ Chỉ admin mới được dùng lệnh này.")
+            await self._reply(message, "⛔ Chỉ admin mới được dùng lệnh này.")
             return
-
-        thread_id = str(snap["replyToID"])
-        target = self._last_bot_message.get(thread_id)
+        chat_jid = str(message.get("chatJid") or "")
+        if not chat_jid:
+            await self._reply(message, "Lệnh unsend E2EE cần chatJid, chat thường không dùng được.")
+            return
+        target = self._last_bot_message.get(chat_jid)
         if not target:
-            self._reply(snap, "ℹ️ Chưa có tin nào để thu hồi trong thread này.")
+            await self._reply(message, "ℹ️ Chưa có tin E2EE nào để thu hồi trong chat này.")
             return
+        target_chat_jid, target_message_id = target
+        if self.listener._bridge is None:
+            await self._reply(message, "Bridge E2EE chưa sẵn sàng để thu hồi.")
+            return
+        result = await BridgeActions(self.listener._bridge).unsend_e2ee_message(
+            target_chat_jid, target_message_id
+        )
+        log("unsend", f"{target_message_id} -> {result}")
+        self._last_bot_message.pop(chat_jid, None)
 
-        result = unsend_message(target, self.dataFB)
-        log("unsend", f"{target} -> {result}")
-        # Sau khi thu hồi → quên ID đó
-        self._last_bot_message.pop(thread_id, None)
 
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
-
-def main() -> None:
-    cfg = load_config()
-
-    log("boot", "Đang khởi tạo dataFB từ cookie…")
-    dataFB = dataGetHome(cfg["cookies"])
-
-    if not is_valid_datafb(dataFB):
-        log("boot", "❌ Không lấy được dataFB hợp lệ — cookie có thể đã hết hạn hoặc HTML token đã đổi.")
-        sys.exit(1)
-
-    bot = SimpleBot(
-        dataFB,
-        prefix=cfg["prefix"],
-        admins=cfg["admins"],
+async def main() -> None:
+    config = load_config()
+    log("boot", "Đang khởi tạo dataFB từ cookie...")
+    dataFB = await dataGetHome(
+        storage=FileSessionStorage(str(CONFIG_PATH), key="cookies")
     )
-    bot.run()
+    if not is_valid_datafb(dataFB):
+        raise RuntimeError(
+            "Không lấy được dataFB hợp lệ; cookie đã hết hạn hoặc HTML token đã đổi."
+        )
+    async with httpx.AsyncClient(timeout=DEFAULT_HTTP_TIMEOUT) as http_client:
+        bot = SimpleBot(
+            dataFB,
+            prefix=config["prefix"],
+            admins=config["admins"],
+            http_client=http_client,
+        )
+        await bot.run()
+
+
+def main_blocking() -> None:
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        log("bot", "Đã dừng theo yêu cầu người dùng.")
+    except (RuntimeError, ValueError, json.JSONDecodeError) as error:
+        log("boot", f"❌ {error}")
+        raise SystemExit(1) from error
 
 
 if __name__ == "__main__":
-    main()
+    main_blocking()

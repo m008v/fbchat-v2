@@ -29,6 +29,7 @@ import json
 import os
 import signal
 import sys
+import asyncio
 from datetime import datetime
 from pathlib import Path
 
@@ -52,17 +53,21 @@ from _messaging._listening_e2ee import (  # noqa: E402
 # Cookie loader
 # ---------------------------------------------------------------------------
 
+
 def load_cookie() -> str:
     _ = json.loads(open("config.json", "r", encoding="utf-8").read())
     cookie = os.getenv("FBCHAT_COOKIE") or _["cookies"]
     if not cookie:
-        raise ValueError("Cookie Facebook không được cung cấp! Vui lòng set env FBCHAT_COOKIE hoặc điền vào config.json")
-    return cookie;
+        raise ValueError(
+            "Cookie Facebook không được cung cấp! Vui lòng set env FBCHAT_COOKIE hoặc điền vào config.json"
+        )
+    return cookie
 
 
 # ---------------------------------------------------------------------------
 # Pretty printer
 # ---------------------------------------------------------------------------
+
 
 def ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
@@ -76,6 +81,7 @@ def short(obj, n: int = 200) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     print(f"[{ts()}] tester.py bắt đầu")
@@ -91,7 +97,7 @@ def main() -> None:
     cookie = load_cookie()
     print(f"[{ts()}] đang đăng nhập...")
     try:
-        dataFB = dataGetHome(cookie)
+        dataFB = asyncio.run(dataGetHome(cookie))
     except Exception as exc:  # noqa: BLE001
         sys.exit(f"dataGetHome thất bại: {exc}")
 
@@ -102,7 +108,7 @@ def main() -> None:
     listener = listeningE2EEEvent(
         dataFB,
         log_level="warn",
-        e2ee_memory_only=True,   # đổi False + device_path=... nếu muốn persist
+        e2ee_memory_only=True,  # đổi False + device_path=... nếu muốn persist
         enable_e2ee=True,
     )
 
@@ -123,15 +129,17 @@ def main() -> None:
 
         try:
             if etype == "e2eeMessage":
-                listener.send_e2ee_message(
-                    data["chatJid"], "pong",
+                listener.send_e2ee_message_blocking(
+                    data["chatJid"],
+                    "pong",
                     reply_to_id=data.get("id", ""),
                     reply_to_sender_jid=data.get("senderJid", ""),
                 )
                 print(f"[{ts()}] -> đã gửi pong (E2EE)")
             elif etype == "message":
-                listener.send_message(
-                    int(data["threadId"]), "pong",
+                listener.send_message_blocking(
+                    int(data["threadId"]),
+                    "pong",
                     reply_to_id=data.get("id", ""),
                 )
                 print(f"[{ts()}] -> đã gửi pong (regular)")
@@ -148,7 +156,7 @@ def main() -> None:
 
     # 5. Blocking loop
     try:
-        listener.connect_mqtt()
+        listener.connect_mqtt_blocking()
     except KeyboardInterrupt:
         listener.stop()
     except Exception as exc:  # noqa: BLE001

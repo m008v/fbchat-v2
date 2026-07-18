@@ -1,45 +1,70 @@
-import requests, json, random
-from _core._utils import formAll, mainRequests
+from __future__ import annotations
 
-def func(dataFB, statusBusiness=None): # Bật chế độ chuyên nghiệp Trang cá nhân
-          
-    # Được lấy dữ liệu và viết vào lúc: 01:03 Thứ 5, ngày 06/07/2023. Tác giả: MinhHuyDev
-    """Args:
-        statusBusiness: Do you want it on or off? (eg. True/False) | typeInput: bool
-    """
-    
-    if ((statusBusiness.lower() == "on") | (statusBusiness.lower() == "bật") | (statusBusiness == True)):
-        docID = "6580386111988379"
-        friendlyName = "CometProfilePlusOnboardingDialogTransitionMutation"
-        variables = json.dumps(
-            {
-                    "category_id": int(random.random() * 1738263827237839),
-                    "surface": None
-            }
-        )
-    elif ((statusBusiness.lower() == "off") | (statusBusiness.lower() == "tắt") | (statusBusiness == False)):
-        docID = "4947853815250139"
-        friendlyName = "CometProfilePlusRollbackMutation"
-        variables = json.dumps({})
+import json
+import random
+from typing import Any
+
+import httpx
+
+from _core._utils import formAll, post_form_json_async
+
+GRAPHQL_URL = "https://www.facebook.com/api/graphql/"
+
+
+def _normalize_status(value: bool | str | None) -> bool:
+    if isinstance(value, bool):
+        return value
+    normalized = str(value or "").strip().casefold()
+    if normalized in {"on", "bật", "true", "1"}:
+        return True
+    if normalized in {"off", "tắt", "false", "0"}:
+        return False
+    raise ValueError("statusBusiness chỉ nhận on/off, bật/tắt hoặc bool.")
+
+
+def _build_request(dataFB: dict[str, Any], enabled: bool) -> dict[str, Any]:
+    if enabled:
+        doc_id = "6580386111988379"
+        friendly_name = "CometProfilePlusOnboardingDialogTransitionMutation"
+        variables = {"category_id": random.randrange(1738263827237839), "surface": None}
     else:
-        return {
-            "error": -1,
-            "messages": "Không có sự lựa chọn được đưa ra."
-        }
-    
-    dataForm = formAll(dataFB, friendlyName, docID)
-    dataForm["variables"] = variables
-        
-    
-    sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/api/graphql/", dataForm, dataFB["cookieFacebook"])).text)
-        
-    if (sendRequests.get("data")):
+        doc_id = "4947853815250139"
+        friendly_name = "CometProfilePlusRollbackMutation"
+        variables = {}
+    data_form = formAll(dataFB, friendly_name, doc_id)
+    data_form["variables"] = json.dumps(variables, separators=(",", ":"))
+    return data_form
+
+
+def _parse_response(payload: dict[str, Any], enabled: bool) -> dict[str, Any]:
+    if payload.get("data"):
+        action = "Bật" if enabled else "Tắt"
         return {
             "success": 1,
-            "messages": "Bật trang cá nhân chuyên nghiệp thành công!" if ((statusBusiness.lower() == "on") | (statusBusiness.lower() == "bật")) else "Tắt trang cá nhân chuyên nghiệp thành công!",
+            "messages": f"{action} trang cá nhân chuyên nghiệp thành công!",
         }
-    else:
-        return {
-            "error": 1,
-            "message": sendRequests["errors"][0]["message"]
-        }
+    message = ((payload.get("errors") or [{}])[0]).get("message")
+    return {
+        "error": 1,
+        "messages": message or "Facebook từ chối thay đổi chế độ chuyên nghiệp.",
+    }
+
+
+
+async def func(
+    dataFB: dict[str, Any],
+    statusBusiness: bool | str | None = None,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    try:
+        enabled = _normalize_status(statusBusiness)
+        payload = await post_form_json_async(
+            GRAPHQL_URL,
+            _build_request(dataFB, enabled),
+            dataFB["cookieFacebook"],
+            client=client,
+        )
+        return _parse_response(payload, enabled)
+    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
+        return {"error": 1, "messages": str(exc)}

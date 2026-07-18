@@ -11,6 +11,7 @@ lib/
 lib64/
 parts/
 sdist/
+dist/
 var/
 tools/
 wheels/
@@ -39,8 +40,11 @@ venv.bak/
 
 *.log
 logs/
+.tmp/
 *.sqlite3
 *.db
 *.db-journal
 src/config.json
 AGENT_MEMORYs.md
+.vbsec-tmp/
+vbsec-reports/

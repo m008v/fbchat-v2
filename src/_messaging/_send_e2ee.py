@@ -17,7 +17,7 @@ Hai chế độ dùng:
        from _messaging._send_e2ee import api as E2EESender
 
        listener = listeningE2EEEvent(dataFB)
-       threading.Thread(target=listener.connect_mqtt, daemon=True).start()
+       threading.Thread(target=listener.connect_mqtt_blocking, daemon=True).start()
        # ... đợi event "e2eeConnected" ...
 
        sender = E2EESender(listener=listener)
@@ -68,7 +68,9 @@ def _resolve_device_path(device_path: str | None) -> str | None:
     return str(path)
 
 
-def normalize_chat_jid(target: str | int, *, default_server: str = E2EE_MESSENGER_SERVER) -> str:
+def normalize_chat_jid(
+    target: str | int, *, default_server: str = E2EE_MESSENGER_SERVER
+) -> str:
     """Chuẩn hoá Facebook user ID hoặc JID thành Messenger E2EE chat JID.
 
     Messenger E2EE events trả về ``chatJid`` dạng ``<facebook_id>@msgr``.
@@ -105,6 +107,7 @@ def chat_jid_from_user_id(user_id: str | int) -> str:
 # Public sender
 # ---------------------------------------------------------------------------
 
+
 class api:
     """Sender E2EE — tương tự ``_send.api`` nhưng cho Secret Conversations.
 
@@ -129,26 +132,26 @@ class api:
     """
 
     # ------------------------------------------------------------------
-    def __init__(self,
-                 listener: Optional[listeningE2EEEvent] = None,
-                 dataFB: Optional[dict] = None,
-                 *,
-                 log_level: str = "none",
-                 device_path: Optional[str] = None,
-                 e2ee_memory_only: bool = True,
-                 binary_path: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        listener: Optional[listeningE2EEEvent] = None,
+        dataFB: Optional[dict] = None,
+        *,
+        log_level: str = "none",
+        device_path: Optional[str] = None,
+        e2ee_memory_only: bool = True,
+        binary_path: Optional[str] = None,
+    ) -> None:
 
         if listener is None and dataFB is None:
             raise ValueError(
                 "Phải truyền `listener=` (reuse) HOẶC `dataFB=` (standalone)."
             )
         if listener is not None and dataFB is not None:
-            raise ValueError(
-                "Truyền `listener=` HOẶC `dataFB=`, không được cả hai."
-            )
+            raise ValueError("Truyền `listener=` HOẶC `dataFB=`, không được cả hai.")
 
         self._listener = listener
-        self._owns_bridge = listener is None     # standalone → ta tự đóng
+        self._owns_bridge = listener is None  # standalone → ta tự đóng
 
         # Standalone-only state
         self.dataFB = dataFB
@@ -185,7 +188,9 @@ class api:
         return self._bridge
 
     # ------------------------------------------------------------------
-    def connect(self, *, enable_e2ee: bool = True, timeout: float = 120.0) -> dict[str, Any]:
+    def connect(
+        self, *, enable_e2ee: bool = True, timeout: float = 120.0
+    ) -> dict[str, Any]:
         """Standalone mode: spawn bridge + pair với Meta."""
         if self._listener is not None:
             raise RuntimeError("connect() chỉ dùng cho standalone mode.")
@@ -194,7 +199,8 @@ class api:
 
         binary = (
             Path(self._binary_path_override)
-            if self._binary_path_override else _resolve_binary()
+            if self._binary_path_override
+            else _resolve_binary()
         )
         self._bridge = _BridgeProcess(binary)
 
@@ -217,20 +223,26 @@ class api:
         if device_path:
             cfg["devicePath"] = device_path
 
-        self._bridge.call("newClient", cfg)
-        info = self._bridge.call("connect", timeout=timeout)
+        self._bridge.call_blocking("newClient", cfg)
+        info = self._bridge.call_blocking("connect", timeout=timeout)
         if enable_e2ee:
-            self._bridge.call("connectE2EE", timeout=timeout)
+            self._bridge.call_blocking("connectE2EE", timeout=timeout)
         self._connected = True
-        print(f"[{datetime.datetime.now()}] E2EE sender ready "
-              f"(user={(info.get('user') or {}).get('id')})")
+        print(
+            f"[{datetime.datetime.now()}] E2EE sender ready "
+            f"(user={(info.get('user') or {}).get('id')})"
+        )
         return info
 
     # ------------------------------------------------------------------
-    def send(self, chat_jid: str | int, contentSend: str,
-             replyMessage: str = "",
-             replySenderJid: str | int = "",
-             timeout: float = 180.0) -> dict[str, Any]:
+    def send(
+        self,
+        chat_jid: str | int,
+        contentSend: str,
+        replyMessage: str = "",
+        replySenderJid: str | int = "",
+        timeout: float = 180.0,
+    ) -> dict[str, Any]:
         """Gửi 1 tin nhắn E2EE text.
 
         :param chat_jid: JID đích, ví dụ Messenger JID
@@ -273,12 +285,16 @@ class api:
         self.replyToSenderJid = normalized_reply_sender_jid
 
         try:
-            data = self.bridge.call("sendE2EEMessage", {
-                "chatJid": self.chat_jid,
-                "text": self.content,
-                "replyToId": self.replyToId,
-                "replyToSenderJid": self.replyToSenderJid,
-            }, timeout=timeout)
+            data = self.bridge.call_blocking(
+                "sendE2EEMessage",
+                {
+                    "chatJid": self.chat_jid,
+                    "text": self.content,
+                    "replyToId": self.replyToId,
+                    "replyToSenderJid": self.replyToSenderJid,
+                },
+                timeout=timeout,
+            )
         except BridgeError as exc:
             self.results = {
                 "error": 1,
@@ -309,10 +325,14 @@ class api:
         return self.results
 
     # ------------------------------------------------------------------
-    def send_to_user(self, user_id: str | int, contentSend: str,
-                     replyMessage: str = "",
-                     replySenderJid: str | int = "",
-                     timeout: float = 180.0) -> dict[str, Any]:
+    def send_to_user(
+        self,
+        user_id: str | int,
+        contentSend: str,
+        replyMessage: str = "",
+        replySenderJid: str | int = "",
+        timeout: float = 180.0,
+    ) -> dict[str, Any]:
         """Gửi chủ động tới Facebook numeric ID.
 
         ``user_id="100012345678"`` sẽ được chuyển thành

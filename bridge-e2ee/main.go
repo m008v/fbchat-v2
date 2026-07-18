@@ -310,6 +310,213 @@ func handle(req *request) {
 		}
 		ok(req.ID, res)
 
+	case "editMessage":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			MessageID string `json:"messageId"`
+			NewText   string `json:"newText"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		if err := client.EditMessage(p.MessageID, p.NewText); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{})
+
+	case "unsendMessage":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			MessageID string `json:"messageId"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		if err := client.UnsendMessage(p.MessageID); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{})
+
+	case "editE2EEMessage":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			ChatJID   string `json:"chatJid"`
+			MessageID string `json:"messageId"`
+			NewText   string `json:"newText"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		if err := client.EditE2EEMessage(p.ChatJID, p.MessageID, p.NewText); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{})
+
+	case "unsendE2EEMessage":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			ChatJID   string `json:"chatJid"`
+			MessageID string `json:"messageId"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		if err := client.UnsendE2EEMessage(p.ChatJID, p.MessageID); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{})
+
+	case "sendTypingIndicator":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			ThreadID   int64 `json:"threadId"`
+			IsTyping   bool  `json:"isTyping"`
+			IsGroup    bool  `json:"isGroup"`
+			ThreadType int64 `json:"threadType"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		if err := client.SendTypingIndicator(p.ThreadID, p.IsTyping, p.IsGroup, p.ThreadType); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{})
+
+	case "markRead":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			ThreadID    int64 `json:"threadId"`
+			WatermarkTs int64 `json:"watermarkTs"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		if err := client.MarkRead(p.ThreadID, p.WatermarkTs); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{})
+
+	case "sendE2EETyping":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			ChatJID  string `json:"chatJid"`
+			IsTyping bool   `json:"isTyping"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		if err := client.SendE2EETyping(p.ChatJID, p.IsTyping); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{})
+
+	case "sendE2EEAudio":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var opts bridge.SendE2EEAudioOptions
+		if err := json.Unmarshal(req.Params, &opts); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		res, err := client.SendE2EEAudio(&opts)
+		if err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, res)
+
+	case "sendE2EEImage":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var opts bridge.SendE2EEImageOptions
+		if err := json.Unmarshal(req.Params, &opts); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		res, err := client.SendE2EEImage(&opts)
+		if err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, res)
+
+	case "downloadMedia":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var p struct {
+			URL string `json:"url"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		data, err := client.DownloadMedia(p.URL)
+		if err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, map[string]interface{}{
+			"data": data,
+		})
+
+	case "downloadE2EEMedia":
+		if client == nil {
+			fail(req.ID, fmt.Errorf("client not initialised"))
+			return
+		}
+		var opts bridge.DownloadE2EEMediaOptions
+		if err := json.Unmarshal(req.Params, &opts); err != nil {
+			fail(req.ID, err)
+			return
+		}
+		res, err := client.DownloadE2EEMedia(&opts)
+		if err != nil {
+			fail(req.ID, err)
+			return
+		}
+		ok(req.ID, res)
+
 	case "disconnect":
 		if client != nil {
 			client.Disconnect()

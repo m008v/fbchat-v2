@@ -1,420 +1,619 @@
-# CLAUDE.md — fbchat-v2 Codebase Guide for AI Agents
+# CLAUDE.md - Hướng dẫn codebase fbchat-v2 cho contributor và coding agent
 
-> Audience: **Claude / Codex / Copilot agents**. This file is a *map*, not a tutorial.
-> Read this top-to-bottom **before** running searches. Most "where is X?" questions are answered here.
+File này cung cấp context triển khai. Tài liệu cho người dùng nằm ở `README.md`, `README_EN.md` và `DOCS.md`.
 
----
+## Tóm tắt bắt buộc
 
-## TL;DR
+- Repository dùng kiến trúc 3 tầng: `_core`, `_features`, `_messaging`.
+- Public I/O API mới là async-first và không có hậu tố `_async`.
+- HTTP async phải dùng `httpx.AsyncClient` thật.
+- Helper blocking còn lại phải có hậu tố `_blocking` và chỉ nằm ở boundary.
+- `dataFB`, cookie, credential, token, TOTP và E2EE device state là secret.
+- `src/config.json` là local-only; chỉ track `src/config.example.json`.
+- Bot mẫu dùng E2EE listener làm receive/send transport chính.
+- Mọi thay đổi public behavior phải cập nhật cả tài liệu Việt và Anh.
+- Commit dùng Conventional Commits có scope.
 
-- **What:** Unofficial Python ≥ 3.10 library that talks to Facebook Messenger as a real user (cookies, not Graph API).
-- **How:** Synchronous `requests` calls to private Facebook endpoints + `paho-mqtt` listener over WebSocket. E2EE (Secret Conversations) is delegated to a Go subprocess (`bridge-e2ee/`) using whatsmeow.
-- **Layout:** Strict 3 layers under `src/` — `_core` → `_features` → `_messaging`. Higher layers may import lower; **never the reverse**.
-- **Convention:** Every module exposes a `func(dataFB, ...)` (or a class with one verb method). The first argument is almost always `dataFB`.
-- **Run:** `set PYTHONPATH=src` (Windows) / `export PYTHONPATH=src` (POSIX), then `python src/main.py`.
+## Cấu trúc repository
 
----
-
-## Repository layout (as of 2026-05)
-
-```
+```text
 fbchat-v2/
-├── src/                              # All Python source
-│   ├── main.py                       # Demo bot, entry point
-│   ├── config.json                   # Cookies + prefix + admins (gitignored)
-│   ├── _core/                        # L1: session, login, utils
-│   │   ├── _session.py               # dataGetHome(cookie) → dataFB
-│   │   ├── _facebookLogin.py         # User+pass+2FA login
-│   │   └── _utils.py                 # formAll, mainRequests, Headers, etc.
-│   ├── _features/                    # L2: actions on FB & threads
-│   │   ├── _facebook/                # Profile-level actions
-│   │   └── _thread/                  # Group/inbox actions
-│   │       └── _all_thread_data.py   # Inbox + last_seq_id (needed by listener)
-│   └── _messaging/                   # L3: send / edit / theme / listen / react
-│       ├── _send.py                  # class api().send(...)
-│       ├── _send_e2ee.py             # class api().send(...) for E2EE (drives Go bridge)
-│       ├── _unsend.py
+├── src/
+│   ├── main.py
+│   ├── config.example.json
+│   ├── _core/
+│   │   ├── _http.py
+│   │   ├── _session.py
+│   │   ├── _storage.py
+│   │   ├── _utils.py
+│   │   └── _facebookLogin.py
+│   ├── _features/
+│   │   ├── _facebook/
+│   │   └── _thread/
+│   └── _messaging/
+│       ├── _send.py
 │       ├── _attachments.py
-│       ├── _changeTheme.py           # thread theme/background via GraphQL + MQTT LS tasks
-│       ├── _createNotes.py           # Messenger Notes (24h status)
-│       ├── _editMessage.py           # edit sent messages via MQTT LS task
+│       ├── _listening.py
+│       ├── _listening_e2ee.py
+│       ├── _bridge_actions.py
+│       ├── _send_e2ee.py
+│       ├── _editMessage.py
+│       ├── _changeTheme.py
+│       ├── _createNotes.py
 │       ├── _reactions.py
-│       ├── _message_requests.py
-│       ├── _listening.py             # Plain MQTT listener
-│       └── _listening_e2ee.py        # E2EE listener (drives Go bridge)
-├── bridge-e2ee/                      # Go subprocess for E2EE crypto
-│   ├── main.go                       # stdio JSON-RPC loop
-│   ├── go.mod                        # requires Go ≥ 1.24
-│   └── bridge/                       # whatsmeow + mautrix-meta wrappers
-├── build/                            # Output of `go build` (binary lives here)
-│   └── fbchat-bridge-e2ee[.exe]
-├── website/                          # Static docs site (index.html)
-├── docs/                             # Markdown docs
-├── DOCS.md / FLOWCHART.md / mindmap-mermaid.md
-├── language/vi_VN.lang               # i18n strings
+│       ├── _unsend.py
+│       └── _message_requests.py
+├── bridge-e2ee/
+│   ├── main.go
+│   ├── bridge/
+│   ├── meta/
+│   └── go.mod
+├── tests/
+├── README.md
+├── README_EN.md
+├── DOCS.md
+├── FLOWCHART.md
 └── pyproject.toml
 ```
 
----
+## Kiến trúc 3 tầng
 
-## Three-layer architecture (hard rule)
+### Tầng 1: `_core`
 
-```
-main.py
-  │
-  ├─→ _core            (foundation, no internal deps)
-  │
-  ├─→ _features        (imports _core only)
-  │     ├─ _facebook/
-  │     └─ _thread/
-  │
-  └─→ _messaging       (imports _core + _features as needed)
-        ├─ _send / _editMessage / _changeTheme / _unsend / _attachments / _reactions / _message_requests / _createNotes
-        ├─ _listening
-        └─ _listening_e2ee  ──────► subprocess: build/fbchat-bridge-e2ee.exe
-```
+Sở hữu:
 
-**If you find an import from `_messaging` inside `_core`, that is a bug.**
+- HTTP transport.
+- Session bootstrap.
+- Storage abstraction.
+- Cookie/form/parser/ID utilities.
+- Credential login và 2FA.
 
----
+Không được import `_features` hoặc `_messaging`.
 
-## The `dataFB` dictionary (single source of truth)
+### Tầng 2: `_features`
 
-Produced by `_core._session.dataGetHome(cookie_string)`. Passed as **first arg** to almost every function in the codebase.
+Sở hữu nghiệp vụ Facebook và thread:
 
-| Key              | Type | What it is                                           |
-|------------------|------|------------------------------------------------------|
-| `FacebookID`     | str  | Authenticated user's numeric ID                      |
-| `fb_dtsg`        | str  | CSRF token for POSTs                                 |
-| `fb_dtsg_ag`     | str  | Async variant of CSRF token                          |
-| `jazoest`        | str  | Form jazoest field                                   |
-| `hash`           | str  | Session hash                                         |
-| `sessionID`      | str  | Session ID                                           |
-| `clientRevision` | str  | Client revision (used in headers / GraphQL)          |
-| `cookieFacebook` | str  | Raw `"k=v; k2=v2; ..."` cookie string                |
+- Account/profile/Marketplace.
+- Search, notification, block/unblock.
+- Thread list, rename, emoji, nickname, admin.
 
-> Whenever you see `dataFB` in code, treat it as opaque state. Do **not** mutate it.
+Phụ thuộc `_core`, không sở hữu listener hoặc bot lifecycle.
 
----
+### Tầng 3: `_messaging`
 
-## `_core/_utils.py` cheat sheet
+Sở hữu:
 
-| Symbol                                                                | Purpose                                                              |
-|-----------------------------------------------------------------------|----------------------------------------------------------------------|
-| `formAll(dataFB, FBApiReqFriendlyName, docID, requireGraphql)`        | Build base POST form. `requireGraphql=False` for non-GraphQL routes. |
-| `mainRequests(url, dataForm, cookies)`                                | Returns kwargs ready for `requests.post(**kwargs)`.                  |
-| `Headers(dataForm, Host)`                                             | Browser-like headers.                                                |
-| `dataSplit(s1, s2, ..., HTML)`                                        | Cheap regex-free string splitting on raw HTML.                       |
-| `parse_cookie_string(s)`                                              | `"k=v; k2=v2"` → dict.                                               |
-| `gen_threading_id()`                                                  | Facebook-style threading ID.                                         |
-| `generate_session_id()` / `generate_client_id()`                      | Random IDs for MQTT.                                                 |
-| `randStr(n)`                                                          | Random alphanumeric of length `n`.                                   |
+- Send và attachment HTTP.
+- MQTT listener thường.
+- E2EE bridge listener/action.
+- Reaction, edit, unsend, theme, notes, message requests.
 
----
+Phụ thuộc `_core`. Chỉ bot/application mới phối hợp `_features` với `_messaging`.
 
-## Layer 2 — `_features` conventions
+## Hợp đồng `dataFB`
 
-Each file = one feature = one module-level function:
+Schema tối thiểu:
 
-```python
-# _features/_facebook/_changeBio.py
-def func(dataFB, new_bio: str) -> dict:
-    form = formAll(dataFB, "ProfileBioMutation", "<docID>", True)
-    form["variables"] = json.dumps({"input": {"bio": new_bio, ...}})
-    kw = mainRequests("https://www.facebook.com/api/graphql/", form, dataFB["cookieFacebook"])
-    r = requests.post(**kw)
-    return {"success": 1, "data": r.json()} if r.ok else {"error": 1, "raw": r.text}
-```
-
-Return shape contract:
-- ✅ success → `{"success": 1, ...payload}`
-- ❌ error   → `{"error": 1, ...}` or `{"error": {...}}`
-
-`_features/_thread/_all_thread_data.py` is special: it both lists inbox threads **and** returns `last_seq_id`, which is required to seed the MQTT listener.
-
----
-
-## Layer 3 — `_messaging`
-
-| File                   | Public surface                                   | Notes                                              |
-|------------------------|--------------------------------------------------|----------------------------------------------------|
-| `_send.py`             | `class api`, `.send(dataFB, content, threadID)`  | POST `/messaging/send/`                            |
-| `_send_e2ee.py`        | `class api`, `.send(chat_jid, content, ...)`, `.send_to_user(user_id, ...)` | E2EE sender; normalizes Facebook ID → `<id>@msgr`; reuses `_listening_e2ee` Go bridge |
-| `_editMessage.py`      | `editMessage(dataFB, messageID, newText)` / `func(...)` | Publishes MQTT LS task `queue_name="edit_message"` |
-| `_changeTheme.py`      | `listThemes / findTheme / changeTheme / func(...)` | GraphQL theme list + MQTT LS theme update tasks    |
-| `_unsend.py`           | `func(messageID, dataFB)`                        | POST `/messaging/unsend_message/`                  |
-| `_attachments.py`      | `func(...)`                                      | Upload first, returns attachmentID                 |
-| `_reactions.py`        | `func(...)`                                      | Add/remove reaction                                |
-| `_message_requests.py` | `func(...)`                                      | Accept/decline pending requests                    |
-| `_createNotes.py`      | `checkNote / createNote / deleteNote / recreateNote / func(action=...)` | Messenger Notes — 24h status-style notes (GraphQL) |
-| `_listening.py`        | `class listeningEvent(dataFB)`                   | paho-mqtt over WSS to `edge-chat.facebook.com:443` |
-| `_listening_e2ee.py`   | `class listeningE2EEEvent(dataFB, **opts)`       | Subprocess bridge for Secret Conversations         |
-
-### `_listening.listeningEvent` flow
-
-```python
-listener = listeningEvent(dataFB)
-listener.get_last_seq_id()   # uses _features._thread._all_thread_data
-listener.connect_mqtt()      # blocking — run in a daemon thread
-# poll listener.bodyResults from main thread, dedupe by messageID
-```
-`bodyResults` shape:
 ```python
 {
-  "body": str | None,
-  "timestamp": int,
-  "userID": str,
-  "messageID": str | None,
-  "replyToID": str,           # thread_fbid or otherUserFbId
-  "type": "user" | "thread",
-  "attachments": {"id": ..., "url": ...},
+    "fb_dtsg": "...",
+    "jazoest": "...",
+    "sessionID": "...",
+    "FacebookID": "100012345678",
+    "clientRevision": "...",
+    "cookieFacebook": "c_user=...; xs=...; fr=...; datr=...;",
 }
 ```
 
-### `_listening_e2ee.listeningE2EEEvent` flow
+Nguồn duy nhất:
 
 ```python
-listener = listeningE2EEEvent(
-    dataFB,
-    log_level="warn",
-    e2ee_memory_only=True,         # False + device_path=... persists keys
-    enable_e2ee=True,
-    binary_path=None,              # auto-resolves build/fbchat-bridge-e2ee[.exe]
+data_fb = await dataGetHome(cookie_or_storage)
+```
+
+Không tự tạo dict giả ở runtime. Tests dùng fixture synthetic trong `tests/conftest.py`.
+
+Không log object. Khi validate, chỉ báo tên field thiếu:
+
+```python
+missing = [name for name in REQUIRED if not data_fb.get(name)]
+logger.error("Missing dataFB fields: %s", missing)
+```
+
+## Hợp đồng async
+
+### Naming
+
+Public coroutine dùng tên domain ngắn:
+
+```python
+await dataGetHome(...)
+await module.func(...)
+await sender.send(...)
+await listener.connect_mqtt()
+```
+
+Không thêm:
+
+```python
+func_async = func
+func_sync = func
+```
+
+Blocking compatibility helper phải rõ nghĩa:
+
+```python
+send_blocking(...)
+connect_mqtt_blocking(...)
+call_blocking(...)
+```
+
+### Native async và thread adapter
+
+Native async bắt buộc cho HTTP:
+
+```python
+response = await send_request_async(req, client=client)
+```
+
+Thread adapter chỉ hợp lệ cho thư viện blocking không thể thay:
+
+```python
+await asyncio.to_thread(self.connect_mqtt_blocking)
+await asyncio.to_thread(self.call_blocking, method, params, timeout)
+```
+
+Không bọc code `requests` mới trong `to_thread` chỉ để gắn nhãn async. Chỉ giữ boundary legacy có lý do rõ ràng và test.
+
+### Client injection
+
+Feature HTTP nên có keyword-only client:
+
+```python
+async def func(
+    dataFB: dict[str, Any],
+    feature_value: str,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    ...
+```
+
+Caller-owned client không được đóng bên trong feature. Owned temporary client phải được context manager đóng.
+
+## HTTP implementation
+
+### Transport flow
+
+```text
+feature._build_request
+  -> _core._utils helper
+    -> _core._http.post_async/get_async
+      -> httpx.AsyncClient
+```
+
+`_core._http._clean_kwargs()` copy input trước khi pop. Giữ behavior này; mutate request dict của caller sẽ tạo race khi retry hoặc concurrent use.
+
+### GraphQL flow
+
+```python
+form = formAll(
+    data_fb,
+    FBApiReqFriendlyName="FriendlyName",
+    docID="123",
 )
-
-@listener.on_message
-def on_msg(evt):                   # evt = {"type": "...", "data": {...}, "timestamp": ms}
-    if evt["type"] == "e2eeMessage":
-        listener.send_e2ee_message(
-            evt["data"]["chatJid"], "pong",
-            reply_to_id=evt["data"]["id"],
-            reply_to_sender_jid=evt["data"]["senderJid"],
-        )
-
-listener.connect_mqtt()            # blocking
+payload = await post_form_json_async(
+    GRAPHQL_URL,
+    form,
+    data_fb["cookieFacebook"],
+    client=client,
+)
 ```
 
-Event types emitted by the Go bridge: `ready`, `e2eeConnected`, `message`, `e2eeMessage`, `reaction`, `e2eeReaction`, `messageEdit`, `messageUnsend`, `typing`, `readReceipt`, `disconnected`, `error`.
+Parser phải kiểm tra:
 
-Override binary path: env `FBCHAT_E2EE_BIN=...`.
+- HTTP status.
+- JSON decode.
+- Top-level `error`.
+- GraphQL `errors`.
+- Nested `data`/`payload` và field bắt buộc.
 
-### `_send_e2ee.api` flow
+HTTP 200 không đồng nghĩa mutation success.
 
-Thin Python wrapper around the bridge's `sendE2EEMessage` RPC. Two modes:
+### TLS và timeout
+
+- Không dùng `verify=False`.
+- Không dùng `ssl.CERT_NONE` cho MQTT chứa cookie.
+- Mọi request có timeout hữu hạn.
+- Retry chỉ áp dụng lỗi transient, có backoff và giới hạn.
+- Không retry mutation mù nếu request có thể đã được server áp dụng.
+
+## Session và storage
+
+`dataGetHome()`:
+
+1. Resolve cookie từ tham số hoặc storage.
+2. GET homepage.
+3. Parse token.
+4. Validate `FacebookID` và field bắt buộc.
+5. Trả `dataFB` hoặc `None`.
+
+`FileSessionStorage` ghi atomically. Không đổi thành `write_text()` trực tiếp cho file cookie; process bị kill có thể cắt hỏng JSON.
+
+`src/config.json` không được track. Đừng “tiện tay” commit file này khi test bot.
+
+## Feature conventions
+
+Mỗi module mới nên tách:
 
 ```python
-# Mode A — reuse listener's bridge (no extra pairing handshake)
-from _messaging._send_e2ee import api as E2EESender
-sender = E2EESender(listener=listener)
-sender.reply(evt["data"], "pong")          # auto-fills chatJid / id / senderJid
+def _validate_inputs(feature_value: str) -> None: ...
+def _build_request(dataFB: dict, feature_value: str) -> dict: ...
+def _parse_response(text: str) -> dict: ...
 
-# Mode B — standalone (own bridge subprocess)
-with E2EESender(dataFB=dataFB, log_level="warn") as sender:
-  sender.send(chat_jid="100012345678", contentSend="hi")  # auto-normalizes to 100012345678@msgr
-  sender.send_to_user("100012345678", "hi")
+async def func(dataFB: dict, feature_value: str, *, client=None):
+    _validate_inputs(feature_value)
+    request = _build_request(dataFB, feature_value)
+    response = await send_request_async(request, client=client)
+    response.raise_for_status()
+    return _parse_response(response.text)
 ```
 
-Return shape mirrors `_send.api.send` exactly:
-- ✅ `{"success": 1, "payload": {"messageID": str, "timestamp": int}}`
-- ❌ `{"error": 1, "payload": {"error-decription": str, "error-code": "bridge_error" | "not_connected"}}`
+Yêu cầu:
 
-**Do NOT instantiate twice**: passing both `listener=` and `dataFB=` raises `ValueError`. Reuse mode is strongly preferred — each standalone process must re-pair with Meta and pops a "new device" alert on the peer.
+- Validate ID rỗng, enum, price, coordinate và file trước I/O.
+- Không giữ request form mutable ở module global hoặc instance state.
+- Không silently ignore tham số.
+- Chưa hỗ trợ schema thì raise `NotImplementedError` rõ ràng.
+- Error result giữ message hữu ích nhưng không chứa secret.
+- Parser unit-test được mà không gọi mạng.
 
-### MQTT LS task helpers (`_editMessage.py`, `_changeTheme.py`)
+## Regular messaging
 
-These modules open a short-lived MQTT WebSocket connection to
-`edge-chat.facebook.com`, publish one or more tasks to `/ls_req`, then close
-the client. They are **regular Messenger** helpers, not E2EE bridge RPCs.
+`_send.api.send()` build một form mới cho mỗi call. Giữ concurrency safety này. `self.results` chỉ dành cho compatibility/debug snapshot.
+
+Input rules:
+
+- `threadID` list chỉ dùng với `typeChat="user"`.
+- `typeChat` chỉ `None` hoặc `"user"`.
+- Attachment type nằm trong map hỗ trợ.
+- `typeAttachment` và `attachmentID` luôn đi cùng nhau.
+- Reply cần `messageID`.
+- Content hoặc attachment phải có ít nhất một.
+
+`_attachments.func()` luôn đóng file handle. Success send dùng `typeAttachment`, không dùng MIME `attachmentType`.
+
+`_reactions.func()` trả raw `httpx.Response`, khác với phần lớn module trả dict. Đừng document sai contract này.
+
+## Regular listener lifecycle
+
+`listeningEvent.__init__()` không chạy network. Workflow:
 
 ```python
-from _messaging import _editMessage, _changeTheme
-
-_editMessage.editMessage(dataFB, "mid.$...", "new text")
-
-_changeTheme.listThemes(dataFB)
-_changeTheme.changeTheme(dataFB, threadID="1234567890", themeName="love")
+listener = listeningEvent(data_fb)
+task = asyncio.create_task(listener.connect_mqtt())
+try:
+    event = await listener.get_message(timeout=30)
+finally:
+    await listener.disconnect()
+    await task
 ```
 
-Important distinction: success from these helpers means the LS task was
-published. Facebook/Messenger can still reject the operation server-side if
-the message/thread is not editable by the current account.
+Invariant:
 
----
+- Queue có giới hạn.
+- Full queue drop oldest và tăng `droppedMessages`.
+- Parse toàn bộ delta, không chỉ index 0.
+- `bodyResults` chỉ là latest snapshot.
+- Reconnect ở vòng ngoài, không đệ quy trong callback.
+- TLS certificate verification bật.
 
-## E2EE bridge (`bridge-e2ee/`)
+## E2EE bridge architecture
 
-Standalone Go binary that wraps `whatsmeow` + `mautrix-meta`. Speaks **line-delimited JSON-RPC** on stdin/stdout — no sockets, no IPC libs.
-
-**Why Go, not Python?** The crypto stack (Signal Protocol — Curve25519, Double Ratchet, Sender Keys, AES-GCM — wrapped in Meta's Labyrinth/Lightspeed protobufs) is ~100k LOC. Python equivalents (`python-axolotl`, `dissononce`) have been unmaintained since 2019. Re-implementing is a security and maintenance hazard.
-
-**Build (one time):**
-```powershell
-cd fbchat-v2/bridge-e2ee
-git clone https://github.com/mautrix/meta.git ./meta   # required by go.mod replace directive
-go mod tidy
-go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .
+```text
+asyncio application
+  -> listeningE2EEEvent
+    -> _BridgeProcess
+      <-> line-delimited JSON-RPC
+        <-> fbchat-bridge-e2ee Go subprocess
+          <-> mautrix-meta / Messenger
 ```
 
-**Wire protocol:**
-- Request:  `{"id": <int>, "method": "<name>", "params": {...}}\n`
-- Response: `{"id": <int>, "ok": <bool>, "data": {...}|"error": "..."}\n`
-- Async event: `{"event": {"type": "...", "data": {...}, "timestamp": <ms>}}\n`
+### Binary resolution
 
-**Methods currently exposed in `main.go`:** `newClient`, `connect`, `connectE2EE`, `isConnected`, `sendMessage`, `sendE2EEMessage`, `disconnect`.
+Thứ tự:
 
-**Not yet wired** (present in `bridge/` Go code but not exposed): `sendReaction`, `editMessage`, `unsendMessage`, `sendTyping`, `markRead`, `MxDownloadE2EEMedia`. To expose: add a `case "..."` to `handle(req)` in `main.go` and recompile.
+1. Constructor `binary_path`.
+2. `FBCHAT_E2EE_BIN`.
+3. Default `build/fbchat-bridge-e2ee[.exe]`.
+4. Auto-download cho default missing path.
 
-> Note: regular `_messaging/_editMessage.py` already exists and uses MQTT LS
-> tasks. The "not yet wired" `editMessage` above refers only to the E2EE bridge
-> JSON-RPC surface.
+Auto-download security:
 
-> ⚠️ Code in `bridge-e2ee/bridge/*.go` originates from `meta-messenger.js` / Yumi Team and is **AGPL-3.0**. The Python wrapper does **not** statically link it — they run as separate processes — but be careful when copying snippets out.
+- GitHub Releases API qua HTTPS.
+- Kiểm tra initial host.
+- Giới hạn 200 MiB.
+- Stream file tạm và atomic replace.
+- Verify SHA-256 digest khi API cung cấp.
 
----
+Production nên pin binary đã verify.
 
-## `src/main.py` (entry point)
+### RPC process
 
-What it does in order:
-1. Loads `src/config.json` (creates a placeholder if absent).
-2. `dataFB = dataGetHome(cookies)`.
-3. Instantiates a `SimpleBot` wrapping `_send.api` and `_listening.listeningEvent`.
-4. Spawns the listener in a daemon thread.
-5. Polls `listener.bodyResults` every ~0.3 s.
-6. Routes prefix-based commands: `/ping`, `/help`, `/id`, `/echo`, `/search`, `/unsend`.
+`_BridgeProcess` có:
 
-Run:
-```powershell
-$env:PYTHONPATH = "src"
-python src/main.py
+- Reader thread phân response theo request `id`.
+- Event queue cho object không có `id`.
+- Write lock cho stdin.
+- Pending request map có lock.
+- Request size limit 150 MiB.
+- Timeout và `BridgeError`.
+- Watchdog respawn tối đa 5 lần.
+
+Async `call()` phải await `asyncio.to_thread(call_blocking, ...)`. Blocking code nội bộ gọi `call_blocking()` trực tiếp; không gọi coroutine rồi dùng `.get()`.
+
+### Listener callback
+
+`on_message(fn)` nhận callback sync. Callback không chạy trên asyncio loop. `src/main.py` là pattern chuẩn:
+
+```python
+loop = asyncio.get_running_loop()
+listener.on_message(
+    lambda event: loop.call_soon_threadsafe(queue_event, event)
+)
 ```
 
----
+Không truyền `connect_mqtt` coroutine cho `threading.Thread`.
 
-## Configuration files
+### Readiness
 
-### `src/config.json`
-```jsonc
+Sau `create_task(connect_mqtt())`, bridge chưa chắc đã connect. Dùng:
+
+```python
+ready = await asyncio.to_thread(
+    listener.wait_until_connected,
+    90,
+    require_e2ee=True,
+)
+```
+
+Mọi send trước ready là race.
+
+### BridgeActions
+
+Public async methods:
+
+- `edit_message`
+- `unsend_message`
+- `edit_e2ee_message`
+- `unsend_e2ee_message`
+- `send_typing_indicator`
+- `mark_read`
+- `send_e2ee_typing`
+- `send_e2ee_audio`
+- `send_e2ee_image`
+- `download_media`
+- `download_e2ee_media`
+
+Mỗi async method có blocking counterpart rõ hậu tố. Binary bytes được base64 đúng tại RPC boundary, không sớm hơn.
+
+## `src/main.py`
+
+Bot mẫu hiện tại:
+
+- Đọc `src/config.json` bằng `FileSessionStorage`.
+- Gọi `await dataGetHome()`.
+- Dùng một `httpx.AsyncClient` cho command HTTP.
+- Start E2EE listener task.
+- Chuyển callback về `asyncio.Queue` bounded.
+- Nhận cả `e2eeMessage` và `message`.
+- Bỏ self-message và dedupe message ID.
+- Reply E2EE nếu có `chatJid`; fallback thường nếu có `threadId`.
+- `/unsend` dùng `BridgeActions.unsend_e2ee_message`.
+- Shutdown stop bridge và await task.
+
+Khi thêm command:
+
+```python
+async def _cmd_name(self, message: dict[str, Any], argument: str) -> None:
+    await self._reply(message, "...")
+```
+
+Đăng ký handler trong `self._handlers`. Không chạy CPU-bound work trực tiếp trên loop.
+
+## Login security
+
+- Cookie session là flow khuyến nghị.
+- FB4A key/token built-in là legacy defaults; env chỉ override.
+- TOTP dùng local `pyotp`.
+- Không gọi `2fa.live`.
+- Không log login form, password, OTP hoặc access token.
+- Giữ xử lý subcode `1348162`, `1348023` trừ khi có evidence server mới.
+- Mocked tests không phải live account validation.
+
+## Config files
+
+`src/config.example.json` được track:
+
+```json
 {
-  "cookies": "c_user=...; xs=...; fr=...; datr=...;",
+  "botName": "fbchat-v2 demo bot",
   "prefix": "/",
-  "admins": ["<facebook_numeric_id>"]
+  "cookies": "PASTE_YOUR_FACEBOOK_COOKIE_HERE",
+  "admins": ["1000xxxxxxxxxx"],
+  "version": "0.0.1"
 }
 ```
-> 🔒 **Never commit `config.json`** — it contains live session cookies. It is gitignored.
 
-### `tester.py` (workspace root, optional)
-Standalone test driver for the E2EE listener. Reads cookie from env `FBCHAT_COOKIE` or `src/config.json`, hooks an auto-reply pong handler, traps Ctrl-C cleanly.
+`src/config.json` phải local và gitignored. Không copy secret vào `.env.example`, README, test hoặc fixture.
 
----
+## Testing strategy
 
-## Conventions you must follow
+### Python
 
-| Topic                  | Rule                                                                                                                     |
-|------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| Module / package names | Start with `_` (`_send.py`, `_core/`).                                                                                   |
-| Public function name   | `func(dataFB, ...)` per file. Exceptions: `_send.py` (`class api`), `_facebookLogin.py` (`class loginFacebook`), listener classes. |
-| Return shape           | success `{"success": 1, ...}` / error `{"error": 1, ...}`.                                                               |
-| Sync only              | Codebase is synchronous (`requests`). No `async/await` yet.                                                              |
-| Python version         | ≥ 3.10 (uses `match/case` in `_all_thread_data.py`).                                                                     |
-| Import path            | `PYTHONPATH=src`. Write `from _core._session import dataGetHome`, NOT `from src._core...`.                               |
-| `attrs` decorator      | **Do NOT** add `@attr.s` to a class that defines a manual `__init__` — it silently overrides yours. (Lesson learned in `_listening_e2ee.py`.) |
-| Commit style           | [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`            |
-| Strings to user        | Use bilingual `class="vi"/"en"` blocks in `website/`. Keep both languages in sync.                                       |
+```bash
+pytest tests/ -v --tb=short
+ruff check src tests
+ruff format --check src tests
+python -m compileall -q src tests
+```
 
----
+Test cần cover:
 
-## Dependencies
+- Async function là awaitable.
+- Injected async client được sử dụng.
+- Request form không mutate giữa calls.
+- Input validation.
+- HTTP error.
+- JSON invalid hoặc prefix.
+- Missing nested fields.
+- Server error payload.
+- Listener queue overflow.
+- Bridge timeout/error mapping.
 
-### Python (`pyproject.toml`)
-| Package      | Used for                                          |
-|--------------|---------------------------------------------------|
-| `requests`   | All HTTP                                          |
-| `paho-mqtt`  | Real-time listener WSS + LS task publish helpers  |
-| `attrs`      | `attr.ib` counter in `formAll`, listener classes  |
-| `pyotp`      | TOTP for 2FA login                                |
+Không gọi Facebook live trong CI.
 
-### Go (only for E2EE bridge — `bridge-e2ee/go.mod`)
-| Package                  | Used for                                |
-|--------------------------|-----------------------------------------|
-| `go.mau.fi/whatsmeow`    | Signal Protocol implementation          |
-| `go.mau.fi/mautrix-meta` | Meta-specific protobufs / Labyrinth     |
-| `go.mau.fi/util`         | Logging, helpers                        |
-| `github.com/rs/zerolog`  | Structured logging                      |
+### Go bridge
 
----
+```bash
+cd bridge-e2ee
+go test ./...
+go vet ./...
+```
 
-## Adding a new feature — recipe
+Khi đổi RPC:
 
-1. **Pick the layer**:
-   - Pure HTTP action against an FB endpoint → `_features/_facebook/` or `_features/_thread/`.
-  - Send / receive / react / edit / theme → `_messaging/`.
-   - Session, login, low-level → `_core/`.
-2. **Create `_myFeature.py`** in that subdirectory.
-3. **Define `def func(dataFB, ...) -> dict:`** following the return-shape contract.
-4. Build POST with `formAll()` + `mainRequests()`. Use `requests.post(**kw)`.
-5. Add a usage block in `DOCS.md` and (if user-facing) a card in `website/index.html`.
-6. Commit with `feat: <short imperative summary>`.
-
----
-
-## Common gotchas (real bugs we hit)
-
-| Symptom                                                                           | Cause / Fix                                                                                                              |
-|-----------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `TypeError: __init__() got an unexpected keyword argument 'log_level'`            | `@attr.s` on a class with a manual `__init__`. Remove `@attr.s` (and its `attr.ib(...)` field defaults).                 |
-| `*DeviceStore does not implement EventBuffer (missing method AddOutgoingEvent)`   | whatsmeow extended the interface. Add no-op stubs `GetOutgoingEvent`, `AddOutgoingEvent`, `DeleteOldOutgoingEvents` to `bridge-e2ee/bridge/store.go`. |
-| `BridgeError: bridge binary not found`                                            | Build the Go binary (see "E2EE bridge") or set `FBCHAT_E2EE_BIN`.                                                        |
-| Listener silently dies after a while                                              | Cookie expired (`xs` rotated). Re-fetch from browser.                                                                    |
-| `ImportError: attempted relative import with no known parent package`             | `PYTHONPATH=src` was not set.                                                                                            |
-
----
+1. Thêm/đổi case trong `main.go`.
+2. Implement trong `bridge/`.
+3. Cập nhật Python wrapper.
+4. Thêm Go test và Python mock test.
+5. Cập nhật bridge README và messaging docs.
 
 ## Documentation surface
 
-- `README.md` / `README_EN.md` — project overview (VI / EN).
-- `DOCS.md` — full Python API reference (EN).
-- `FLOWCHART.md` — Mermaid diagrams of message flows.
-- `mindmap-mermaid.md` — feature mindmap.
-- `website/index.html` — bilingual static docs (sidebar `data-section` controls visible section).
-- `bridge-e2ee/README.md` — Go bridge build & protocol docs.
+| File | Audience |
+|---|---|
+| `README.md` | User Việt |
+| `README_EN.md` | User English |
+| `DOCS.md` | API/workflow đầy đủ |
+| `src/_core/README*.md` | Core contributor/user |
+| `src/_features/README*.md` | Feature contributor/user |
+| `src/_messaging/README*.md` | Messaging/E2EE contributor/user |
+| `bridge-e2ee/README.md` | Bridge builder/integrator |
+| `FLOWCHART.md` | Runtime architecture |
+| `mindmap-mermaid.md` | Repository overview |
+| `CHANGELOG.md` | Release history |
 
-When updating user-facing docs, update **both** `website/index.html` (preferred, bilingual) and the relevant `DOCS.md` / `README*.md`.
+Không sửa một bản ngôn ngữ rồi bỏ bản còn lại. Internal links và code examples phải được verify.
 
----
+## UTF-8 và văn bản tiếng Việt
 
-## Current release status (as of 2026-05-18)
+- File Markdown và Python lưu UTF-8.
+- Chuỗi tiếng Việt trong code viết đầy đủ dấu.
+- Quét U+FFFD, NUL và marker mojibake trước commit.
+- PowerShell console có thể render mojibake dù file đúng.
+- Đọc bằng `encoding="utf-8"` và kiểm tra codepoint trước khi rewrite hàng loạt.
+- Không dùng em dash trong tài liệu của branch này; dùng dấu gạch ngang `-`.
 
-Use this as orientation only. Do **not** start backlog work unless the user asks
-for that specific item.
+## Git rules
 
-### Shipped
+- Kiểm tra branch, remote và worktree trước staging.
+- Worktree bẩn thì stage surgical, không `git add -A` mù.
+- Không commit `src/config.json`, `.env`, build binary, security report hoặc secret.
+- Dùng Conventional Commits có scope, ví dụ:
 
-- **E2EE listener for Secret Conversations** (via Go bridge) — shipped 2026-03-24.
-- **E2EE sender for Secret Conversations** (via Go bridge) — shipped 2026-05-18.
-- **Messenger Notes** (`_createNotes.py`) — shipped 2026-05-15.
-- **Regular Messenger edit + thread theme helpers** (`_editMessage.py`, `_changeTheme.py`) — shipped 2026-05-18.
-- **PyPI package sync** — `fbchat-v2==2.1.5` published with edit/theme helpers and top-level `editMessage` / `changeTheme` exports.
+```text
+fix(messaging): handle empty attachment metadata
+docs(api): expand async e2ee documentation
+refactor(core): reuse async http transport
+```
 
-### Deferred backlog
+- Chạy `git diff --check` trước commit.
+- Không force-push trừ khi task yêu cầu rewrite history; khi cần dùng `--force-with-lease`.
 
-These are known larger tracks, not unfinished work for ordinary docs/release
-tasks:
+## Quy trình thêm một feature
 
-- Bridge JSON-RPC surface: expose `sendReaction`, `editMessage`, `unsendMessage`, `sendTyping`, `markRead`, and media download only after checking `bridge-e2ee/bridge/` signatures and adding Python wrapper tests.
-- `_BridgeProcess` resilience: auto-respawn on subprocess crash and replay connection state safely.
-- Native `async` / `await` API for the Python side.
-- Type hints across the public API.
-- Pluggable session storage backend.
-- Integration tests & CI.
+1. Xác định đúng tầng.
+2. Đọc module tương tự gần nhất.
+3. Ghi rõ input/result/error contract.
+4. Viết validator và parser thuần.
+5. Dùng transport `_core` với optional async client.
+6. Viết public coroutine.
+7. Thêm test success và edge cases.
+8. Chạy test/lint/compile.
+9. Cập nhật tài liệu Việt và Anh.
+10. Quét UTF-8 và `git diff --check`.
 
----
+## Gotcha đã từng xảy ra
 
-## Quick reference for AI agents
+### Coroutine không được await
 
-| When the user says…                | Do…                                                                                                                            |
-|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| "Add a feature to send X"          | Create `src/_messaging/_X.py` with `class api` or `func(dataFB, ...)`. Wire in `main.py` if part of the demo bot.              |
-| "Listener doesn't see 1-1 messages" | Switch them to `_listening_e2ee.listeningE2EEEvent` — 1-1 is E2EE since 2024-11.                                              |
-| "Build the bridge"                 | `cd bridge-e2ee && git clone https://github.com/mautrix/meta.git ./meta && go mod tidy && go build -o ../build/fbchat-bridge-e2ee.exe .` |
-| "Update the docs"                  | Edit `website/index.html` (bilingual `vi`/`en` spans) **and** the matching `DOCS.md` section.                                  |
-| "Refactor `_utils.py`"             | Be conservative — every feature module imports from it. Run a workspace grep before changing signatures.                       |
+Sai:
+
+```python
+threading.Thread(target=listener.connect_mqtt).start()
+```
+
+Đúng:
+
+```python
+task = asyncio.create_task(listener.connect_mqtt())
+```
+
+### Coroutine bị dùng như dict
+
+Sai:
+
+```python
+info = bridge.call("connect")
+user = info.get("user")
+```
+
+Đúng:
+
+```python
+info = await bridge.call("connect")
+```
+
+Blocking internal path gọi `call_blocking()`.
+
+### Attachment metadata null
+
+Không truy cập `payload.get()` khi payload là `None`. Parser phải check type từng tầng. `uploadID` không thay thế `attachmentID`.
+
+### Notification slice
+
+`_notification.func()` trả dict. Lấy `NotificationResults` trước khi slice.
+
+### All thread data index
+
+`_all_thread_data.func()` trả dict, không phải tuple/list. Dùng `dataGet`, `last_seq_id`, `dataAllThread`.
+
+### E2EE callback race
+
+Đăng ký callback trước start listener, chuyển event thread-safe về loop và đợi readiness trước send.
+
+### LS publish không phải server success
+
+Edit/theme success chỉ xác nhận publish. Đừng đổi message thành “server applied” nếu chưa có ACK/event tương ứng.
+
+### Terminal mojibake
+
+Không replace Vietnamese chỉ vì `Get-Content` render sai. Verify bytes/codepoints trước.
+
+## Pre-commit checklist
+
+- [ ] Đúng tầng và không circular import.
+- [ ] Public I/O async-first.
+- [ ] HTTP dùng `httpx.AsyncClient`.
+- [ ] Input validation và timeout hữu hạn.
+- [ ] Không leak secret.
+- [ ] Parser chịu missing/error fields.
+- [ ] Test mới đã chạy.
+- [ ] Python compile/lint sạch.
+- [ ] Go test sạch nếu đụng bridge.
+- [ ] Tài liệu Việt và Anh đồng bộ.
+- [ ] Không mojibake/U+FFFD/NUL.
+- [ ] `git diff --check` sạch.
+- [ ] Staging chỉ gồm file thuộc task.
