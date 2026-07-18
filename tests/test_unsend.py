@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from _messaging._unsend import _build_request, _parse_response, func, func_async
+from _messaging._unsend import _build_request, _parse_response, func, func_sync
 from conftest import HttpxResponseMock
 
 
@@ -29,7 +29,7 @@ def test_parse_response_error():
 @patch("_messaging._unsend.send_request")
 def test_unsend_func(mock_send, mock_dataFB):
     mock_send.return_value = HttpxResponseMock(200, b'for (;;);{"success": true}')
-    res = func("mid.123", mock_dataFB)
+    res = func_sync("mid.123", mock_dataFB)
     assert isinstance(res, dict)
     assert res["success"] == 1
     mock_send.assert_called_once()
@@ -37,9 +37,9 @@ def test_unsend_func(mock_send, mock_dataFB):
 
 @pytest.mark.asyncio
 @patch("_messaging._unsend.send_request_async")
-async def test_unsend_func_async(mock_send_async, mock_dataFB):
-    mock_send_async.return_value = HttpxResponseMock(200, b'for (;;);{"success": true}')
-    res = await func_async("mid.123", mock_dataFB)
+async def test_unsend_func_awaitable(mock_send, mock_dataFB):
+    mock_send.return_value = HttpxResponseMock(200, b'for (;;);{"success": true}')
+    res = await func("mid.123", mock_dataFB)
     assert isinstance(res, dict)
     assert res["success"] == 1
-    mock_send_async.assert_called_once()
+    mock_send.assert_called_once()

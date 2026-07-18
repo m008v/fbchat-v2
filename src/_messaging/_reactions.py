@@ -54,7 +54,7 @@ def _build_request(
     }
 
 
-def func(
+def func_sync(
     dataFB: dict[str, Any],
     typeAdded: str,
     messageID: str | int,
@@ -68,7 +68,7 @@ def func(
     return response
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any],
     typeAdded: str,
     messageID: str | int,
@@ -106,3 +106,6 @@ async def func_async(
 ✓Hoàn thành vào lúc 21:22 ngày 23/6/2023 • Cập nhật mới nhất: 7:52 20/7/2023
 ✓Tôn trọng tác giả ❤️
 """
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func

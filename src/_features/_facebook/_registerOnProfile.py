@@ -40,7 +40,7 @@ def _parse_response(payload: dict[str, Any]) -> dict[str, Any]:
     return {"error": 1, "messages": message or "Tạo trang cá nhân bổ sung thất bại."}
 
 
-def func(dataFB: dict[str, Any], newName: str, newUsername: str) -> dict[str, Any]:
+def func_sync(dataFB: dict[str, Any], newName: str, newUsername: str) -> dict[str, Any]:
     try:
         payload = post_form_json(
             GRAPHQL_URL,
@@ -52,7 +52,7 @@ def func(dataFB: dict[str, Any], newName: str, newUsername: str) -> dict[str, An
         return {"error": 1, "messages": str(exc)}
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any],
     newName: str,
     newUsername: str,
@@ -69,3 +69,6 @@ async def func_async(
         return _parse_response(payload)
     except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
         return {"error": 1, "messages": str(exc)}
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func

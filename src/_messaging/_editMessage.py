@@ -231,7 +231,7 @@ def _build_edit_context(messageID: str, newText: str) -> dict[str, Any]:
     )
 
 
-def editMessage(
+def editMessage_sync(
     dataFB: dict[str, Any],
     messageID: str,
     newText: str,
@@ -258,31 +258,31 @@ def editMessage(
     }
 
 
-def func(
+def func_sync(
     dataFB: dict[str, Any],
     messageID: str,
     newText: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> dict[str, Any]:
-    return editMessage(dataFB, messageID, newText, timeout=timeout)
+    return editMessage_sync(dataFB, messageID, newText, timeout=timeout)
 
 
-async def editMessage_async(
+async def editMessage(
     dataFB: dict[str, Any],
     messageID: str,
     newText: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> dict[str, Any]:
-    return await asyncio.to_thread(editMessage, dataFB, messageID, newText, timeout)
+    return await asyncio.to_thread(editMessage_sync, dataFB, messageID, newText, timeout)
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any],
     messageID: str,
     newText: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> dict[str, Any]:
-    return await editMessage_async(dataFB, messageID, newText, timeout=timeout)
+    return await editMessage(dataFB, messageID, newText, timeout=timeout)
 
 
 """ Hướng dẫn sử dụng (Tutorial)
@@ -311,3 +311,7 @@ async def func_async(
      - Endpoint này dùng MQTT LS task queue_name="edit_message".
      - Facebook không trả response GraphQL trực tiếp; success ở đây nghĩa là task đã được publish lên /ls_req.
 """
+
+# Backwards-compatible aliases for the old `_async` API.
+editMessage_async = editMessage
+func_async = func

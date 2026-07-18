@@ -48,7 +48,7 @@ def _parse_response(payload: dict[str, Any], new_contents: str) -> dict[str, Any
     }
 
 
-def func(
+def func_sync(
     dataFB: dict[str, Any], newContents: str, uploadPost: bool = False
 ) -> dict[str, Any]:
     try:
@@ -62,7 +62,7 @@ def func(
         return {"error": 1, "messages": str(exc)}
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any],
     newContents: str,
     uploadPost: bool = False,
@@ -79,3 +79,6 @@ async def func_async(
         return _parse_response(payload, newContents)
     except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
         return {"error": 1, "messages": str(exc)}
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func

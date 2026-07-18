@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart TD
-    A[Cookie local] --> B[dataGetHome_async]
+    A[Cookie local] --> B[dataGetHome]
     B --> C{Token hợp lệ?}
     C -- Không --> D[Trả None / làm mới cookie]
     C -- Có --> E[dataFB]
@@ -25,15 +25,15 @@ sequenceDiagram
     participant Worker as MQTT worker
     participant FB as edge-chat.facebook.com
 
-    App->>Listener: get_last_seq_id_async()
-    App->>Listener: create_task(connect_mqtt_async())
+    App->>Listener: get_last_seq_id()
+    App->>Listener: create_task(connect_mqtt())
     Listener->>Worker: asyncio.to_thread(connect_mqtt)
     Worker->>FB: TLS WebSocket + sync queue
     FB-->>Worker: message deltas
     Worker->>Listener: bounded Queue
-    App->>Listener: await get_message_async()
+    App->>Listener: await get_message()
     Listener-->>App: event hoặc None khi timeout
-    App->>Listener: await disconnect_async()
+    App->>Listener: await disconnect()
 ```
 
 Worker thread chỉ là adapter cho `paho-mqtt` blocking. HTTP async không đi qua worker thread.
@@ -43,7 +43,7 @@ Worker thread chỉ là adapter cho `paho-mqtt` blocking. HTTP async không đi 
 ```mermaid
 flowchart LR
     A[Python asyncio app] --> B[listeningE2EEEvent]
-    B --> C[_BridgeProcess.call_async]
+    B --> C[_BridgeProcess.call]
     C --> D[Worker chờ JSON-RPC]
     D --> E[Go bridge subprocess]
     E --> F[mautrix-meta / E2EE]
@@ -56,7 +56,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A[Cancel / Ctrl+C] --> B[disconnect_async hoặc stop]
+    A[Cancel / Ctrl+C] --> B[disconnect hoặc stop]
     B --> C[Đóng MQTT/bridge]
     C --> D[Await listener task]
     D --> E[Đóng AsyncClient do caller sở hữu]

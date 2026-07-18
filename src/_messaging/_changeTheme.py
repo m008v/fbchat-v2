@@ -203,7 +203,7 @@ def _normalize_theme(themeData: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def listThemes(dataFB: dict[str, Any]) -> dict[str, Any]:
+def listThemes_sync(dataFB: dict[str, Any]) -> dict[str, Any]:
     resData = _post_graphql(
         dataFB,
         THEME_LIST_FRIENDLY_NAME,
@@ -266,7 +266,7 @@ def _match_theme(themes: list[dict[str, Any]], themeName: str) -> dict[str, Any]
     )
 
 
-def findTheme(dataFB: dict[str, Any], themeName: str) -> dict[str, Any]:
+def findTheme_sync(dataFB: dict[str, Any], themeName: str) -> dict[str, Any]:
     listed = listThemes(dataFB)
     if listed.get("error"):
         return listed
@@ -331,7 +331,7 @@ def _build_theme_contexts(threadID: str, themeID: str) -> list[dict[str, Any]]:
     return contexts
 
 
-def changeTheme(
+def changeTheme_sync(
     dataFB: dict[str, Any],
     threadID: str,
     themeName: str,
@@ -346,7 +346,7 @@ def changeTheme(
         )
 
     if str(themeName).strip().lower() == "list":
-        return listThemes(dataFB)
+        return listThemes_sync(dataFB)
 
     themeResult = findTheme(dataFB, themeName)
     if themeResult.get("error"):
@@ -374,7 +374,7 @@ def changeTheme(
     }
 
 
-def func(
+def func_sync(
     dataFB: dict[str, Any],
     threadID: str | None = None,
     themeName: str | None = None,
@@ -383,12 +383,12 @@ def func(
 ) -> dict[str, Any]:
     action = (action or "set").lower()
     if str(threadID or "").strip().lower() == "list" and themeName is None:
-        return listThemes(dataFB)
+        return listThemes_sync(dataFB)
     if action == "list" or str(themeName or "").strip().lower() == "list":
-        return listThemes(dataFB)
+        return listThemes_sync(dataFB)
     if action == "find":
-        return findTheme(dataFB, themeName)
-    return changeTheme(
+        return findTheme_sync(dataFB, themeName)
+    return changeTheme_sync(
         dataFB,
         threadID,
         themeName,
@@ -397,7 +397,7 @@ def func(
     )
 
 
-async def listThemes_async(dataFB: dict[str, Any]) -> dict[str, Any]:
+async def listThemes(dataFB: dict[str, Any]) -> dict[str, Any]:
     resData = await _post_graphql_async(
         dataFB,
         THEME_LIST_FRIENDLY_NAME,
@@ -427,11 +427,11 @@ async def listThemes_async(dataFB: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def findTheme_async(dataFB: dict[str, Any], themeName: str) -> dict[str, Any]:
+async def findTheme(dataFB: dict[str, Any], themeName: str) -> dict[str, Any]:
     if not themeName:
         return _error_response("themeName cannot be empty.")
 
-    listResult = await listThemes_async(dataFB)
+    listResult = await listThemes(dataFB)
     if listResult.get("error"):
         return listResult
 
@@ -447,7 +447,7 @@ async def findTheme_async(dataFB: dict[str, Any], themeName: str) -> dict[str, A
     }
 
 
-async def changeTheme_async(
+async def changeTheme(
     dataFB: dict[str, Any],
     threadID: str,
     themeName: str,
@@ -462,9 +462,9 @@ async def changeTheme_async(
         )
 
     if str(themeName).strip().lower() == "list":
-        return await listThemes_async(dataFB)
+        return await listThemes(dataFB)
 
-    themeResult = await findTheme_async(dataFB, themeName)
+    themeResult = await findTheme(dataFB, themeName)
     if themeResult.get("error"):
         return themeResult
 
@@ -490,7 +490,7 @@ async def changeTheme_async(
     }
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any],
     threadID: str | None = None,
     themeName: str | None = None,
@@ -499,12 +499,12 @@ async def func_async(
 ) -> dict[str, Any]:
     action = (action or "set").lower()
     if str(threadID or "").strip().lower() == "list" and themeName is None:
-        return await listThemes_async(dataFB)
+        return await listThemes(dataFB)
     if action == "list" or str(themeName or "").strip().lower() == "list":
-        return await listThemes_async(dataFB)
+        return await listThemes(dataFB)
     if action == "find":
-        return await findTheme_async(dataFB, themeName)
-    return await changeTheme_async(
+        return await findTheme(dataFB, themeName)
+    return await changeTheme(
         dataFB,
         threadID,
         themeName,
@@ -546,3 +546,9 @@ async def func_async(
      - Success nghĩa là request đổi theme đã publish lên /ls_req; Messenger có thể vẫn từ chối
        nếu tài khoản không có quyền đổi theme trong thread đó.
 """
+
+# Backwards-compatible aliases for the old `_async` API.
+listThemes_async = listThemes
+findTheme_async = findTheme
+changeTheme_async = changeTheme
+func_async = func

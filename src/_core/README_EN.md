@@ -18,11 +18,11 @@
 ```python
 import asyncio
 
-from _core._session import dataGetHome_async
+from _core._session import dataGetHome
 
 
 async def main() -> None:
-    data_fb = await dataGetHome_async("c_user=...; xs=...; fr=...; datr=...;")
+    data_fb = await dataGetHome("c_user=...; xs=...; fr=...; datr=...;")
     if data_fb is None:
         raise RuntimeError("Could not create a session.")
     print(data_fb["FacebookID"])
@@ -62,14 +62,14 @@ login = loginFacebook(
     "password",
     AuthenticationGoogleCode="JBSWY3DPEHPK3PXP",
 )
-result = await login.main_async()
+result = await login.main()
 ```
 
-`FBCHAT_APP_ACCESS_TOKEN` must be configured. The TOTP secret is evaluated locally with `pyotp`; a direct 6–8 digit OTP is also accepted. The module does not call `2fa.live`, hardcode an app secret, or print password-bearing request forms. Credential login uses the legacy FB4A form/header and `requests` under the hood; `main_async()` wraps that I/O in a worker thread.
+`FBCHAT_APP_ACCESS_TOKEN` must be configured. The TOTP secret is evaluated locally with `pyotp`; a direct 6–8 digit OTP is also accepted. The module does not call `2fa.live`, hardcode an app secret, or print password-bearing request forms. Credential login uses the legacy FB4A form/header and `requests` under the hood; `main()` wraps that I/O in a worker thread.
 
 ## Development rules
 
-- I/O features must expose an `_async` API; prefer `httpx.AsyncClient` except for proven legacy endpoints that require `requests`.
+- I/O features must expose suffix-free async APIs; prefer `httpx.AsyncClient` except for proven legacy endpoints that require `requests`.
 - Accept `client=` for testing and connection-pool reuse.
 - Use finite timeouts, call `raise_for_status()`, and handle missing response fields.
 - Never disable TLS verification.
@@ -80,7 +80,7 @@ result = await login.main_async()
 
 | Symptom | Check |
 |---|---|
-| `dataGetHome_async()` returns `None` | Expired cookie, network failure, or changed HTML markers |
+| `dataGetHome()` returns `None` | Expired cookie, network failure, or changed HTML markers |
 | HTTP 401/403 | Invalid cookie/session tokens |
 | Login returns code `-4` | Missing `FBCHAT_APP_ACCESS_TOKEN` |
 | Login asks for 2FA | Provide a TOTP secret or current OTP |

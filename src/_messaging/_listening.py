@@ -59,7 +59,7 @@ class listeningEvent:
             "attachments": {"id": 0, "url": None},
         }
 
-    def get_message(
+    def get_message_sync(
         self, block: bool = False, timeout: float | None = None
     ) -> dict[str, Any] | None:
         try:
@@ -69,11 +69,11 @@ class listeningEvent:
         except Empty:
             return None
 
-    async def get_message_async(
+    async def get_message(
         self, timeout: float | None = None
     ) -> dict[str, Any] | None:
         """Chờ một tin nhắn mà không chặn event loop."""
-        return await asyncio.to_thread(self.get_message, True, timeout)
+        return await asyncio.to_thread(self.get_message_sync, True, timeout)
 
     def _publish_body_results(self, body: dict[str, Any]) -> None:
         self.bodyResults = body
@@ -167,7 +167,7 @@ class listeningEvent:
         ):
             self.lastSeqID = previous
 
-    def get_last_seq_id(self) -> int | None:
+    def get_last_seq_id_sync(self) -> int | None:
         previous = self.lastSeqID
         try:
             self._apply_thread_data(_all_thread_data.func(self.dataFB), previous)
@@ -176,10 +176,10 @@ class listeningEvent:
             print(f"[{datetime.datetime.now()}] Không thể làm mới last_seq_id: {error}")
         return self.lastSeqID
 
-    async def get_last_seq_id_async(self) -> int | None:
+    async def get_last_seq_id(self) -> int | None:
         previous = self.lastSeqID
         try:
-            result = await _all_thread_data.func_async(self.dataFB)
+            result = await _all_thread_data.func(self.dataFB)
             self._apply_thread_data(result, previous)
         except Exception as error:  # lỗi mạng cần giữ sequence cũ để phục hồi
             self.lastSeqID = previous
@@ -314,7 +314,7 @@ class listeningEvent:
         client.reconnect_delay_set(min_delay=1, max_delay=30)
         return client
 
-    def connect_mqtt(self) -> None:
+    def connect_mqtt_sync(self) -> None:
         """Chạy listener blocking; reconnect bằng vòng lặp, không đệ quy callback."""
         self._stop_event.clear()
         while not self._stop_event.is_set():
@@ -326,14 +326,20 @@ class listeningEvent:
                 break
             self._stop_event.wait(_RECONNECT_DELAY_SECONDS)
 
-    async def connect_mqtt_async(self) -> None:
+    async def connect_mqtt(self) -> None:
         """Chạy MQTT blocking trong worker thread dành riêng."""
-        await asyncio.to_thread(self.connect_mqtt)
+        await asyncio.to_thread(self.connect_mqtt_sync)
 
-    def disconnect(self) -> None:
+    def disconnect_sync(self) -> None:
         self._stop_event.set()
         if self.mqtt is not None:
             self.mqtt.disconnect()
 
-    async def disconnect_async(self) -> None:
+    async def disconnect(self) -> None:
         self.disconnect()
+
+# Backwards-compatible aliases for the old `_async` API.
+listeningEvent.get_message_async = listeningEvent.get_message
+listeningEvent.get_last_seq_id_async = listeningEvent.get_last_seq_id
+listeningEvent.connect_mqtt_async = listeningEvent.connect_mqtt
+listeningEvent.disconnect_async = listeningEvent.disconnect

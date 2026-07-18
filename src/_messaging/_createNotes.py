@@ -171,7 +171,7 @@ async def _post_graphql_async(
 # ---------------------------------------------------------------------
 # CHECK
 # ---------------------------------------------------------------------
-def checkNote(dataFB: dict[str, Any]) -> dict[str, Any]:
+def checkNote_sync(dataFB: dict[str, Any]) -> dict[str, Any]:
     """Kiểm tra note hiện tại của tài khoản đang đăng nhập."""
     variables = {"scale": 2}
     resData = _post_graphql(
@@ -199,7 +199,7 @@ def checkNote(dataFB: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------
 # CREATE
 # ---------------------------------------------------------------------
-def createNote(
+def createNote_sync(
     dataFB: dict[str, Any], text: str, privacy: str = "FRIENDS"
 ) -> dict[str, Any]:
     """Tạo một note mới (mặc định tồn tại 24 giờ)."""
@@ -246,7 +246,7 @@ def createNote(
 # ---------------------------------------------------------------------
 # DELETE
 # ---------------------------------------------------------------------
-def deleteNote(
+def deleteNote_sync(
     dataFB: dict[str, Any],
     noteID: str,
 ) -> dict[str, Any]:
@@ -290,7 +290,7 @@ def deleteNote(
 # ---------------------------------------------------------------------
 # RECREATE (delete + create)
 # ---------------------------------------------------------------------
-def recreateNote(
+def recreateNote_sync(
     dataFB: dict[str, Any], oldNoteID: str, newText: str, privacy: str = "FRIENDS"
 ) -> dict[str, Any]:
     """Xoá note cũ rồi tạo note mới."""
@@ -315,7 +315,7 @@ def recreateNote(
 # ---------------------------------------------------------------------
 # Default entry point (theo style fbchat-v2): func(dataFB, action, ...)
 # ---------------------------------------------------------------------
-def func(
+def func_sync(
     dataFB: dict[str, Any], action: str = "check", **kwargs: Any
 ) -> dict[str, Any]:
     """
@@ -329,15 +329,15 @@ def func(
     """
     action = (action or "check").lower()
     if action == "check":
-        return checkNote(dataFB)
+        return checkNote_sync(dataFB)
     if action == "create":
-        return createNote(
+        return createNote_sync(
             dataFB, kwargs["text"], privacy=kwargs.get("privacy", "FRIENDS")
         )
     if action == "delete":
-        return deleteNote(dataFB, kwargs["noteID"])
+        return deleteNote_sync(dataFB, kwargs["noteID"])
     if action == "recreate":
-        return recreateNote(
+        return recreateNote_sync(
             dataFB,
             kwargs["oldNoteID"],
             kwargs["newText"],
@@ -346,7 +346,7 @@ def func(
     return {"error": 1, "messages": f"Unknown action: {action}"}
 
 
-async def checkNote_async(dataFB: dict[str, Any]) -> dict[str, Any]:
+async def checkNote(dataFB: dict[str, Any]) -> dict[str, Any]:
     variables = {"scale": 2}
     resData = await _post_graphql_async(
         dataFB,
@@ -370,7 +370,7 @@ async def checkNote_async(dataFB: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def createNote_async(
+async def createNote(
     dataFB: dict[str, Any], text: str, privacy: str = "FRIENDS"
 ) -> dict[str, Any]:
     if not text:
@@ -404,7 +404,7 @@ async def createNote_async(
     }
 
 
-async def deleteNote_async(dataFB: dict[str, Any], noteID: str) -> dict[str, Any]:
+async def deleteNote(dataFB: dict[str, Any], noteID: str) -> dict[str, Any]:
     if not noteID:
         return {"error": 1, "messages": "noteID cannot be empty."}
 
@@ -432,14 +432,14 @@ async def deleteNote_async(dataFB: dict[str, Any], noteID: str) -> dict[str, Any
     }
 
 
-async def recreateNote_async(
+async def recreateNote(
     dataFB: dict[str, Any], oldNoteID: str, newText: str, privacy: str = "FRIENDS"
 ) -> dict[str, Any]:
-    deleted = await deleteNote_async(dataFB, oldNoteID)
+    deleted = await deleteNote(dataFB, oldNoteID)
     if deleted.get("error"):
         return deleted
 
-    created = await createNote_async(dataFB, newText, privacy=privacy)
+    created = await createNote(dataFB, newText, privacy=privacy)
     if created.get("error"):
         return created
 
@@ -453,20 +453,20 @@ async def recreateNote_async(
     }
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any], action: str = "check", **kwargs: Any
 ) -> dict[str, Any]:
     action = (action or "check").lower()
     if action == "check":
-        return await checkNote_async(dataFB)
+        return await checkNote(dataFB)
     if action == "create":
-        return await createNote_async(
+        return await createNote(
             dataFB, kwargs["text"], privacy=kwargs.get("privacy", "FRIENDS")
         )
     if action == "delete":
-        return await deleteNote_async(dataFB, kwargs["noteID"])
+        return await deleteNote(dataFB, kwargs["noteID"])
     if action == "recreate":
-        return await recreateNote_async(
+        return await recreateNote(
             dataFB,
             kwargs["oldNoteID"],
             kwargs["newText"],
@@ -502,3 +502,10 @@ async def func_async(
      ✓ Convert from ws3-fca (notes.js by @ChoruOfficial) -> fbchat-v2 style
      ✓ Tôn trọng tác giả ❤️
 """
+
+# Backwards-compatible aliases for the old `_async` API.
+checkNote_async = checkNote
+createNote_async = createNote
+deleteNote_async = deleteNote
+recreateNote_async = recreateNote
+func_async = func

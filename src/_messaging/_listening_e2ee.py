@@ -286,7 +286,7 @@ class _BridgeProcess:
         self.events.put({"type": "closed"})
 
     # ------------------------------------------------------------------
-    def call(
+    def call_sync(
         self, method: str, params: Optional[dict] = None, timeout: float = 60.0
     ) -> dict[str, Any]:
         if self._closed or self._proc.poll() is not None:
@@ -324,14 +324,14 @@ class _BridgeProcess:
             raise BridgeError(f"{method}: {resp.get('error', 'unknown')}")
         return resp.get("data") or {}
 
-    async def call_async(
+    async def call(
         self,
         method: str,
         params: Optional[dict] = None,
         timeout: float = 60.0,
     ) -> dict[str, Any]:
         """Chờ JSON-RPC trong worker thread để không chặn event loop."""
-        return await asyncio.to_thread(self.call, method, params, timeout)
+        return await asyncio.to_thread(self.call_sync, method, params, timeout)
 
     # ------------------------------------------------------------------
     # Watchdog — auto-respawn
@@ -522,7 +522,7 @@ class listeningE2EEEvent:
         return {k: v for k, v in cks.items() if k in keep}
 
     # ------------------------------------------------------------------
-    def connect_mqtt(self) -> None:
+    def connect_mqtt_sync(self) -> None:
         """Khởi động bridge subprocess + connect Messenger (blocking poll loop).
 
         Watchdog thread tự động respawn bridge nếu subprocess crash,
@@ -566,9 +566,9 @@ class listeningE2EEEvent:
 
         self._poll_loop()
 
-    async def connect_mqtt_async(self) -> None:
+    async def connect_mqtt(self) -> None:
         """Chạy poll loop của bridge ngoài event loop asyncio."""
-        await asyncio.to_thread(self.connect_mqtt)
+        await asyncio.to_thread(self.connect_mqtt_sync)
 
     def stop(self) -> None:
         self._stop.set()
@@ -675,7 +675,7 @@ class listeningE2EEEvent:
 
     # ------------------------------------------------------------------
     # Helper sender APIs
-    def send_message(
+    def send_message_sync(
         self, thread_id: int, text: str, reply_to_id: str = ""
     ) -> dict[str, Any]:
         if self._bridge is None:
@@ -685,17 +685,17 @@ class listeningE2EEEvent:
             opts["replyToId"] = reply_to_id
         return self._bridge.call("sendMessage", opts)
 
-    async def send_message_async(
+    async def send_message(
         self, thread_id: int, text: str, reply_to_id: str = ""
     ) -> dict[str, Any]:
         if self._bridge is None:
-            raise RuntimeError("Chưa kết nối — gọi connect_mqtt_async() trước.")
+            raise RuntimeError("Chưa kết nối — gọi connect_mqtt() trước.")
         opts: dict[str, Any] = {"threadId": thread_id, "text": text}
         if reply_to_id:
             opts["replyToId"] = reply_to_id
-        return await self._bridge.call_async("sendMessage", opts)
+        return await self._bridge.call("sendMessage", opts)
 
-    def send_e2ee_message(
+    def send_e2ee_message_sync(
         self,
         chat_jid: str,
         text: str,
@@ -714,7 +714,7 @@ class listeningE2EEEvent:
             },
         )
 
-    async def send_e2ee_message_async(
+    async def send_e2ee_message(
         self,
         chat_jid: str,
         text: str,
@@ -722,8 +722,8 @@ class listeningE2EEEvent:
         reply_to_sender_jid: str = "",
     ) -> dict[str, Any]:
         if self._bridge is None:
-            raise RuntimeError("Chưa kết nối — gọi connect_mqtt_async() trước.")
-        return await self._bridge.call_async(
+            raise RuntimeError("Chưa kết nối — gọi connect_mqtt() trước.")
+        return await self._bridge.call(
             "sendE2EEMessage",
             {
                 "chatJid": chat_jid,
@@ -732,3 +732,9 @@ class listeningE2EEEvent:
                 "replyToSenderJid": reply_to_sender_jid,
             },
         )
+
+# Backwards-compatible aliases for the old `_async` API.
+_BridgeProcess.call_async = _BridgeProcess.call
+listeningE2EEEvent.connect_mqtt_async = listeningE2EEEvent.connect_mqtt
+listeningE2EEEvent.send_message_async = listeningE2EEEvent.send_message
+listeningE2EEEvent.send_e2ee_message_async = listeningE2EEEvent.send_e2ee_message

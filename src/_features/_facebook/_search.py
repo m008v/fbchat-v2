@@ -114,7 +114,7 @@ def _parse_response(payload: dict[str, Any], keyword: str) -> dict[str, Any]:
     }
 
 
-def func(dataFB: dict[str, Any], keywordSearch: str) -> dict[str, Any]:
+def func_sync(dataFB: dict[str, Any], keywordSearch: str) -> dict[str, Any]:
     try:
         keyword = str(keywordSearch).strip()
         payload = post_form_json(
@@ -125,7 +125,7 @@ def func(dataFB: dict[str, Any], keywordSearch: str) -> dict[str, Any]:
         return {"error": 1, "messages": str(exc)}
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any],
     keywordSearch: str,
     *,
@@ -142,3 +142,6 @@ async def func_async(
         return _parse_response(payload, keyword)
     except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
         return {"error": 1, "messages": str(exc)}
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func

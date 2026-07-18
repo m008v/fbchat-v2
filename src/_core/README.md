@@ -18,11 +18,11 @@
 ```python
 import asyncio
 
-from _core._session import dataGetHome_async
+from _core._session import dataGetHome
 
 
 async def main() -> None:
-    data_fb = await dataGetHome_async("c_user=...; xs=...; fr=...; datr=...;")
+    data_fb = await dataGetHome("c_user=...; xs=...; fr=...; datr=...;")
     if data_fb is None:
         raise RuntimeError("Không tạo được session.")
     print(data_fb["FacebookID"])
@@ -62,10 +62,10 @@ login = loginFacebook(
     "password",
     AuthenticationGoogleCode="JBSWY3DPEHPK3PXP",
 )
-result = await login.main_async()
+result = await login.main()
 ```
 
-Phải cấu hình `FBCHAT_APP_ACCESS_TOKEN`. TOTP secret được tính ngay trên máy bằng `pyotp`; OTP 6–8 số cũng được chấp nhận trực tiếp. Module không gọi `2fa.live`, không hardcode app secret và không in password/request form. Credential login dùng form/header FB4A legacy và `requests` dưới hood; `main_async()` bọc phần I/O này bằng worker thread.
+Phải cấu hình `FBCHAT_APP_ACCESS_TOKEN`. TOTP secret được tính ngay trên máy bằng `pyotp`; OTP 6–8 số cũng được chấp nhận trực tiếp. Module không gọi `2fa.live`, không hardcode app secret và không in password/request form. Credential login dùng form/header FB4A legacy và `requests` dưới hood; `main()` bọc phần I/O này bằng worker thread.
 
 ## Quy tắc phát triển
 
@@ -80,7 +80,7 @@ Phải cấu hình `FBCHAT_APP_ACCESS_TOKEN`. TOTP secret được tính ngay tr
 
 | Hiện tượng | Kiểm tra |
 |---|---|
-| `dataGetHome_async()` trả `None` | Cookie hết hạn, mạng lỗi hoặc marker HTML đổi |
+| `dataGetHome()` trả `None` | Cookie hết hạn, mạng lỗi hoặc marker HTML đổi |
 | HTTP 401/403 | Cookie/token không còn hợp lệ |
 | Login trả code `-4` | Thiếu `FBCHAT_APP_ACCESS_TOKEN` |
 | Login yêu cầu 2FA | Truyền TOTP secret hoặc OTP hiện hành |

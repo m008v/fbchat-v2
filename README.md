@@ -40,17 +40,17 @@ git submodule update --init --recursive
 ```python
 import asyncio
 
-from _core._session import dataGetHome_async
+from _core._session import dataGetHome
 from _messaging._send import api as SendAPI
 
 
 async def main() -> None:
-    data_fb = await dataGetHome_async("c_user=...; xs=...; fr=...; datr=...;")
+    data_fb = await dataGetHome("c_user=...; xs=...; fr=...; datr=...;")
     if data_fb is None:
         raise RuntimeError("Cookie hết hạn hoặc Facebook đã đổi token HTML.")
 
     sender = SendAPI()
-    result = await sender.send_async(
+    result = await sender.send(
         data_fb,
         "Xin chào từ asyncio",
         threadID="100012345678",
@@ -62,38 +62,38 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Không gọi `asyncio.run()` bên trong event loop đã chạy (FastAPI, Jupyter, Discord bot). Trong các môi trường đó, gọi thẳng `await main()` hoặc `await ..._async(...)`.
+Không gọi `asyncio.run()` bên trong event loop đã chạy (FastAPI, Jupyter, Discord bot). Trong các môi trường đó, gọi thẳng `await main()` hoặc `await ...(...)`.
 
 ## Listener MQTT async
 
 ```python
 import asyncio
 
-from _core._session import dataGetHome_async
+from _core._session import dataGetHome
 from _messaging._listening import listeningEvent
 
 
 async def main() -> None:
-    data_fb = await dataGetHome_async("c_user=...; xs=...; fr=...; datr=...;")
+    data_fb = await dataGetHome("c_user=...; xs=...; fr=...; datr=...;")
     if data_fb is None:
         raise RuntimeError("Không tạo được phiên Facebook.")
 
     listener = listeningEvent(data_fb)
-    listener_task = asyncio.create_task(listener.connect_mqtt_async())
+    listener_task = asyncio.create_task(listener.connect_mqtt())
     try:
         while True:
-            message = await listener.get_message_async(timeout=30)
+            message = await listener.get_message(timeout=30)
             if message is not None:
                 print(message)
     finally:
-        await listener.disconnect_async()
+        await listener.disconnect()
         await listener_task
 
 
 asyncio.run(main())
 ```
 
-`connect_mqtt_async()` đưa vòng lặp blocking của `paho-mqtt` sang worker thread dành riêng. Đây là adapter đúng cho một thư viện MQTT đồng bộ; phần lớn request HTTP chạy bằng `httpx.AsyncClient`, riêng một số endpoint legacy như credential login/upload attachment dùng adapter `requests` có kiểm soát.
+`connect_mqtt()` đưa vòng lặp blocking của `paho-mqtt` sang worker thread dành riêng. Đây là adapter đúng cho một thư viện MQTT đồng bộ; phần lớn request HTTP chạy bằng `httpx.AsyncClient`, riêng một số endpoint legacy như credential login/upload attachment dùng adapter `requests` có kiểm soát.
 
 ## E2EE async
 
@@ -105,9 +105,9 @@ from _messaging._listening_e2ee import listeningE2EEEvent
 
 async def consume(data_fb: dict) -> None:
     listener = listeningE2EEEvent(data_fb)
-    task = asyncio.create_task(listener.connect_mqtt_async())
+    task = asyncio.create_task(listener.connect_mqtt())
     try:
-        await listener.send_e2ee_message_async(
+        await listener.send_e2ee_message(
             "100012345678@msgr",
             "Tin nhắn E2EE",
         )
@@ -138,7 +138,7 @@ async def main() -> None:
         "password",
         AuthenticationGoogleCode="JBSWY3DPEHPK3PXP",
     )
-    print(await login.main_async())
+    print(await login.main())
 
 
 asyncio.run(main())
@@ -162,7 +162,7 @@ Luồng chính:
 
 ```mermaid
 flowchart LR
-    A[Cookie] --> B[dataGetHome_async]
+    A[Cookie] --> B[dataGetHome]
     B --> C[dataFB]
     C --> D[HTTP API async]
     C --> E[MQTT listener async adapter]
@@ -171,7 +171,7 @@ flowchart LR
 
 ## Quy ước API
 
-- Trong code mới, dùng `dataGetHome_async`, `func_async`, `send_async`, `connect_mqtt_async` và `get_message_async`.
+- Trong code mới, dùng `dataGetHome`, `func`, `send`, `connect_mqtt` và `get_message`.
 - Truyền một `httpx.AsyncClient` bằng keyword `client=` khi gọi nhiều request để tái sử dụng connection pool.
 - API sync vẫn tồn tại để tương thích, nhưng không nên gọi trong event loop.
 - `dataFB` chứa token CSRF và cookie; coi toàn bộ dict là secret.

@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import httpx
 
-from _core._session import dataGetHome
+from _core._session import dataGetHome_sync
 
 
 def test_dataGetHome_success():
@@ -20,7 +20,7 @@ def test_dataGetHome_success():
         mock_get.return_value = mock_resp
 
         cookie = "c_user=10001234567890; xs=mock_xs; fr=mock_fr; datr=mock_datr;"
-        result = dataGetHome(cookie)
+        result = dataGetHome_sync(cookie)
 
         assert result == {
             "fb_dtsg": "mock_dtsg",
@@ -40,5 +40,5 @@ def test_dataGetHome_network_error():
         "_core._session.send_get_request",
         side_effect=httpx.RequestError("Network error", request=Mock()),
     ):
-        result = dataGetHome("cookie")
+        result = dataGetHome_sync("cookie")
         assert result is None

@@ -212,7 +212,7 @@ def _parse_response(text: str, *, include_error: bool = False) -> dict[str, Any]
     }
 
 
-def func(
+def func_sync(
     filenames: str | list[str],
     dataFB: dict[str, Any],
     *,
@@ -231,7 +231,7 @@ def func(
         _close_request_files(request)
 
 
-async def func_async(
+async def func(
     filenames: str | list[str],
     dataFB: dict[str, Any],
     *,
@@ -240,7 +240,7 @@ async def func_async(
 ) -> dict[str, Any] | None:
     if client is None:
         return await asyncio.to_thread(
-            func,
+            func_sync,
             filenames,
             dataFB,
             include_error=include_error,
@@ -253,3 +253,6 @@ async def func_async(
         return _parse_response(response.text, include_error=include_error)
     finally:
         _close_request_files(request)
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func

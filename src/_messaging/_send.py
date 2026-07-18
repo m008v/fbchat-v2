@@ -177,7 +177,7 @@ class api:
         self.properties = list(_PROPERTIES)
         self.results: dict[str, Any] = {}
 
-    def send(
+    def send_sync(
         self,
         dataFB: dict[str, Any],
         contentSend: str | int,
@@ -208,7 +208,7 @@ class api:
         self.results = result
         return result
 
-    async def send_async(
+    async def send(
         self,
         dataFB: dict[str, Any],
         contentSend: str | int,
@@ -238,3 +238,6 @@ class api:
         result = _parse_response(response.text)
         self.results = result
         return result
+
+# Backwards-compatible aliases for the old `_async` API.
+api.send_async = api.send

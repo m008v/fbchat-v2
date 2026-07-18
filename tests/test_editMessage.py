@@ -4,7 +4,7 @@ from _messaging._editMessage import (
     _build_ls_context,
     _rc_success,
     _error_response,
-    func_async,
+    func,
 )
 
 
@@ -52,8 +52,8 @@ def test_edit_message_func(mock_mqtt, mock_dataFB):
 
 @pytest.mark.asyncio
 @patch("_messaging._editMessage.asyncio.to_thread")
-async def test_edit_message_func_async(mock_to_thread, mock_dataFB):
+async def test_edit_message_func_awaitable(mock_to_thread, mock_dataFB):
     mock_to_thread.return_value = {"success": 1, "messages": "Success"}
-    res = await func_async(mock_dataFB, "msg_id", "new text")
+    res = await func(mock_dataFB, "msg_id", "new text")
     assert res["success"] == 1
     mock_to_thread.assert_called_once()

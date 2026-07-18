@@ -107,7 +107,7 @@ def _parse_result(payload: dict[str, Any]) -> dict[str, Any]:
     return {"success": 1, "messages": "Tạo bài viết thành công!", "urlPost": url}
 
 
-def func(
+def func_sync(
     dataFB: dict[str, Any],
     newContents: str,
     attachmentID: str | int | None = None,
@@ -123,7 +123,7 @@ def func(
     return _parse_result(payload)
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any],
     newContents: str,
     attachmentID: str | int | None = None,
@@ -137,3 +137,6 @@ async def func_async(
         client=client,
     )
     return _parse_result(payload)
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func

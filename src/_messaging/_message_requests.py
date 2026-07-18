@@ -89,7 +89,7 @@ def _parse_response(text: str) -> dict[str, Any]:
     }
 
 
-def func(
+def func_sync(
     dataFB: dict[str, Any], *, client: httpx.Client | None = None
 ) -> dict[str, Any]:
     response = send_request(_build_request(dataFB), client=client)
@@ -97,9 +97,12 @@ def func(
     return _parse_response(response.text)
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any], *, client: httpx.AsyncClient | None = None
 ) -> dict[str, Any]:
     response = await send_request_async(_build_request(dataFB), client=client)
     response.raise_for_status()
     return _parse_response(response.text)
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func

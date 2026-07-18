@@ -240,7 +240,7 @@ def _parse_detail_result(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
 
-def createItem(
+def createItem_sync(
     dataFB: dict[str, Any],
     nameItem: str,
     brandItem: str,
@@ -274,7 +274,7 @@ def createItem(
     return _parse_create_result(payload)
 
 
-async def createItem_async(
+async def createItem(
     dataFB: dict[str, Any],
     nameItem: str,
     brandItem: str,
@@ -308,7 +308,7 @@ async def createItem_async(
     return _parse_create_result(payload)
 
 
-def getInformationProductItemMarketPlace(
+def getInformationProductItemMarketPlace_sync(
     dataFB: dict[str, Any],
     idProductItem: str | int,
     *,
@@ -323,7 +323,7 @@ def getInformationProductItemMarketPlace(
     return _parse_detail_result(payload)
 
 
-async def getInformationProductItemMarketPlace_async(
+async def getInformationProductItemMarketPlace(
     dataFB: dict[str, Any],
     idProductItem: str | int,
     *,
@@ -336,3 +336,7 @@ async def getInformationProductItemMarketPlace_async(
         client=client,
     )
     return _parse_detail_result(payload)
+
+# Backwards-compatible aliases for the old `_async` API.
+createItem_async = createItem
+getInformationProductItemMarketPlace_async = getInformationProductItemMarketPlace

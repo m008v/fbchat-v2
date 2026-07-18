@@ -73,7 +73,7 @@ def _parse_result(payload: dict[str, Any]) -> dict[str, str]:
     return formatResults("success", "Thay đổi tên cuộc trò chuyện thành công.")
 
 
-def func(
+def func_sync(
     dataFB: dict[str, Any],
     threadID: str | int,
     newNameThread: str,
@@ -90,7 +90,7 @@ def func(
     return _parse_result(payload)
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any],
     threadID: str | int,
     newNameThread: str,
@@ -105,3 +105,6 @@ async def func_async(
         client=client,
     )
     return _parse_result(payload)
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func

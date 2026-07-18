@@ -9,10 +9,10 @@ mindmap
         get_async
         reusable AsyncClient
       session
-        dataGetHome_async
+        dataGetHome
         dataFB secret
       login
-        main_async
+        main
         local pyotp
         env app token
     Features
@@ -26,12 +26,12 @@ mindmap
         admin and nickname
         emoji and name
     Messaging
-      send_async
+      send
       attachments
       reactions and unsend
       notes and themes
       MQTT
-        connect_mqtt_async
+        connect_mqtt
         bounded queue
         outer reconnect loop
       E2EE

@@ -131,7 +131,7 @@ def _build_result(response: httpx.Response, elapsed: float) -> dict[str, Any]:
     }
 
 
-def func(
+def func_sync(
     dataFB: dict[str, Any], *, client: httpx.Client | None = None
 ) -> dict[str, Any]:
     started = time.perf_counter()
@@ -139,7 +139,7 @@ def func(
     return _build_result(response, time.perf_counter() - started)
 
 
-async def func_async(
+async def func(
     dataFB: dict[str, Any], *, client: httpx.AsyncClient | None = None
 ) -> dict[str, Any]:
     started = time.perf_counter()
@@ -147,7 +147,7 @@ async def func_async(
     return _build_result(response, time.perf_counter() - started)
 
 
-def features(dataGet: str, threadID: str | int, commandUse: str) -> Any:
+def features_sync(dataGet: str, threadID: str | int, commandUse: str) -> Any:
     try:
         root = json.loads(dataGet)["o0"]
         get_data = root["data"]["viewer"]["message_threads"]["nodes"]
@@ -217,6 +217,10 @@ def features(dataGet: str, threadID: str | int, commandUse: str) -> Any:
     return {"error": f"Lệnh không được hỗ trợ: {commandUse}"}
 
 
-async def features_async(dataGet: str, threadID: str | int, commandUse: str) -> Any:
+async def features(dataGet: str, threadID: str | int, commandUse: str) -> Any:
     """API đồng nhất cho workflow async; bước này chỉ xử lý dữ liệu trong bộ nhớ."""
-    return features(dataGet, threadID, commandUse)
+    return features_sync(dataGet, threadID, commandUse)
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func
+features_async = features

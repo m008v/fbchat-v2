@@ -8,7 +8,7 @@ An async-first Python library for automating Facebook Messenger through an authe
 
 ## Highlights
 
-- Current APIs prioritize `async`/`await`; network functions suffixed with `_async` perform real asynchronous I/O.
+- Current APIs prioritize `async`/`await`; public async names no longer carry the legacy suffix, for example `dataGetHome`, `send`, `func`, and `connect_mqtt`.
 - Send, reply, unsend, edit, react, upload, notes, themes, and message requests.
 - Account features: bio, posts, search, blocking, professional mode, additional profiles, and Marketplace.
 - Bounded MQTT queue, burst-safe consumption, and non-recursive reconnect handling.
@@ -40,17 +40,17 @@ git submodule update --init --recursive
 ```python
 import asyncio
 
-from _core._session import dataGetHome_async
+from _core._session import dataGetHome
 from _messaging._send import api as SendAPI
 
 
 async def main() -> None:
-    data_fb = await dataGetHome_async("c_user=...; xs=...; fr=...; datr=...;")
+    data_fb = await dataGetHome("c_user=...; xs=...; fr=...; datr=...;")
     if data_fb is None:
         raise RuntimeError("The cookie expired or Facebook changed its HTML tokens.")
 
     sender = SendAPI()
-    result = await sender.send_async(
+    result = await sender.send(
         data_fb,
         "Hello from asyncio",
         threadID="100012345678",
@@ -62,38 +62,38 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Do not call `asyncio.run()` inside an already running event loop such as FastAPI, Jupyter, or a Discord bot. In those environments, directly `await main()` or the relevant `_async` API.
+Do not call `asyncio.run()` inside an already running event loop such as FastAPI, Jupyter, or a Discord bot. In those environments, directly `await main()` or the relevant async API.
 
 ## Async MQTT listener
 
 ```python
 import asyncio
 
-from _core._session import dataGetHome_async
+from _core._session import dataGetHome
 from _messaging._listening import listeningEvent
 
 
 async def main() -> None:
-    data_fb = await dataGetHome_async("c_user=...; xs=...; fr=...; datr=...;")
+    data_fb = await dataGetHome("c_user=...; xs=...; fr=...; datr=...;")
     if data_fb is None:
         raise RuntimeError("Could not create a Facebook session.")
 
     listener = listeningEvent(data_fb)
-    listener_task = asyncio.create_task(listener.connect_mqtt_async())
+    listener_task = asyncio.create_task(listener.connect_mqtt())
     try:
         while True:
-            message = await listener.get_message_async(timeout=30)
+            message = await listener.get_message(timeout=30)
             if message is not None:
                 print(message)
     finally:
-        await listener.disconnect_async()
+        await listener.disconnect()
         await listener_task
 
 
 asyncio.run(main())
 ```
 
-`connect_mqtt_async()` moves `paho-mqtt`'s blocking loop to a dedicated worker thread. That is the correct adapter for a synchronous MQTT library; most HTTP requests use `httpx.AsyncClient`, while proven legacy endpoints such as credential login/upload attachment use a controlled `requests` adapter.
+`connect_mqtt()` moves `paho-mqtt`'s blocking loop to a dedicated worker thread. That is the correct adapter for a synchronous MQTT library; most HTTP requests use `httpx.AsyncClient`, while proven legacy endpoints such as credential login/upload attachment use a controlled `requests` adapter.
 
 ## Async E2EE
 
@@ -105,9 +105,9 @@ from _messaging._listening_e2ee import listeningE2EEEvent
 
 async def consume(data_fb: dict) -> None:
     listener = listeningE2EEEvent(data_fb)
-    task = asyncio.create_task(listener.connect_mqtt_async())
+    task = asyncio.create_task(listener.connect_mqtt())
     try:
-        await listener.send_e2ee_message_async(
+        await listener.send_e2ee_message(
             "100012345678@msgr",
             "Encrypted message",
         )
@@ -138,7 +138,7 @@ async def main() -> None:
         "password",
         AuthenticationGoogleCode="JBSWY3DPEHPK3PXP",
     )
-    print(await login.main_async())
+    print(await login.main())
 
 
 asyncio.run(main())
@@ -160,7 +160,7 @@ tests/           # sync compatibility and async workflow tests
 
 ```mermaid
 flowchart LR
-    A[Cookie] --> B[dataGetHome_async]
+    A[Cookie] --> B[dataGetHome]
     B --> C[dataFB]
     C --> D[Async HTTP API]
     C --> E[Async MQTT adapter]
@@ -169,7 +169,7 @@ flowchart LR
 
 ## API conventions
 
-- New code should use `dataGetHome_async`, `func_async`, `send_async`, `connect_mqtt_async`, and `get_message_async`.
+- New code should use `dataGetHome`, `func`, `send`, `connect_mqtt`, and `get_message`.
 - Pass an `httpx.AsyncClient` through `client=` for multi-request workflows to reuse its connection pool.
 - Sync compatibility APIs remain available, but do not call them inside an event loop.
 - `dataFB` contains CSRF tokens and cookies; treat the entire object as a secret.

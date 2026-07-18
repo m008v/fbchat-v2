@@ -37,7 +37,7 @@ def _parse_response(text: str) -> dict[str, Any]:
     return {"success": 1, "messages": "Thu hồi tin nhắn thành công."}
 
 
-def func(
+def func_sync(
     messageID: str,
     dataFB: dict[str, Any],
     *,
@@ -48,7 +48,7 @@ def func(
     return _parse_response(response.text)
 
 
-async def func_async(
+async def func(
     messageID: str,
     dataFB: dict[str, Any],
     *,
@@ -59,3 +59,6 @@ async def func_async(
     )
     response.raise_for_status()
     return _parse_response(response.text)
+
+# Backwards-compatible aliases for the old `_async` API.
+func_async = func

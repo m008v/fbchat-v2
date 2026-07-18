@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from _core._facebookLogin import GetToken2FA, loginFacebook
+from _core._facebookLogin import GetToken2FA_sync, loginFacebook
 from _features._facebook import _createPost, _marketplace, _professional
 from _features._thread import _addAdmin
 from _messaging._listening import listeningEvent
@@ -15,7 +15,7 @@ from _messaging._send import _build_form as build_send_form
 async def test_add_admin_async_uses_async_http_transport(mock_dataFB):
     transport = AsyncMock(return_value={})
     with patch.object(_addAdmin, "post_form_json_async", transport):
-        result = await _addAdmin.func_async(
+        result = await _addAdmin.func(
             mock_dataFB, "thread-1", "user-1", statusChoice=False
         )
 
@@ -30,7 +30,7 @@ async def test_add_admin_async_uses_async_http_transport(mock_dataFB):
 async def test_professional_accepts_boolean_status(mock_dataFB):
     transport = AsyncMock(return_value={"data": {"ok": True}})
     with patch.object(_professional, "post_form_json_async", transport):
-        result = await _professional.func_async(mock_dataFB, True)
+        result = await _professional.func(mock_dataFB, True)
 
     assert result["success"] == 1
     assert result["messages"].startswith("Bật")
@@ -67,17 +67,17 @@ def test_login_requires_app_token_without_network(monkeypatch):
     monkeypatch.delenv("FBCHAT_APP_ACCESS_TOKEN", raising=False)
     login = loginFacebook("user@example.com", "secret")
 
-    result = login.main()
+    result = login.main_sync()
 
     assert result["error"]["error_code"] == -4
     assert "FBCHAT_APP_ACCESS_TOKEN" in result["error"]["description"]
 
 
 def test_totp_is_generated_locally_and_direct_otp_is_preserved():
-    token = GetToken2FA("JBSWY3DPEHPK3PXP")
+    token = GetToken2FA_sync("JBSWY3DPEHPK3PXP")
 
     assert token.isdigit() and len(token) == 6
-    assert GetToken2FA("123456") == "123456"
+    assert GetToken2FA_sync("123456") == "123456"
 
 
 class _LoginResponse:
@@ -113,7 +113,7 @@ def test_login_uses_legacy_fb4a_requests_form(monkeypatch):
         )
 
     with patch("requests.post", side_effect=fake_post):
-        result = loginFacebook("user@example.com", "secret").main()
+        result = loginFacebook("user@example.com", "secret").main_sync()
 
     assert result["success"]["setCookies"] == "c_user=123; "
     assert calls[0]["url"] == "https://b-graph.facebook.com/auth/login"
@@ -147,7 +147,7 @@ def test_login_two_factor_prefers_legacy_otp_password(monkeypatch):
         return _LoginResponse(two_factor_error if len(calls) == 1 else success)
 
     with patch("requests.post", side_effect=fake_post):
-        result = loginFacebook("user@example.com", "secret", "123456").main()
+        result = loginFacebook("user@example.com", "secret", "123456").main_sync()
 
     assert result["success"]["setCookies"] == "xs=abc; "
     assert calls[1]["credentials_type"] == "two_factor"

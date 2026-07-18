@@ -1,6 +1,6 @@
 # fbchat-v2 :: bridge-e2ee
 
-> Python applications should use `await listeningE2EEEvent.connect_mqtt_async()` and the `_async` methods in `BridgeActions`. Direct stdin/stdout examples below document the wire protocol, not the recommended application API.
+> Python applications should use `await listeningE2EEEvent.connect_mqtt()` and the suffix-free async methods in `BridgeActions`. Direct stdin/stdout examples below document the wire protocol, not the recommended application API.
 
 Standalone Go binary that handles Facebook Messenger E2EE (Secret Conversations
 / Labyrinth) and exposes a tiny line-delimited JSON RPC over stdin/stdout. The

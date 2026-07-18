@@ -11,12 +11,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from _core._session import dataGetHome_async
+from _core._session import dataGetHome
 from _core._storage import FileSessionStorage
 from _features._facebook import _search
 from _messaging._listening import listeningEvent
 from _messaging._send import api as SendAPI
-from _messaging._unsend import func_async as unsend_message_async
+from _messaging._unsend import func as unsend_message
 
 HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.json"
@@ -83,11 +83,11 @@ class SimpleBot:
             "unsend": self._cmd_unsend,
         }
 
-    async def run_async(self) -> None:
+    async def run(self) -> None:
         log("bot", f"Đăng nhập với UID = {self.dataFB.get('FacebookID')}")
-        await self.listener.get_last_seq_id_async()
+        await self.listener.get_last_seq_id()
         listener_task = asyncio.create_task(
-            self.listener.connect_mqtt_async(), name="fbchat-listener"
+            self.listener.connect_mqtt(), name="fbchat-listener"
         )
         log("bot", "Listener đã khởi động. Nhấn Ctrl+C để thoát.")
         try:
@@ -95,19 +95,19 @@ class SimpleBot:
                 if listener_task.done():
                     listener_task.result()
                     raise RuntimeError("Listener MQTT đã dừng ngoài dự kiến.")
-                message = await self.listener.get_message_async(timeout=1.0)
+                message = await self.listener.get_message(timeout=1.0)
                 if message is not None:
                     await self._dispatch(message)
         finally:
-            await self.listener.disconnect_async()
+            await self.listener.disconnect()
             try:
                 await asyncio.wait_for(listener_task, timeout=5)
             except (asyncio.TimeoutError, asyncio.CancelledError):
                 listener_task.cancel()
 
-    def run(self) -> None:
-        """Wrapper CLI tương thích; trong ứng dụng async hãy await run_async()."""
-        asyncio.run(self.run_async())
+    def run_sync(self) -> None:
+        """Wrapper CLI tương thích; trong ứng dụng async hãy await run()."""
+        asyncio.run(self.run())
 
     async def _dispatch(self, message: dict[str, Any]) -> None:
         message_id = message.get("messageID")
@@ -144,7 +144,7 @@ class SimpleBot:
     async def _reply(self, message: dict[str, Any], content: str) -> None:
         thread_id = message["replyToID"]
         type_chat = "user" if message.get("type") == "user" else None
-        result = await self.sender.send_async(
+        result = await self.sender.send(
             self.dataFB,
             content,
             thread_id,
@@ -201,7 +201,7 @@ class SimpleBot:
         if not argument:
             await self._reply(message, f"Cách dùng: {self.prefix}search <từ khóa>")
             return
-        result = await _search.func_async(self.dataFB, argument)
+        result = await _search.func(self.dataFB, argument)
         users = result.get("searchResultsDict") if isinstance(result, dict) else None
         if not users:
             await self._reply(message, f"🔍 Không tìm thấy kết quả cho: {argument}")
@@ -223,15 +223,15 @@ class SimpleBot:
         if not target:
             await self._reply(message, "ℹ️ Chưa có tin nào để thu hồi trong thread này.")
             return
-        result = await unsend_message_async(target, self.dataFB)
+        result = await unsend_message(target, self.dataFB)
         log("unsend", f"{target} -> {result}")
         self._last_bot_message.pop(thread_id, None)
 
 
-async def main_async() -> None:
+async def main() -> None:
     config = load_config()
     log("boot", "Đang khởi tạo dataFB từ cookie…")
-    dataFB = await dataGetHome_async(
+    dataFB = await dataGetHome(
         storage=FileSessionStorage(str(CONFIG_PATH), key="cookies")
     )
     if not is_valid_datafb(dataFB):
@@ -239,12 +239,12 @@ async def main_async() -> None:
             "Không lấy được dataFB hợp lệ; cookie đã hết hạn hoặc HTML token đã đổi."
         )
     bot = SimpleBot(dataFB, prefix=config["prefix"], admins=config["admins"])
-    await bot.run_async()
+    await bot.run()
 
 
-def main() -> None:
+def main_sync() -> None:
     try:
-        asyncio.run(main_async())
+        asyncio.run(main())
     except KeyboardInterrupt:
         log("bot", "Đã dừng theo yêu cầu người dùng.")
     except (RuntimeError, ValueError, json.JSONDecodeError) as error:
@@ -253,4 +253,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main_sync()
+
+# Backwards-compatible aliases for the old `_async` API.
+SimpleBot.run_async = SimpleBot.run
+main_async = main

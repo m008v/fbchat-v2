@@ -5,7 +5,7 @@ from _messaging._message_requests import (
     _build_request,
     _parse_response,
     func,
-    func_async,
+    func_sync,
 )
 from conftest import HttpxResponseMock
 
@@ -35,7 +35,7 @@ def test_message_requests_func(mock_send, mock_dataFB):
         200,
         b'{"o0": {"data": {"viewer": {"message_threads": {"nodes": []}}}}}\n{"successful_results": 1}',
     )
-    res = func(mock_dataFB)
+    res = func_sync(mock_dataFB)
     assert res["success"] == 1
     assert res["data"]["total_count"] == 0
     mock_send.assert_called_once()
@@ -43,12 +43,12 @@ def test_message_requests_func(mock_send, mock_dataFB):
 
 @pytest.mark.asyncio
 @patch("_messaging._message_requests.send_request_async")
-async def test_message_requests_func_async(mock_send_async, mock_dataFB):
-    mock_send_async.return_value = HttpxResponseMock(
+async def test_message_requests_func_awaitable(mock_send, mock_dataFB):
+    mock_send.return_value = HttpxResponseMock(
         200,
         b'{"o0": {"data": {"viewer": {"message_threads": {"nodes": []}}}}}\n{"successful_results": 1}',
     )
-    res = await func_async(mock_dataFB)
+    res = await func(mock_dataFB)
     assert res["success"] == 1
     assert res["data"]["total_count"] == 0
-    mock_send_async.assert_called_once()
+    mock_send.assert_called_once()

@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import patch
-from _messaging._reactions import _build_request, func, func_async
+from _messaging._reactions import _build_request, func, func_sync
 from conftest import HttpxResponseMock
 
 
@@ -24,17 +24,17 @@ def test_reactions_func(mock_send, mock_dataFB):
     mock_resp = HttpxResponseMock(200, b'{"data": {"message_reaction_mutation": {}}}')
     mock_send.return_value = mock_resp
 
-    resp = func(mock_dataFB, "add", "mid.123", "👍")
+    resp = func_sync(mock_dataFB, "add", "mid.123", "👍")
     assert resp.status_code == 200
     mock_send.assert_called_once()
 
 
 @pytest.mark.asyncio
 @patch("_messaging._reactions.send_request_async")
-async def test_reactions_func_async(mock_send_async, mock_dataFB):
+async def test_reactions_func_awaitable(mock_send, mock_dataFB):
     mock_resp = HttpxResponseMock(200, b'{"data": {"message_reaction_mutation": {}}}')
-    mock_send_async.return_value = mock_resp
+    mock_send.return_value = mock_resp
 
-    resp = await func_async(mock_dataFB, "add", "mid.123", "👍")
+    resp = await func(mock_dataFB, "add", "mid.123", "👍")
     assert resp.status_code == 200
-    mock_send_async.assert_called_once()
+    mock_send.assert_called_once()

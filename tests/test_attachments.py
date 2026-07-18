@@ -5,7 +5,7 @@ from _messaging._attachments import (
     _parse_response,
     _to_send_attachment_type,
     func,
-    func_async,
+    func_sync,
 )
 from conftest import HttpxResponseMock
 
@@ -157,7 +157,7 @@ def test_attachments_func(mock_post, mock_dataFB, tmp_path):
     )
     mock_post.return_value = mock_resp
 
-    res = func(str(dummy_file), mock_dataFB)
+    res = func_sync(str(dummy_file), mock_dataFB)
     assert res is not None
     assert res["attachmentID"] == 123
     assert res["typeAttachment"] == "image"
@@ -166,7 +166,7 @@ def test_attachments_func(mock_post, mock_dataFB, tmp_path):
 
 @pytest.mark.asyncio
 @patch("requests.post")
-async def test_attachments_func_async(mock_post_async, mock_dataFB, tmp_path):
+async def test_attachments_func_awaitable(mock_post_async, mock_dataFB, tmp_path):
     dummy_file = tmp_path / "test.jpg"
     dummy_file.write_bytes(b"dummy_content")
     mock_resp = HttpxResponseMock(
@@ -175,7 +175,7 @@ async def test_attachments_func_async(mock_post_async, mock_dataFB, tmp_path):
     )
     mock_post_async.return_value = mock_resp
 
-    res = await func_async(str(dummy_file), mock_dataFB)
+    res = await func(str(dummy_file), mock_dataFB)
     assert res is not None
     assert res["attachmentID"] == 123
     assert res["typeAttachment"] == "image"

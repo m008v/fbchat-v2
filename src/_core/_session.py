@@ -109,7 +109,7 @@ def _resolve_cookies(
     return setCookies
 
 
-def dataGetHome(
+def dataGetHome_sync(
     setCookies: str | None = None, storage: SessionStorage | None = None
 ) -> dict[str, Any] | None:
     setCookies = _resolve_cookies(setCookies, storage)
@@ -130,7 +130,7 @@ def dataGetHome(
     return _parse_home_response(response.text, setCookies)
 
 
-async def dataGetHome_async(
+async def dataGetHome(
     setCookies: str | None = None, storage: SessionStorage | None = None
 ) -> dict[str, Any] | None:
     """Async version của dataGetHome — dùng cho async context."""
@@ -150,3 +150,6 @@ async def dataGetHome_async(
         return None
 
     return _parse_home_response(response.text, setCookies)
+
+# Backwards-compatible aliases for the old `_async` API.
+dataGetHome_async = dataGetHome

@@ -9,7 +9,7 @@ src/
 ├── _core/
 │   ├── _http.py          # shared sync/async httpx transport
 │   ├── _utils.py         # Facebook forms, JSON parsing, cookie and ID helpers
-│   ├── _session.py       # dataGetHome_async -> dataFB
+│   ├── _session.py       # dataGetHome -> dataFB
 │   ├── _facebookLogin.py # credential login and local TOTP
 │   └── _storage.py       # session storage abstraction
 ├── _features/
@@ -23,15 +23,15 @@ tests/                     # pytest suite
 
 ## Async contract
 
-- Current documentation and new application code use `_async` APIs.
-- HTTP `_async` functions must call `httpx.AsyncClient`; wrapping sync HTTP in `asyncio.to_thread()` is not acceptable.
+- Current documentation and new application code use suffix-free async public APIs.
+- HTTP async functions must call `httpx.AsyncClient`; wrapping sync HTTP in `asyncio.to_thread()` is not acceptable.
 - `paho-mqtt` and bridge queue waits are blocking libraries. Their async adapters may use a dedicated worker thread.
 - Accept an optional `client: httpx.AsyncClient` when a feature benefits from connection-pool reuse and test injection.
 - Sync APIs remain compatibility shims and must not be called from a coroutine.
 
 ```python
-data_fb = await dataGetHome_async(cookie)
-result = await feature.func_async(data_fb, ...)
+data_fb = await dataGetHome(cookie)
+result = await feature.func(data_fb, ...)
 ```
 
 ## `dataFB` contract
@@ -65,15 +65,15 @@ Do not add `requests`, disable TLS, print request forms, or catch all exceptions
 
 ## Listener lifecycle
 
-`listeningEvent.__init__()` performs no network I/O. `connect_mqtt_async()` starts the MQTT loop, `get_message_async()` consumes a bounded queue, and `disconnect_async()` ends it.
+`listeningEvent.__init__()` performs no network I/O. `connect_mqtt()` starts the MQTT loop, `get_message()` consumes a bounded queue, and `disconnect()` ends it.
 
 ```python
 listener = listeningEvent(data_fb)
-task = asyncio.create_task(listener.connect_mqtt_async())
+task = asyncio.create_task(listener.connect_mqtt())
 try:
-    event = await listener.get_message_async(timeout=30)
+    event = await listener.get_message(timeout=30)
 finally:
-    await listener.disconnect_async()
+    await listener.disconnect()
     await task
 ```
 
@@ -81,7 +81,7 @@ Never recursively call connection setup from an MQTT callback. Signal an outer r
 
 ## E2EE bridge
 
-Python starts `fbchat-bridge-e2ee(.exe)` and exchanges one JSON object per line over stdin/stdout. `_BridgeProcess.call_async()` adapts the blocking response queue. `BridgeActions` must provide matching sync and `_async` methods.
+Python starts `fbchat-bridge-e2ee(.exe)` and exchanges one JSON object per line over stdin/stdout. `_BridgeProcess.call()` adapts the blocking response queue. `BridgeActions` must provide matching `*_sync` and suffix-free async methods.
 
 Auto-download rules:
 
