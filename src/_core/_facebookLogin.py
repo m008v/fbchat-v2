@@ -11,6 +11,8 @@ FB_AUTH_URL = "https://b-graph.facebook.com/auth/login"
 REQUEST_TIMEOUT = 20
 DIRECT_OTP_RE = re.compile(r"^\d{6,8}$")
 TWO_FACTOR_SUBCODES = {1348162, 1348023}
+DEFAULT_FB4A_API_KEY = "882a8490361da98702bf97a021ddc14d"
+DEFAULT_FB4A_APP_ACCESS_TOKEN = "350685531728|62f8ce9f74b12f84c123cc23437a4a32"
 LEGACY_FB4A_USER_AGENT = (
     "Dalvik/2.1.0 (Linux; U; Android 7.1.2; SM-G988N Build/NRD90M) "
     "[FBAN/FB4A;FBAV/340.0.0.27.113;FBPN/com.facebook.katana;FBLC/vi_VN;"
@@ -240,8 +242,11 @@ class loginFacebook:
         self.passwordFacebook = password                                      # Password of the account (Mật khẩu của tài khoản)
         self.twoTokenAccess = AuthenticationGoogleCode                        # string of 16 characters (or more) provided by Facebook (một chuỗi gồm 16 kí tụ (hoặc hơn) được cấp bởi Facebook)
         self.proxies = proxies                                                # Proxy settings for the request (format: ip:port) (Cài đặt proxy cho yêu cầu (định dạng: ip:port))
-        self.apiKey = "882a8490361da98702bf97a021ddc14d"
-        self.appAccessToken = "350685531728|62f8ce9f74b12f84c123cc23437a4a32"
+        self.apiKey = _get_config_value("FBCHAT_API_KEY", default=DEFAULT_FB4A_API_KEY)
+        self.appAccessToken = _get_config_value(
+            "FBCHAT_APP_ACCESS_TOKEN",
+            default=DEFAULT_FB4A_APP_ACCESS_TOKEN,
+        )
 
         """
           Note: 
