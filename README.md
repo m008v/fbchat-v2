@@ -20,11 +20,17 @@
 
 ## Thông báo quan trọng
 
-> Từ cuối năm 2024, Messenger đã bật mã hoá đầu cuối (E2EE) cho phần lớn cuộc trò chuyện cá nhân. Vì vậy listener MQTT cũ không còn đủ cho mọi trường hợp.
+> [!IMPORTANT]
+> Kể từ tháng 11/2024, Facebook đã triển khai mã hoá đầu cuối (E2EE) cho phần lớn cuộc trò chuyện cá nhân trên Messenger.
 >
-> Nhánh async hiện tại dùng `async`/`await` làm API chính. HTTP chạy qua `httpx`, bot mẫu trong [`src/main.py`](src/main.py) nghe sự kiện bằng [`_messaging/_listening_e2ee.py`](src/_messaging/_listening_e2ee.py), gửi E2EE bằng bridge Go [`bridge-e2ee/`](bridge-e2ee/) và fallback gửi thường khi bridge trả event `message`.
+> Nhánh `beta-async/await` dùng `async`/`await` làm API chính. HTTP chạy qua `httpx`, bot mẫu trong [`src/main.py`](src/main.py) nghe sự kiện bằng [`_messaging/_listening_e2ee.py`](src/_messaging/_listening_e2ee.py), gửi E2EE bằng bridge Go [`bridge-e2ee/`](bridge-e2ee/) và fallback gửi thường khi bridge trả event `message`.
+>
+> Tin nhắn cá nhân nên dùng `_listening_e2ee.py`; tin nhắn nhóm hoặc event thường vẫn có thể đi qua MQTT/WebSocket cũ khi Facebook còn trả event `message`.
 
-> Cảnh báo: đây không phải SDK chính thức của Facebook. Thư viện dùng cookie hoặc credential của tài khoản người dùng thật, nên cookie, token và `dataFB` phải được xem như secret. Không commit, không log, không gửi sang dịch vụ bên thứ ba.
+> [!WARNING]
+> Đây không phải SDK chính thức của Facebook. Thư viện xác thực bằng cookie hoặc credential của tài khoản người dùng thật, nên cookie, token và `dataFB` phải được xem như secret.
+>
+> Không commit, không ghi log, không chia sẻ cookie/token và không gửi TOTP secret sang dịch vụ bên thứ ba.
 
 ---
 
