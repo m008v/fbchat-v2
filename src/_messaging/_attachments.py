@@ -76,8 +76,15 @@ def _build_request(
 
 def _parse_response(text: str) -> dict[str, Any] | None:
     try:
-        payload = json.loads(text.removeprefix("for (;;);"))["payload"]
-    except (json.JSONDecodeError, KeyError, TypeError):
+        root = json.loads(text.removeprefix("for (;;);"))
+    except json.JSONDecodeError:
+        return None
+
+    if not isinstance(root, dict):
+        return None
+
+    payload = root.get("payload")
+    if not isinstance(payload, dict):
         return None
 
     metadata = payload.get("metadata")

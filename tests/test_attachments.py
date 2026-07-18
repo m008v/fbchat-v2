@@ -34,6 +34,19 @@ def test_parse_response_failure():
     assert result is None
 
 
+@pytest.mark.parametrize(
+    "resp_text",
+    [
+        "for (;;);null",
+        'for (;;);{"payload": null}',
+        'for (;;);{"payload": []}',
+        'for (;;);{"payload": {"metadata": null}}',
+    ],
+)
+def test_parse_response_ignores_empty_or_malformed_payload(resp_text):
+    assert _parse_response(resp_text) is None
+
+
 @patch("httpx.Client.post")
 def test_attachments_func(mock_post, mock_dataFB, tmp_path):
     dummy_file = tmp_path / "test.jpg"
