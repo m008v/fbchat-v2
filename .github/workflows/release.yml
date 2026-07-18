@@ -1,24 +1,133 @@
-name: Release to PyPI
+name: Release
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Existing release tag to rebuild/upload assets for'
+        required: true
+        default: 'v2.2.0'
 
 jobs:
-  build-and-publish:
+  build-go-binaries:
+    name: Build E2EE bridge (${{ matrix.goos }}-${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+    permissions:
+      contents: read
+    steps:
+      - name: Resolve release ref
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ref=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.ref }}
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: bridge-e2ee/go.mod
+          check-latest: true
+
+      - name: Build bridge
+        working-directory: bridge-e2ee
+        env:
+          CGO_ENABLED: '0'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p ../build
+          output_name="fbchat-bridge-e2ee-${{ matrix.goos }}-${{ matrix.goarch }}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            output_name="${output_name}.exe"
+          fi
+          go build -trimpath -ldflags="-s -w" -o "../build/${output_name}" .
+
+      - name: Upload bridge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fbchat-bridge-e2ee-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: build/fbchat-bridge-e2ee-*
+          if-no-files-found: error
+
+  upload-github-release-assets:
+    name: Upload GitHub Release assets
+    needs: build-go-binaries
     runs-on: ubuntu-latest
     permissions:
+      contents: write
+    steps:
+      - name: Resolve release ref
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ref=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.ref }}
+
+      - name: Download bridge artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-binaries
+          pattern: fbchat-bridge-e2ee-*
+          merge-multiple: true
+
+      - name: Upload assets to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          files: all-binaries/*
+          body_path: .github/RELEASE_NOTES_${{ steps.release.outputs.tag }}.md
+          fail_on_unmatched_files: true
+
+  publish-pypi:
+    name: Publish Python package to PyPI
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
+
       - name: Install hatch
-        run: pip install hatch
+        run: python -m pip install --upgrade hatch
+
       - name: Build package
         run: hatch build
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
