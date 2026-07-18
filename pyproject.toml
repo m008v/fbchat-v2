@@ -13,7 +13,8 @@ authors = [{ name = "MinhHuyDev", email = "z.m008v@gmail.com" }]
 dependencies = [
     "httpx>=0.27.0",
     "paho-mqtt>=1.6.1",
-    "pyotp>=2.9.0"
+    "pyotp>=2.9.0",
+    "requests>=2.32.0"
 ]
 
 [project.urls]

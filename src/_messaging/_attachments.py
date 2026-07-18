@@ -1,21 +1,28 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import mimetypes
 import random
+from itertools import count
 from pathlib import Path
 from typing import Any
 
 import httpx
+import requests
 
-from _core._utils import formAll
+from _core._utils import str_base
 
 USER_AGENTS: tuple[str, ...] = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 Chrome/42.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/137 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/137 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_3) AppleWebKit/601.1.10 Version/8.0.5 Safari/601.1.10",
+    "Mozilla/5.0 (Windows NT 6.3; WOW64; ; NCT50_AAP285C84A1328) AppleWebKit/537.36 Chrome/42.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 Chrome/22.0 Safari/537.1",
+    "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 Chrome/20.0 Safari/536.11",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 Chrome/20.0 Safari/536.6",
 )
 _UPLOAD_URL = "https://upload.facebook.com/ajax/mercury/upload.php"
+_REQUEST_COUNTER = count(1)
 _LEGACY_ATTACHMENT_ID_KEYS = (
     "attachmentID",
     "image_id",
@@ -81,25 +88,27 @@ def _build_request(
     if missing:
         raise FileNotFoundError(f"Không tìm thấy tệp upload: {', '.join(missing)}")
 
-    data_form = formAll(dataFB, requireGraphql=False)
-    data_form["voice_clip"] = False
-
     request: dict[str, Any] = {
         "url": _UPLOAD_URL,
+        "timeout": 30,
         "headers": {
             "Referer": "https://www.facebook.com",
             "Accept": "text/html",
             "User-Agent": random.choice(USER_AGENTS),
             "Cookie": dataFB["cookieFacebook"],
         },
-        "data": data_form,
+        "data": {
+            "voice_clip": False,
+            "__a": 1,
+            "__req": str_base(next(_REQUEST_COUNTER), 36),
+            "fb_dtsg": dataFB["fb_dtsg"],
+        },
         "files": {},
     }
     try:
         for index, path in enumerate(paths):
             mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-            field_name = "file" if len(paths) == 1 else f"upload_{index}"
-            request["files"][field_name] = (
+            request["files"][f"upload_{index}"] = (
                 path.name,
                 path.open("rb"),
                 mime,
@@ -186,9 +195,17 @@ def _parse_response(text: str, *, include_error: bool = False) -> dict[str, Any]
         or item.get("mime_type")
     )
     attachment_id = _extract_attachment_id(item)
+    values = list(item.values())
+    if attachment_id is None and values:
+        attachment_id = values[0]
+    if attachment_type is None and len(values) > 2:
+        attachment_type = values[2]
+    attachment_url = item.get("attachmentUrl")
+    if attachment_url is None and len(values) > 3:
+        attachment_url = values[3]
     return {
         "attachmentID": attachment_id,
-        "attachmentUrl": item.get("attachmentUrl"),
+        "attachmentUrl": attachment_url,
         "videoDuration": item.get("videoDuration"),
         "attachmentType": attachment_type,
         "typeAttachment": _infer_attachment_type(item, attachment_type),
@@ -207,8 +224,7 @@ def func(
         if client is not None:
             response = client.post(**request)
         else:
-            with httpx.Client(timeout=30) as owned_client:
-                response = owned_client.post(**request)
+            response = requests.post(**request)
         response.raise_for_status()
         return _parse_response(response.text, include_error=include_error)
     finally:
@@ -222,13 +238,17 @@ async def func_async(
     client: httpx.AsyncClient | None = None,
     include_error: bool = False,
 ) -> dict[str, Any] | None:
+    if client is None:
+        return await asyncio.to_thread(
+            func,
+            filenames,
+            dataFB,
+            include_error=include_error,
+        )
+
     request = _build_request(filenames, dataFB)
     try:
-        if client is not None:
-            response = await client.post(**request)
-        else:
-            async with httpx.AsyncClient(timeout=30) as owned_client:
-                response = await owned_client.post(**request)
+        response = await client.post(**request)
         response.raise_for_status()
         return _parse_response(response.text, include_error=include_error)
     finally:

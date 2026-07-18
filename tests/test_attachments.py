@@ -19,17 +19,18 @@ def test_build_request(mock_dataFB, tmp_path):
     assert req["url"] == "https://upload.facebook.com/ajax/mercury/upload.php"
     assert req["headers"]["Cookie"] == mock_dataFB["cookieFacebook"]
     assert req["data"]["fb_dtsg"] == mock_dataFB["fb_dtsg"]
-    assert req["data"]["jazoest"] == mock_dataFB["jazoest"]
-    assert req["data"]["__user"] == mock_dataFB["FacebookID"]
-    assert req["data"]["__rev"] == mock_dataFB["clientRevision"]
-    assert req["data"]["av"] == mock_dataFB["FacebookID"]
+    assert "__req" in req["data"]
+    assert "jazoest" not in req["data"]
+    assert "__user" not in req["data"]
+    assert "__rev" not in req["data"]
+    assert "av" not in req["data"]
     assert req["data"]["voice_clip"] is False
-    assert "file" in req["files"]
+    assert "upload_0" in req["files"]
 
     # Just check the file name and mime type in the tuple
-    assert req["files"]["file"][0] == "test.jpg"
-    assert req["files"]["file"][2] == "image/jpeg"
-    req["files"]["file"][1].close()
+    assert req["files"]["upload_0"][0] == "test.jpg"
+    assert req["files"]["upload_0"][2] == "image/jpeg"
+    req["files"]["upload_0"][1].close()
 
 
 def test_parse_response_success():
@@ -63,6 +64,19 @@ def test_parse_response_supports_legacy_fbchat_gif_id():
     assert result is not None
     assert result["attachmentID"] == "67890"
     assert result["typeAttachment"] == "gif"
+
+
+def test_parse_response_supports_original_values_order_fallback():
+    resp_text = (
+        'for (;;);{"payload":{"metadata":{"0":{"id":999,'
+        '"name":"sample.png","mime":"image/png","url":"https://example.test/a.png"}}}}'
+    )
+    result = _parse_response(resp_text)
+    assert result is not None
+    assert result["attachmentID"] == 999
+    assert result["attachmentType"] == "image/png"
+    assert result["attachmentUrl"] == "https://example.test/a.png"
+    assert result["typeAttachment"] == "image"
 
 
 def test_parse_response_failure():
@@ -133,7 +147,7 @@ def test_to_send_attachment_type(mime_type, send_type):
     assert _to_send_attachment_type(mime_type) == send_type
 
 
-@patch("httpx.Client.post")
+@patch("requests.post")
 def test_attachments_func(mock_post, mock_dataFB, tmp_path):
     dummy_file = tmp_path / "test.jpg"
     dummy_file.write_bytes(b"dummy_content")
@@ -151,7 +165,7 @@ def test_attachments_func(mock_post, mock_dataFB, tmp_path):
 
 
 @pytest.mark.asyncio
-@patch("httpx.AsyncClient.post")
+@patch("requests.post")
 async def test_attachments_func_async(mock_post_async, mock_dataFB, tmp_path):
     dummy_file = tmp_path / "test.jpg"
     dummy_file.write_bytes(b"dummy_content")
