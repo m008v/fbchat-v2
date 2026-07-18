@@ -1,9 +1,15 @@
+import base64
 import asyncio
 import os
 import sys
 import threading
 import time
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # Đảm bảo import được từ thư mục src
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
@@ -32,6 +38,14 @@ from _features._facebook._blocking import func_async as blocking_async
 from _features._facebook._professional import func_async as professional_async
 from _features._facebook._marketplace import createItem_async as marketplace_create_async
 
+SAMPLE_ATTACHMENT_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAdUlEQVR4nO3W"
+    "sQ2AMAxEQSLE/teQ7GBNkrBSYtzUil+/8QrZSfd6n5fAZ+oAXgW8CngV8Crg"
+    "VcCrgFcBrwJeBbwKeBXwKuBVwKuAVwGvAl4FvAp4FfAq4FXAq4BXAa8CXgW8"
+    "CngV8CrgVcCrgFcBrwJeBbwKeBXwKuD1A5xsAtGc4iZ8AAAAAElFTkSuQmCC"
+)
+
+
 def read_cookie():
     cookie = os.environ.get("FB_COOKIE", "").strip()
     if cookie:
@@ -42,6 +56,15 @@ def read_cookie():
     return ""
 
 
+def ensure_sample_attachment():
+    sample_dir = Path(".tmp")
+    sample_dir.mkdir(exist_ok=True)
+    sample_path = sample_dir / "fbchat-upload-sample.png"
+    if not sample_path.is_file():
+        sample_path.write_bytes(base64.b64decode(SAMPLE_ATTACHMENT_B64))
+    return sample_path.resolve()
+
+
 def get_attachment_path():
     raw_path = (
         sys.argv[1].strip()
@@ -49,9 +72,9 @@ def get_attachment_path():
         else os.environ.get("FBCHAT_ATTACHMENT_FILE", "").strip()
     )
     if not raw_path:
-        raise FileNotFoundError(
-            "Thiếu file attachment. Truyền path qua argv[1] hoặc biến FBCHAT_ATTACHMENT_FILE."
-        )
+        path = ensure_sample_attachment()
+        print(f"Không truyền attachment, dùng ảnh sample tạm: {path}")
+        return path
     path = Path(raw_path).expanduser().resolve()
     if not path.is_file():
         raise FileNotFoundError(f"Không tìm thấy file attachment: {path}")
