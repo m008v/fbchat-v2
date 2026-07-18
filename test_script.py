@@ -3,6 +3,7 @@ import os
 import sys
 import threading
 import time
+from pathlib import Path
 
 # Đảm bảo import được từ thư mục src
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
@@ -31,6 +32,32 @@ from _features._facebook._blocking import func_async as blocking_async
 from _features._facebook._professional import func_async as professional_async
 from _features._facebook._marketplace import createItem_async as marketplace_create_async
 
+def read_cookie():
+    cookie = os.environ.get("FB_COOKIE", "").strip()
+    if cookie:
+        return cookie
+    cookie_file = Path("cookie.txt")
+    if cookie_file.is_file():
+        return cookie_file.read_text(encoding="utf-8").strip()
+    return ""
+
+
+def get_attachment_path():
+    raw_path = (
+        sys.argv[1].strip()
+        if len(sys.argv) > 1 and sys.argv[1].strip()
+        else os.environ.get("FBCHAT_ATTACHMENT_FILE", "").strip()
+    )
+    if not raw_path:
+        raise FileNotFoundError(
+            "Thiếu file attachment. Truyền path qua argv[1] hoặc biến FBCHAT_ATTACHMENT_FILE."
+        )
+    path = Path(raw_path).expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Không tìm thấy file attachment: {path}")
+    return path
+
+
 def on_e2ee_message(msg):
     # Callback xử lý tin nhắn E2EE (từ Bridge trả về event có dạng {'type': '...', 'data': {...}})
     msg_type = msg.get('type')
@@ -40,7 +67,7 @@ def on_e2ee_message(msg):
         print(f"Nội dung: {data.get('text')}")
 
 async def main():
-    cookie = 'datr=-cZfaVKhV1X4Vyz8MYNOzcDT; sb=-cZfaXmr3bC0O-Uhcdo_KyXz; ps_l=1; ps_n=1; pas=61583942146559%3AVfN5tgl8z5; vpd=v1%3B866x864x2; wl_cbv=v2%3Bclient_version%3A3161%3Btimestamp%3A1778829826; c_user=61583942146559; fr=2QRUPzZNnien9qWba.AWe3lw1nhu1_pMcgWTu_ceEeF1aWoJ_Dj_-Gb82IylfuJ0C4Tjc.BqTa4c..AAA.0.0.BqTa4c.AWe2X8NSCRwm88ip1LXJfhcG8mo; xs=38%3AEYXLGGmOsb7OYQ%3A2%3A1782534136%3A-1%3A-1%3A%3AAcx6W28rxD5coeRie3agvb6_PZ_fSAZIubkJSp38100; wd=390x844; dpr=3; presence=C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1783475747210%2C%22v%22%3A1%7D'
+    cookie = read_cookie()
             
     if not cookie:
         print("❌ Lỗi: Vui lòng set biến môi trường FB_COOKIE hoặc dán cookie vào file cookie.txt.")
@@ -78,11 +105,25 @@ async def main():
         print(f"Kết quả Unsend: {unsend_res}")
         
     print("\n6. Test upload attachments...")
-    with open("test_dummy.txt", "w") as f:
-        f.write("Hello dummy!")
-    att_res = await attachments_async("test_dummy.txt", dataFB)
-    print(f"Kết quả Upload Attachment: {att_res}")
-    if os.path.exists("test_dummy.txt"): os.remove("test_dummy.txt")
+    try:
+        attachment_path = get_attachment_path()
+        att_res = await attachments_async(str(attachment_path), dataFB)
+        print(f"Kết quả Upload Attachment: {att_res}")
+        if not att_res or not att_res.get("attachmentID"):
+            raise RuntimeError("Upload không trả attachmentID. Cookie/file/endpoint đang có vấn đề.")
+
+        attachment_send_type = att_res.get("typeAttachment") or "file"
+        attachment_send_res = await send_api_instance.send_async(
+            dataFB,
+            f"Attachment test: {attachment_path.name}",
+            target_id,
+            typeAttachment=attachment_send_type,
+            attachmentID=att_res["attachmentID"],
+            typeChat="user",
+        )
+        print(f"Kết quả Send Attachment: {attachment_send_res}")
+    except Exception as e:
+        print(f"Lỗi Upload Attachment: {e}")
 
     print("\n7. Test thay đổi Theme...")
     theme_res = await change_theme_async(dataFB, target_id, "2442142322678320")

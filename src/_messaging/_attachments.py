@@ -20,6 +20,17 @@ _REQUEST_COUNTER = count(1)
 _UPLOAD_URL = "https://upload.facebook.com/ajax/mercury/upload.php"
 
 
+def _to_send_attachment_type(mime_type: str | None) -> str:
+    if not mime_type:
+        return "file"
+    if mime_type.lower() == "image/gif":
+        return "gif"
+    mime_group = mime_type.split("/", 1)[0].lower()
+    if mime_group in {"image", "video", "audio"}:
+        return mime_group
+    return "file"
+
+
 def _close_request_files(request: dict[str, Any]) -> None:
     for file_tuple in request.get("files", {}).values():
         if (
@@ -96,11 +107,18 @@ def _parse_response(text: str) -> dict[str, Any] | None:
         item = None
     if not isinstance(item, dict):
         return None
+    attachment_type = (
+        item.get("attachmentType")
+        or item.get("typeAttachment")
+        or item.get("mimeType")
+        or item.get("mime_type")
+    )
     return {
         "attachmentID": item.get("attachmentID"),
         "attachmentUrl": item.get("attachmentUrl"),
         "videoDuration": item.get("videoDuration"),
-        "typeAttachment": item.get("typeAttachment"),
+        "attachmentType": attachment_type,
+        "typeAttachment": _to_send_attachment_type(attachment_type),
     }
 
 

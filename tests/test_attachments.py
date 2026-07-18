@@ -1,6 +1,12 @@
 import pytest
 from unittest.mock import patch
-from _messaging._attachments import _build_request, _parse_response, func, func_async
+from _messaging._attachments import (
+    _build_request,
+    _parse_response,
+    _to_send_attachment_type,
+    func,
+    func_async,
+)
 from conftest import HttpxResponseMock
 
 
@@ -22,10 +28,20 @@ def test_build_request(mock_dataFB, tmp_path):
 
 
 def test_parse_response_success():
-    resp_text = 'for (;;);{"payload": {"metadata": [{"attachmentID": 12345, "filename": "a", "videoDuration": null, "attachmentUrl": "http://img.com", "typeAttachment": "image/jpeg"}]}}'
+    resp_text = 'for (;;);{"payload": {"metadata": [{"attachmentID": 12345, "filename": "a", "videoDuration": null, "attachmentUrl": "http://img.com", "attachmentType": "image/jpeg"}]}}'
     result = _parse_response(resp_text)
     assert result is not None
     assert result["attachmentID"] == 12345
+    assert result["attachmentType"] == "image/jpeg"
+    assert result["typeAttachment"] == "image"
+
+
+def test_parse_response_supports_legacy_type_attachment_key():
+    resp_text = 'for (;;);{"payload": {"metadata": {"0": {"attachmentID": 12345, "attachmentUrl": "http://file.com", "typeAttachment": "application/pdf"}}}}'
+    result = _parse_response(resp_text)
+    assert result is not None
+    assert result["attachmentType"] == "application/pdf"
+    assert result["typeAttachment"] == "file"
 
 
 def test_parse_response_failure():
@@ -47,19 +63,35 @@ def test_parse_response_ignores_empty_or_malformed_payload(resp_text):
     assert _parse_response(resp_text) is None
 
 
+@pytest.mark.parametrize(
+    ("mime_type", "send_type"),
+    [
+        ("image/jpeg", "image"),
+        ("image/gif", "gif"),
+        ("video/mp4", "video"),
+        ("audio/mpeg", "audio"),
+        ("application/pdf", "file"),
+        (None, "file"),
+    ],
+)
+def test_to_send_attachment_type(mime_type, send_type):
+    assert _to_send_attachment_type(mime_type) == send_type
+
+
 @patch("httpx.Client.post")
 def test_attachments_func(mock_post, mock_dataFB, tmp_path):
     dummy_file = tmp_path / "test.jpg"
     dummy_file.write_bytes(b"dummy_content")
     mock_resp = HttpxResponseMock(
         200,
-        b'for (;;);{"payload": {"metadata": [{"attachmentID": 123, "filename": "a", "videoDuration": null, "attachmentUrl": "http://url", "typeAttachment": "image/jpeg"}]}}',
+        b'for (;;);{"payload": {"metadata": [{"attachmentID": 123, "filename": "a", "videoDuration": null, "attachmentUrl": "http://url", "attachmentType": "image/jpeg"}]}}',
     )
     mock_post.return_value = mock_resp
 
     res = func(str(dummy_file), mock_dataFB)
     assert res is not None
     assert res["attachmentID"] == 123
+    assert res["typeAttachment"] == "image"
     mock_post.assert_called_once()
 
 
@@ -70,11 +102,12 @@ async def test_attachments_func_async(mock_post_async, mock_dataFB, tmp_path):
     dummy_file.write_bytes(b"dummy_content")
     mock_resp = HttpxResponseMock(
         200,
-        b'for (;;);{"payload": {"metadata": [{"attachmentID": 123, "filename": "a", "videoDuration": null, "attachmentUrl": "http://url", "typeAttachment": "image/jpeg"}]}}',
+        b'for (;;);{"payload": {"metadata": [{"attachmentID": 123, "filename": "a", "videoDuration": null, "attachmentUrl": "http://url", "attachmentType": "image/jpeg"}]}}',
     )
     mock_post_async.return_value = mock_resp
 
     res = await func_async(str(dummy_file), mock_dataFB)
     assert res is not None
     assert res["attachmentID"] == 123
+    assert res["typeAttachment"] == "image"
     mock_post_async.assert_called_once()
