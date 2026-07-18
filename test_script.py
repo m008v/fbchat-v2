@@ -101,6 +101,23 @@ def get_attachment_path():
     return path
 
 
+def extract_notification_items(result):
+    if isinstance(result, dict):
+        if result.get("error"):
+            raise RuntimeError(result.get("messages") or result)
+        items = result.get("NotificationResults", [])
+    else:
+        items = result
+
+    if items is None:
+        return []
+    if not isinstance(items, list):
+        raise TypeError(
+            f"NotificationResults phải là list, nhận {type(items).__name__}"
+        )
+    return items
+
+
 def on_e2ee_message(msg):
     # Callback xử lý tin nhắn E2EE (từ Bridge trả về event có dạng {'type': '...', 'data': {...}})
     msg_type = msg.get('type')
@@ -221,7 +238,12 @@ async def main():
     print("\n14. Test Get Notifications (Facebook Feature)...")
     try:
         notif_res = await get_notification_async(dataFB)
-        print(f"Kết quả Get Notifications: Có {len(notif_res)} thông báo mới (Hiển thị 2 cái đầu): {notif_res[:2]}")
+        notifications = extract_notification_items(notif_res)
+        print(
+            "Kết quả Get Notifications: "
+            f"Có {len(notifications)} thông báo mới "
+            f"(Hiển thị 2 cái đầu): {notifications[:2]}"
+        )
     except Exception as e:
         print(f"Lỗi Get Notifications: {e}")
 
