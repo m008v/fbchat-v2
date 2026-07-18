@@ -11,8 +11,6 @@ FB_AUTH_URL = "https://b-graph.facebook.com/auth/login"
 REQUEST_TIMEOUT = 20
 DIRECT_OTP_RE = re.compile(r"^\d{6,8}$")
 TWO_FACTOR_SUBCODES = {1348162, 1348023}
-DEFAULT_FB4A_API_KEY = "882a8490361da98702bf97a021ddc14d"
-DEFAULT_FB4A_APP_ACCESS_TOKEN = "350685531728|62f8ce9f74b12f84c123cc23437a4a32"
 LEGACY_FB4A_USER_AGENT = (
     "Dalvik/2.1.0 (Linux; U; Android 7.1.2; SM-G988N Build/NRD90M) "
     "[FBAN/FB4A;FBAV/340.0.0.27.113;FBPN/com.facebook.katana;FBLC/vi_VN;"
@@ -242,11 +240,8 @@ class loginFacebook:
         self.passwordFacebook = password                                      # Password of the account (Mật khẩu của tài khoản)
         self.twoTokenAccess = AuthenticationGoogleCode                        # string of 16 characters (or more) provided by Facebook (một chuỗi gồm 16 kí tụ (hoặc hơn) được cấp bởi Facebook)
         self.proxies = proxies                                                # Proxy settings for the request (format: ip:port) (Cài đặt proxy cho yêu cầu (định dạng: ip:port))
-        self.apiKey = _get_config_value("FBCHAT_API_KEY", default=DEFAULT_FB4A_API_KEY)
-        self.appAccessToken = _get_config_value(
-            "FBCHAT_APP_ACCESS_TOKEN",
-            default=DEFAULT_FB4A_APP_ACCESS_TOKEN,
-        )
+        self.apiKey = "882a8490361da98702bf97a021ddc14d"
+        self.appAccessToken = "350685531728|62f8ce9f74b12f84c123cc23437a4a32"
 
         """
           Note: 
@@ -523,25 +518,3 @@ loginFB = loginFacebook
 ✓Remake by Nguyễn Minh Huy
 ✓Tôn trọng tác giả ❤️
 """
-
-if __name__ == "__main__":
-    import os
-
-    # Usage: FB_USER=xxx FB_PASS=xxx FB_2FA=xxx python _facebookLogin.py
-    _load_dotenv_file_once()
-    user = _get_config_value("FB_USER", "FBCHAT_USER")
-    pwd = _get_config_value("FB_PASS", "FBCHAT_PASS")
-    code = _get_config_value("FB_2FA", "FBCHAT_2FA") or None
-    if not all([user, pwd]):
-        print("Set FB_USER/FB_PASS or FBCHAT_USER/FBCHAT_PASS env vars")
-        raise SystemExit(1)
-    result = loginFacebook(user, pwd, code).main_blocking()
-    if result.get("success"):
-        print("Đăng nhập thành công. Cookie và access token không được in ra terminal.")
-    else:
-        error = result.get("error") or {}
-        print(
-            "Đăng nhập thất bại: "
-            f"{error.get('title', 'Unknown error')} "
-            f"(code={error.get('error_code')}, subcode={error.get('error_subcode')})"
-        )
