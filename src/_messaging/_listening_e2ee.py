@@ -732,9 +732,3 @@ class listeningE2EEEvent:
                 "replyToSenderJid": reply_to_sender_jid,
             },
         )
-
-# Backwards-compatible aliases for the old `_async` API.
-_BridgeProcess.call_async = _BridgeProcess.call
-listeningE2EEEvent.connect_mqtt_async = listeningE2EEEvent.connect_mqtt
-listeningE2EEEvent.send_message_async = listeningE2EEEvent.send_message
-listeningE2EEEvent.send_e2ee_message_async = listeningE2EEEvent.send_e2ee_message

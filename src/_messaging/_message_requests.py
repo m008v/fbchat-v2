@@ -96,6 +96,3 @@ async def func(
     response = await send_request_async(_build_request(dataFB), client=client)
     response.raise_for_status()
     return _parse_response(response.text)
-
-# Backwards-compatible aliases for the old `_async` API.
-func_async = func

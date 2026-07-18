@@ -302,7 +302,3 @@ async def func(
      - Endpoint này dùng MQTT LS task queue_name="edit_message".
      - Facebook không trả response GraphQL trực tiếp; success ở đây nghĩa là task đã được publish lên /ls_req.
 """
-
-# Backwards-compatible aliases for the old `_async` API.
-editMessage_async = editMessage
-func_async = func

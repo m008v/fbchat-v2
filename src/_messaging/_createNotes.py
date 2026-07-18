@@ -472,10 +472,3 @@ async def func(
      ✓ Convert from ws3-fca (notes.js by @ChoruOfficial) -> fbchat-v2 style
      ✓ Tôn trọng tác giả ❤️
 """
-
-# Backwards-compatible aliases for the old `_async` API.
-checkNote_async = checkNote
-createNote_async = createNote
-deleteNote_async = deleteNote
-recreateNote_async = recreateNote
-func_async = func

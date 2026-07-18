@@ -66,6 +66,3 @@ async def func(
         return _parse_response(payload, newContents)
     except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
         return {"error": 1, "messages": str(exc)}
-
-# Backwards-compatible aliases for the old `_async` API.
-func_async = func

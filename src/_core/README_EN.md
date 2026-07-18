@@ -74,7 +74,6 @@ result = await login.main()
 - Use finite timeouts, call `raise_for_status()`, and handle missing response fields.
 - Never disable TLS verification.
 - Never log `dataFB`, cookies, passwords, OTP secrets, or access tokens.
-- Sync APIs are compatibility layers; do not call them inside an event loop.
 
 ## Troubleshooting
 

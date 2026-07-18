@@ -48,6 +48,3 @@ async def func(
     )
     response.raise_for_status()
     return _parse_response(response.text)
-
-# Backwards-compatible aliases for the old `_async` API.
-func_async = func

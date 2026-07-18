@@ -238,6 +238,3 @@ class api:
         result = _parse_response(response.text)
         self.results = result
         return result
-
-# Backwards-compatible aliases for the old `_async` API.
-api.send_async = api.send

@@ -150,6 +150,3 @@ async def dataGetHome(
         return None
 
     return _parse_home_response(response.text, setCookies)
-
-# Backwards-compatible aliases for the old `_async` API.
-dataGetHome_async = dataGetHome

@@ -213,7 +213,3 @@ def _features_blocking(dataGet: str, threadID: str | int, commandUse: str) -> An
 async def features(dataGet: str, threadID: str | int, commandUse: str) -> Any:
     """API đồng nhất cho workflow async; bước này chỉ xử lý dữ liệu trong bộ nhớ."""
     return _features_blocking(dataGet, threadID, commandUse)
-
-# Backwards-compatible aliases for the old `_async` API.
-func_async = func
-features_async = features

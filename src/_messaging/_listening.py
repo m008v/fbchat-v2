@@ -337,9 +337,3 @@ class listeningEvent:
 
     async def disconnect(self) -> None:
         self.disconnect()
-
-# Backwards-compatible aliases for the old `_async` API.
-listeningEvent.get_message_async = listeningEvent.get_message
-listeningEvent.get_last_seq_id_async = listeningEvent.get_last_seq_id
-listeningEvent.connect_mqtt_async = listeningEvent.connect_mqtt
-listeningEvent.disconnect_async = listeningEvent.disconnect

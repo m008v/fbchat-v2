@@ -462,7 +462,3 @@ if __name__ == "__main__":
             f"{error.get('title', 'Unknown error')} "
             f"(code={error.get('error_code')}, subcode={error.get('error_subcode')})"
         )
-
-# Backwards-compatible aliases for the old `_async` API.
-GetToken2FA_async = GetToken2FA
-loginFacebook.main_async = loginFacebook.main

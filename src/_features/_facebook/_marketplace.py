@@ -239,41 +239,6 @@ def _parse_detail_result(payload: dict[str, Any]) -> dict[str, Any]:
             "messages": _error_message(payload, "Không thể đọc thông tin sản phẩm."),
         }
 
-
-def _createItem_blocking(
-    dataFB: dict[str, Any],
-    nameItem: str,
-    brandItem: str,
-    priceItem: int | float | str,
-    currencyItem: str,
-    decriptionItem: str,
-    hashtagList: list[str],
-    typeItem: str,
-    photoIDList: list[str | int],
-    locationSeller: dict[str, Any],
-    *,
-    client: httpx.Client | None = None,
-) -> dict[str, Any]:
-    payload = post_form_json(
-        _URL,
-        _build_create_form(
-            dataFB,
-            nameItem,
-            brandItem,
-            priceItem,
-            currencyItem,
-            decriptionItem,
-            hashtagList,
-            typeItem,
-            photoIDList,
-            locationSeller,
-        ),
-        dataFB["cookieFacebook"],
-        client=client,
-    )
-    return _parse_create_result(payload)
-
-
 async def createItem(
     dataFB: dict[str, Any],
     nameItem: str,
@@ -336,7 +301,3 @@ async def getInformationProductItemMarketPlace(
         client=client,
     )
     return _parse_detail_result(payload)
-
-# Backwards-compatible aliases for the old `_async` API.
-createItem_async = createItem
-getInformationProductItemMarketPlace_async = getInformationProductItemMarketPlace

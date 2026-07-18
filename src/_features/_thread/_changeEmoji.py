@@ -46,6 +46,3 @@ async def func(
         client=client,
     )
     return _parse_result(payload)
-
-# Backwards-compatible aliases for the old `_async` API.
-func_async = func

@@ -253,6 +253,3 @@ async def func(
         return _parse_response(response.text, include_error=include_error)
     finally:
         _close_request_files(request)
-
-# Backwards-compatible aliases for the old `_async` API.
-func_async = func

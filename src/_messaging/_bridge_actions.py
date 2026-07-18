@@ -355,16 +355,3 @@ class BridgeActions:
             ),
         )
         return self._decode_media_result(result)
-
-# Backwards-compatible aliases for the old `_async` API.
-BridgeActions.edit_message_async = BridgeActions.edit_message
-BridgeActions.unsend_message_async = BridgeActions.unsend_message
-BridgeActions.edit_e2ee_message_async = BridgeActions.edit_e2ee_message
-BridgeActions.unsend_e2ee_message_async = BridgeActions.unsend_e2ee_message
-BridgeActions.send_typing_indicator_async = BridgeActions.send_typing_indicator
-BridgeActions.mark_read_async = BridgeActions.mark_read
-BridgeActions.send_e2ee_typing_async = BridgeActions.send_e2ee_typing
-BridgeActions.send_e2ee_audio_async = BridgeActions.send_e2ee_audio
-BridgeActions.send_e2ee_image_async = BridgeActions.send_e2ee_image
-BridgeActions.download_media_async = BridgeActions.download_media
-BridgeActions.download_e2ee_media_async = BridgeActions.download_e2ee_media

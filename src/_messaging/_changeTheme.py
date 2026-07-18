@@ -524,9 +524,3 @@ async def func(
      - Success nghĩa là request đổi theme đã publish lên /ls_req; Messenger có thể vẫn từ chối
        nếu tài khoản không có quyền đổi theme trong thread đó.
 """
-
-# Backwards-compatible aliases for the old `_async` API.
-listThemes_async = listThemes
-findTheme_async = findTheme
-changeTheme_async = changeTheme
-func_async = func

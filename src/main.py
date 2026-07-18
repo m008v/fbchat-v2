@@ -254,7 +254,3 @@ def main_blocking() -> None:
 
 if __name__ == "__main__":
     main_blocking()
-
-# Backwards-compatible aliases for the old `_async` API.
-SimpleBot.run_async = SimpleBot.run
-main_async = main
