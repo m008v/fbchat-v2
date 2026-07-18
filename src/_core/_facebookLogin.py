@@ -1,15 +1,24 @@
 import os
-import httpx
+import asyncio
+import json
 import pyotp
 import string
 import random
 import re
+import requests
 
 FB_AUTH_URL = "https://b-graph.facebook.com/auth/login"
 REQUEST_TIMEOUT = 20
 DIRECT_OTP_RE = re.compile(r"^\d{6,8}$")
 TWO_FACTOR_SUBCODES = {1348162, 1348023}
 DEFAULT_API_KEY = "882a8490361da98702bf97a021ddc14d"
+LEGACY_FB4A_USER_AGENT = (
+    "Dalvik/2.1.0 (Linux; U; Android 7.1.2; SM-G988N Build/NRD90M) "
+    "[FBAN/FB4A;FBAV/340.0.0.27.113;FBPN/com.facebook.katana;FBLC/vi_VN;"
+    "FBBV/324485361;FBCR/Viettel Mobile;FBMF/samsung;FBBD/samsung;"
+    "FBDV/SM-G988N;FBSV/7.1.2;FBCA/x86:armeabi-v7a;"
+    "FBDM/{density=1.0,width=540,height=960};FB_FW/1;FBRV/0;]"
+)
 
 """
 Written by Nguyen Minh Huy (RainTee)
@@ -66,26 +75,28 @@ def _build_proxy(proxies):
     return value if "://" in value else f"http://{value}"
 
 
+def _requests_proxy_config(proxies):
+    proxy = _build_proxy(proxies)
+    return {"http": proxy, "https": proxy} if proxy else None
+
+
 def _post_json(url, data, headers, proxies):
     try:
-        proxy = _build_proxy(proxies)
-        with httpx.Client(timeout=REQUEST_TIMEOUT, proxy=proxy) as client:
-            response = client.post(url, data=data, headers=headers)
+        response = requests.post(
+            url,
+            data=data,
+            headers=headers,
+            proxies=_requests_proxy_config(proxies),
+            timeout=REQUEST_TIMEOUT,
+        )
         response.raise_for_status()
         return response.json()
-    except (httpx.HTTPError, ValueError) as err:
+    except (requests.RequestException, ValueError) as err:
         return {"error": {"error_user_msg": str(err), "code": -1}}
 
 
 async def _post_json_async(url, data, headers, proxies):
-    try:
-        proxy = _build_proxy(proxies)
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, proxy=proxy) as client:
-            response = await client.post(url, data=data, headers=headers)
-        response.raise_for_status()
-        return response.json()
-    except (httpx.HTTPError, ValueError) as err:
-        return {"error": {"error_user_msg": str(err), "code": -1}}
+    return await asyncio.to_thread(_post_json, url, data, headers, proxies)
 
 
 def _error_result(title, description, *, error_code=-1, error_subcode=None):
@@ -156,7 +167,7 @@ class loginFacebook:
             "Host": "b-graph.facebook.com",
             "Content-Type": "application/x-www-form-urlencoded",
             "X-Fb-Connection-Type": "unknown",
-            "User-Agent": "Mozilla/5.0 (Linux; Android 16; V2419A Build/BP2A.250605.031.A3_V000L1) [FBAN/FB4A;FBAV/340.0.0.27.113;FBPN/com.facebook.katana;FBLC/vi_VN;FBBV/324485361;FBCR/Viettel Mobile;FBMF/samsung;FBBD/samsung;FBDV/SM-G988N;FBSV/7.1.2;FBCA/x86:armeabi-v7a;FBDM/{density=1.0,width=540,height=960};FB_FW/1;FBRV/0;]",
+            "User-Agent": LEGACY_FB4A_USER_AGENT,
             "X-Fb-Connection-Quality": "EXCELLENT",
             "Authorization": "OAuth null",
             "X-Fb-Friendly-Name": "authenticate",
@@ -215,6 +226,11 @@ class loginFacebook:
 
     def _extract_two_factor_metadata(self, error):
         error_data = error.get("error_data", {}) if isinstance(error, dict) else {}
+        if isinstance(error_data, str):
+            try:
+                error_data = json.loads(error_data)
+            except ValueError:
+                error_data = {}
         user_id = str(
             error_data.get("uid")
             or error_data.get("userid")
@@ -229,21 +245,35 @@ class loginFacebook:
         ).strip()
         return user_id, first_factor
 
-    def _build_two_factor_form(self, token_2fa, user_id, first_factor, try_num):
-        data_form_2fa = self._base_form(self.passwordFacebook, "two_factor", try_num)
+    def _build_two_factor_form(
+        self, token_2fa, user_id, first_factor, try_num, password_value=None
+    ):
+        data_form_2fa = self._base_form(
+            password_value if password_value is not None else token_2fa,
+            "two_factor",
+            try_num,
+        )
         data_form_2fa["twofactor_code"] = token_2fa
         data_form_2fa["userid"] = user_id
         data_form_2fa["first_factor"] = first_factor
         return data_form_2fa
 
-    def _run_two_factor(self, token_2fa, user_id, first_factor, try_num):
+    def _run_two_factor(
+        self, token_2fa, user_id, first_factor, try_num, password_value=None
+    ):
         return self._login(
-            self._build_two_factor_form(token_2fa, user_id, first_factor, try_num)
+            self._build_two_factor_form(
+                token_2fa, user_id, first_factor, try_num, password_value
+            )
         )
 
-    async def _run_two_factor_async(self, token_2fa, user_id, first_factor, try_num):
+    async def _run_two_factor_async(
+        self, token_2fa, user_id, first_factor, try_num, password_value=None
+    ):
         return await self._login_async(
-            self._build_two_factor_form(token_2fa, user_id, first_factor, try_num)
+            self._build_two_factor_form(
+                token_2fa, user_id, first_factor, try_num, password_value
+            )
         )
 
     def main(self):
@@ -286,6 +316,20 @@ class loginFacebook:
 
         pass2Fa = self._run_two_factor(token_2fa, user_id, first_factor, 2)
         if pass2Fa.get("error") is not None:
+            fallback_response = self._run_two_factor(
+                token_2fa,
+                user_id,
+                first_factor,
+                3,
+                password_value=self.passwordFacebook,
+            )
+            if fallback_response.get("error") is None:
+                return jsonResults(
+                    fallback_response,
+                    1,
+                    _build_cookie_export(fallback_response.get("session_cookies")),
+                )
+        if pass2Fa.get("error") is not None:
             is_direct_otp = DIRECT_OTP_RE.fullmatch(
                 str(self.twoTokenAccess or "").replace(" ", "").strip()
             )
@@ -296,7 +340,7 @@ class loginFacebook:
                         retry_token,
                         user_id,
                         first_factor,
-                        3,
+                        4,
                     )
                     if retry_response.get("error") is None:
                         return jsonResults(
@@ -351,6 +395,20 @@ class loginFacebook:
 
         pass2Fa = await self._run_two_factor_async(token_2fa, user_id, first_factor, 2)
         if pass2Fa.get("error") is not None:
+            fallback_response = await self._run_two_factor_async(
+                token_2fa,
+                user_id,
+                first_factor,
+                3,
+                password_value=self.passwordFacebook,
+            )
+            if fallback_response.get("error") is None:
+                return jsonResults(
+                    fallback_response,
+                    1,
+                    _build_cookie_export(fallback_response.get("session_cookies")),
+                )
+        if pass2Fa.get("error") is not None:
             is_direct_otp = DIRECT_OTP_RE.fullmatch(
                 str(self.twoTokenAccess or "").replace(" ", "").strip()
             )
@@ -361,7 +419,7 @@ class loginFacebook:
                         retry_token,
                         user_id,
                         first_factor,
-                        3,
+                        4,
                     )
                     if retry_response.get("error") is None:
                         return jsonResults(
@@ -374,6 +432,9 @@ class loginFacebook:
         return jsonResults(
             pass2Fa, 1, _build_cookie_export(pass2Fa.get("session_cookies"))
         )
+
+
+loginFB = loginFacebook
 
 
 """

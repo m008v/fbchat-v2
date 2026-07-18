@@ -1,6 +1,6 @@
 # fbchat-v2
 
-Thư viện Python async-first để tự động hóa Facebook Messenger bằng cookie phiên đăng nhập. Dự án dùng `httpx.AsyncClient` cho HTTP, MQTT/WebSocket cho tin nhắn thường và bridge Go riêng cho E2EE.
+Thư viện Python async-first để tự động hóa Facebook Messenger bằng cookie phiên đăng nhập. Dự án dùng `httpx.AsyncClient` cho phần lớn HTTP, adapter legacy `requests` cho vài endpoint Facebook kén transport, MQTT/WebSocket cho tin nhắn thường và bridge Go riêng cho E2EE.
 
 > Đây là API Facebook không chính thức. Cookie và token có quyền truy cập tài khoản; không commit, không ghi log và không gửi chúng cho dịch vụ bên thứ ba.
 
@@ -93,7 +93,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-`connect_mqtt_async()` đưa vòng lặp blocking của `paho-mqtt` sang worker thread dành riêng. Đây là adapter đúng cho một thư viện MQTT đồng bộ; các request HTTP vẫn chạy trực tiếp bằng `httpx.AsyncClient`.
+`connect_mqtt_async()` đưa vòng lặp blocking của `paho-mqtt` sang worker thread dành riêng. Đây là adapter đúng cho một thư viện MQTT đồng bộ; phần lớn request HTTP chạy bằng `httpx.AsyncClient`, riêng một số endpoint legacy như credential login/upload attachment dùng adapter `requests` có kiểm soát.
 
 ## E2EE async
 
@@ -144,13 +144,13 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-TOTP secret chỉ được xử lý trên máy bằng `pyotp`, không gửi đến `2fa.live` hay endpoint bên thứ ba.
+TOTP secret chỉ được xử lý trên máy bằng `pyotp`, không gửi đến `2fa.live` hay endpoint bên thứ ba. Credential login dùng form/header FB4A legacy giống bản đầu, nhưng app access token vẫn phải lấy từ môi trường.
 
 ## Cấu trúc
 
 ```text
 src/
-├── _core/       # transport httpx, session, login, storage, utility
+├── _core/       # transport httpx, adapter legacy requests, session, login, storage, utility
 ├── _features/   # nghiệp vụ Facebook và quản lý thread
 ├── _messaging/  # gửi/nhận, MQTT, E2EE, note, theme, attachment
 └── main.py      # bot mẫu async-first

@@ -80,6 +80,84 @@ def test_totp_is_generated_locally_and_direct_otp_is_preserved():
     assert GetToken2FA("123456") == "123456"
 
 
+class _LoginResponse:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._payload
+
+
+def test_login_uses_legacy_fb4a_requests_form(monkeypatch):
+    monkeypatch.setenv("FBCHAT_APP_ACCESS_TOKEN", "app|token")
+    calls = []
+
+    def fake_post(url, data, headers, proxies=None, timeout=None):
+        calls.append(
+            {
+                "url": url,
+                "data": dict(data),
+                "headers": dict(headers),
+                "proxies": proxies,
+                "timeout": timeout,
+            }
+        )
+        return _LoginResponse(
+            {
+                "access_token": "access",
+                "session_cookies": [{"name": "c_user", "value": "123"}],
+            }
+        )
+
+    with patch("requests.post", side_effect=fake_post):
+        result = loginFacebook("user@example.com", "secret").main()
+
+    assert result["success"]["setCookies"] == "c_user=123; "
+    assert calls[0]["url"] == "https://b-graph.facebook.com/auth/login"
+    assert calls[0]["timeout"] == 20
+    assert calls[0]["headers"]["User-Agent"].startswith("Dalvik/2.1.0")
+    assert calls[0]["data"]["credentials_type"] == "password"
+    assert calls[0]["data"]["password"] == "secret"
+    assert calls[0]["data"]["access_token"] == "app|token"
+
+
+def test_login_two_factor_prefers_legacy_otp_password(monkeypatch):
+    monkeypatch.setenv("FBCHAT_APP_ACCESS_TOKEN", "app|token")
+    calls = []
+
+    two_factor_error = {
+        "error": {
+            "error_subcode": 1348162,
+            "error_data": {
+                "uid": "10001",
+                "login_first_factor": "first-factor",
+            },
+        }
+    }
+    success = {
+        "access_token": "access",
+        "session_cookies": [{"name": "xs", "value": "abc"}],
+    }
+
+    def fake_post(url, data, headers, proxies=None, timeout=None):
+        calls.append(dict(data))
+        return _LoginResponse(two_factor_error if len(calls) == 1 else success)
+
+    with patch("requests.post", side_effect=fake_post):
+        result = loginFacebook("user@example.com", "secret", "123456").main()
+
+    assert result["success"]["setCookies"] == "xs=abc; "
+    assert calls[1]["credentials_type"] == "two_factor"
+    assert calls[1]["password"] == "123456"
+    assert calls[1]["twofactor_code"] == "123456"
+    assert calls[1]["userid"] == "10001"
+    assert calls[1]["first_factor"] == "first-factor"
+    assert calls[1]["jazoest"] == "22327"
+
+
 def test_listener_constructor_performs_no_network_io(mock_dataFB):
     with patch(
         "_messaging._listening._all_thread_data.func",

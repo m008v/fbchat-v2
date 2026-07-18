@@ -1,6 +1,6 @@
 # fbchat-v2
 
-An async-first Python library for automating Facebook Messenger through an authenticated cookie session. It uses `httpx.AsyncClient` for HTTP, MQTT/WebSocket for regular messages, and a separate Go bridge for E2EE.
+An async-first Python library for automating Facebook Messenger through an authenticated cookie session. It uses `httpx.AsyncClient` for most HTTP, a legacy `requests` adapter for a few transport-sensitive Facebook endpoints, MQTT/WebSocket for regular messages, and a separate Go bridge for E2EE.
 
 > This is an unofficial Facebook API. Cookies and tokens grant account access: never commit, log, or send them to third-party services.
 
@@ -93,7 +93,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-`connect_mqtt_async()` moves `paho-mqtt`'s blocking loop to a dedicated worker thread. That is the correct adapter for a synchronous MQTT library; HTTP requests still run directly through `httpx.AsyncClient`.
+`connect_mqtt_async()` moves `paho-mqtt`'s blocking loop to a dedicated worker thread. That is the correct adapter for a synchronous MQTT library; most HTTP requests use `httpx.AsyncClient`, while proven legacy endpoints such as credential login/upload attachment use a controlled `requests` adapter.
 
 ## Async E2EE
 
@@ -144,13 +144,13 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-The TOTP secret is processed locally with `pyotp`; it is never sent to `2fa.live` or another third-party endpoint.
+The TOTP secret is processed locally with `pyotp`; it is never sent to `2fa.live` or another third-party endpoint. Credential login uses the legacy FB4A form/header from the first codebase, but the app access token must still come from the environment.
 
 ## Layout
 
 ```text
 src/
-├── _core/       # httpx transport, session, login, storage, utilities
+├── _core/       # httpx transport, legacy requests adapter, session, login, storage, utilities
 ├── _features/   # Facebook and thread-management business features
 ├── _messaging/  # send/receive, MQTT, E2EE, notes, themes, attachments
 └── main.py      # async-first example bot
