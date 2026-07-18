@@ -12,41 +12,30 @@
 [![License](https://img.shields.io/badge/license-Xem%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
 
-[🇬🇧 English](README_EN.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [📖 Tài liệu API](DOCS.md) · [📊 Sơ đồ luồng](FLOWCHART.md) · [🐛 Báo lỗi](https://github.com/MinhHuyDev/fbchat-v2/issues)
+[🇬🇧 English](README_EN.md) · [📖 Tài liệu](DOCS.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Sơ đồ luồng](FLOWCHART.md) · [🐛 Báo lỗi](https://github.com/MinhHuyDev/fbchat-v2/issues)
 
 </div>
 
 ---
 
-## Thông báo quan trọng
-
 > [!IMPORTANT]
-> Kể từ tháng 11/2024, Facebook đã triển khai mã hoá đầu cuối (E2EE) cho phần lớn cuộc trò chuyện cá nhân trên Messenger.
->
-> Nhánh `beta-async/await` dùng `async`/`await` làm API chính. HTTP chạy qua `httpx`, bot mẫu trong [`src/main.py`](src/main.py) nghe sự kiện bằng [`_messaging/_listening_e2ee.py`](src/_messaging/_listening_e2ee.py), gửi E2EE bằng bridge Go [`bridge-e2ee/`](bridge-e2ee/) và fallback gửi thường khi bridge trả event `message`.
->
-> Tin nhắn cá nhân nên dùng `_listening_e2ee.py`; tin nhắn nhóm hoặc event thường vẫn có thể đi qua MQTT/WebSocket cũ khi Facebook còn trả event `message`.
+> Đây là phiên bản `v2.2.0` sử dụng *httpx.Client* thay vì *requests* như cũ và đã trang bị **async/await** nên systax code có thể bị thay đổi hoặc xung đột với bản của bạn đang dùng. Nếu bạn vẫn muốn dùng **requests** (*no async/await*), hãy bấm vào đây: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
 
 > [!WARNING]
-> Đây không phải SDK chính thức của Facebook. Thư viện xác thực bằng cookie hoặc credential của tài khoản người dùng thật, nên cookie, token và `dataFB` phải được xem như secret.
->
-> Không commit, không ghi log, không chia sẻ cookie/token và không gửi TOTP secret sang dịch vụ bên thứ ba.
+> **Tuyên bố miễn trừ trách nhiệm** - Đây **không** phải là sản phẩm chính thức của Facebook. Facebook đã có sẵn API chatbot chính thức [tại đây](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` khác biệt ở chỗ nó xác thực bằng **tài khoản / cookie người dùng Facebook thực**, vốn tiềm ẩn rủi ro. Hãy cân nhắc kỹ trước khi sử dụng.
 
 ---
 
-## Giới thiệu
+## 👋 Giới thiệu
+Xin chào, mình là **MinhHuyDev** (*m008v*) - tác giả và người duy trì dự án này.
 
-`fbchat-v2` là thư viện Python cho các workflow Messenger không chính thức: lấy session từ cookie, gửi tin nhắn, nghe tin nhắn real-time, thao tác thread, upload attachment, đổi theme, tạo Messenger Notes và chạy bridge E2EE cho chat cá nhân.
+Trước hết, mình xin chân thành cảm ơn tất cả người dùng trong và ngoài nước đã đóng góp ý tưởng và báo lỗi cho dự án. Trong **bản cập nhật lớn v2.2.0** này, codebase đã được **tái cấu trúc hoàn toàn**, xử lý phần lớn các lỗi nhỏ tồn đọng và trang bị *async/await* mạnh mẽ!
 
-Bản trên nhánh `beta-async/await` tập trung vào 3 việc:
-
-- API public ưu tiên `async`/`await`, tên hàm gọn như `func`, `send`, `connect_mqtt`.
-- HTTP dùng `httpx.AsyncClient`; các đoạn blocking legacy chỉ nằm ở boundary cần thiết.
-- Bot mẫu trong `src/main.py` dùng E2EE listener làm transport chính cho receive/send command.
+Tất nhiên vẫn sẽ còn những lỗi vặt khó tìm ra, hoặc các đoạn code chưa thật sự đồng bộ. Nếu bạn phát hiện ra ***vấn đề***, hãy mở issue trên [GitHub](https://github.com/MinhHuyDev/fbchat-v2/issues) hoặc nhắn trực tiếp cho mình qua [Telegram](https://t.me/MinhHuyDev).
 
 ---
 
-## Mục lục
+## 📚 Mục lục
 
 - [Tính năng](#tính-năng)
 - [Kiến trúc tổng quan](#kiến-trúc-tổng-quan)
@@ -55,169 +44,306 @@ Bản trên nhánh `beta-async/await` tập trung vào 3 việc:
 - [Cài đặt](#cài-đặt)
 - [Cấu hình](#cấu-hình)
 - [Bắt đầu nhanh](#bắt-đầu-nhanh)
-- [Ví dụ async/await](#ví-dụ-asyncawait)
-- [E2EE listener](#e2ee-listener)
+- [Sử dụng API async](#sử-dụng-api-async)
+- [Listener E2EE](#listener-e2ee)
 - [Bot mẫu](#bot-mẫu)
+- [Tài liệu từng module](#tài-liệu-từng-module)
 - [Kiểm tra chất lượng](#kiểm-tra-chất-lượng)
-- [Bảo mật](#bảo-mật)
+- [Bảo mật và giới hạn](#bảo-mật-và-giới-hạn)
 - [Đóng góp](#đóng-góp)
+- [Vinh danh](#vinh-danh)
 - [Bản quyền](#bản-quyền)
 
 ---
 
-## Tính năng
+## ✨ Tính năng
 
-### Core
+`fbchat-v2` đi theo một hướng hoàn toàn khác so với SDK chính thức: thay vì chỉ chạy trên một fanpage với `access_token`, thư viện điều khiển một **tài khoản Facebook thật** thông qua cookie hoặc thông tin đăng nhập, mở khoá toàn bộ bề mặt của Messenger.
 
-- Lấy `dataFB` từ cookie bằng `_core._session.dataGetHome`.
-- Storage local qua `FileSessionStorage` và storage qua biến môi trường.
-- Login credential legacy FB4A với 2FA TOTP xử lý cục bộ bằng `pyotp`.
-- Helper HTTP async dùng `httpx`.
+### Xác thực
+- 🔐 Đăng nhập bằng **username / password** hoặc **cookie phiên** (*)
+- 🍪 Tái sử dụng phiên đăng nhập - không cần đăng nhập lại mỗi lần chạy
 
-### Messaging
+### Nhắn tin
+- 📥 Đọc tin nhắn từ cả **người dùng** lẫn **nhóm chat (thread)**
+- 🔐 **E2EE listener** cho tin nhắn cá nhân Messenger (Secret Conversations / Labyrinth) qua bridge Go
+- 📤 Gửi văn bản, **tệp đính kèm**, **nhãn dán (sticker)**, **mention người dùng**
+- 🔍 Tìm kiếm tin nhắn và chuỗi hội thoại
+- ✏️ Sửa tin nhắn đã gửi, thả cảm xúc, thu hồi tin, xử lý message requests
+- 🎨 Đổi theme / nền thread Messenger và quản lý **Messenger Notes** 24h
+- 📡 **Listener real-time** - phản hồi lệnh người dùng tức thì
 
-- Gửi tin nhắn thường qua `_messaging._send`.
-- Upload attachment, gửi reaction, thu hồi, sửa tin nhắn.
-- Đổi theme thread, tạo Messenger Notes, xử lý message requests.
-- Listener MQTT cho event thường.
-- Listener E2EE qua bridge Go cho chat cá nhân Messenger.
+### Thread & Nhóm
+- 👥 Tạo nhóm, thêm admin, đổi tên / emoji / biệt danh trong nhóm
+- 📊 Tạo cuộc thăm dò ý kiến (poll) và lấy toàn bộ metadata của thread
 
-### Facebook features
+### Tính năng Facebook (`_features._facebook`)
+- 📝 Đăng bài, đổi tiểu sử, đăng ký mục trên hồ sơ
+- 👤 Tìm kiếm người dùng, lấy thông tin profile, quản lý thông báo
+- 🚫 Chặn / bỏ chặn, quản lý Marketplace và chế độ Professional
 
-- Đăng bài, đổi bio, tìm kiếm người dùng.
-- Quản lý profile, notification, block/unblock.
-- Marketplace và Professional mode.
+### Mới cập nhật
+- ⚡ Hỗ trợ **`async` / `await`** đầy đủ
+- 📦 Phát hành bridge E2EE dưới dạng binary prebuilt cho Windows / Linux / macOS
+
+> [!WARNING]
+> (*) Đăng nhập bằng cookie / mật khẩu mang theo rủi ro bảo mật; tuyệt đối không chia sẻ token của bạn cho ai.
 
 ---
 
-## Kiến trúc tổng quan
+## 📂 Kiến trúc tổng quan
 
-Codebase giữ cấu trúc 3 tầng giống main branch, nhưng runtime mới ưu tiên async.
+Codebase chia thành 3 tầng. Feature không được tự quản session và messaging không được hardcode credential.
 
 | Tầng | Đường dẫn | Trách nhiệm |
 |---|---|---|
-| Core | `src/_core/` | Session, login, storage, HTTP helper, utility |
-| Features | `src/_features/` | Nghiệp vụ Facebook và thread |
-| Messaging | `src/_messaging/` | Gửi, nhận, E2EE, attachment, theme, notes, reaction |
+| Core | `src/_core/` | HTTP transport, session, storage, login và utility |
+| Features | `src/_features/` | Nghiệp vụ Facebook và quản trị thread |
+| Messaging | `src/_messaging/` | Send, listen, E2EE, attachment, reaction, theme và notes |
 
 ```mermaid
 flowchart LR
-    A[Cookie] --> B[dataGetHome]
+    A[Cookie hoặc storage] --> B[dataGetHome]
     B --> C[dataFB]
-    C --> D[HTTP async qua httpx]
-    C --> E[MQTT listener]
-    C --> F[E2EE bridge Go]
-    F --> G[Bot async trong src/main.py]
+    C --> D[Features HTTP]
+    D --> E[httpx.AsyncClient]
+    C --> F[MQTT listener]
+    C --> G[Python E2EE wrapper]
+    G <--> H[Go JSON-RPC bridge]
+    H <--> I[Messenger E2EE]
+    F --> J[Ứng dụng asyncio]
+    G --> J
 ```
+
+📊 Sơ đồ luồng đầy đủ có tại [FLOWCHART.md](FLOWCHART.md).
+
 
 ---
 
-## Cấu trúc dự án
+## 🗂️ Cấu trúc dự án
 
 ```text
 fbchat-v2/
 ├── src/
-│   ├── main.py                    # Bot mẫu async-first, dùng E2EE listener
-│   ├── config.example.json        # Template cấu hình an toàn
-│   ├── config.json                # Cấu hình local, không commit
-│   ├── _core/                     # Session, login, storage, utils
-│   ├── _features/                 # Tính năng Facebook và thread
-│   └── _messaging/                # Send, listen, E2EE, attachment, theme, notes
-├── bridge-e2ee/                   # Bridge Go cho Messenger E2EE
-├── build/                         # Binary bridge sau khi build hoặc tải về
-├── tests/                         # Test async-first và compatibility
-├── DOCS.md
-├── FLOWCHART.md
-├── README.md
-├── README_EN.md
+│   ├── main.py                       # Bot mẫu async dùng listener E2EE
+│   ├── config.example.json           # Template cấu hình được phép commit
+│   ├── config.json                   # Cấu hình local, bị gitignore
+│   ├── _core/
+│   │   ├── _http.py                  # Transport httpx sync/async dùng chung
+│   │   ├── _session.py               # Cookie -> dataFB
+│   │   ├── _storage.py               # File/Env session storage
+│   │   ├── _facebookLogin.py         # Credential login và 2FA
+│   │   ├── _utils.py                 # Form, parser, cookie và ID helper
+│   │   └── README.md
+│   ├── _features/
+│   │   ├── _facebook/                # Account, profile, Marketplace
+│   │   ├── _thread/                  # Thread và group administration
+│   │   └── README.md
+│   └── _messaging/
+│       ├── _send.py                  # Gửi tin thường qua HTTP
+│       ├── _attachments.py           # Upload file
+│       ├── _listening.py             # MQTT listener thường
+│       ├── _listening_e2ee.py        # E2EE listener và bridge process
+│       ├── _bridge_actions.py        # Action async qua bridge
+│       ├── _send_e2ee.py             # Compatibility sender standalone
+│       ├── _changeTheme.py
+│       ├── _createNotes.py
+│       ├── _editMessage.py
+│       ├── _message_requests.py
+│       ├── _reactions.py
+│       ├── _unsend.py
+│       └── README.md
+├── bridge-e2ee/
+│   ├── main.go                       # JSON-RPC dispatcher
+│   ├── bridge/                       # Messenger/E2EE operations
+│   ├── meta/                         # Git submodule mautrix-meta
+│   ├── go.mod
+│   └── README.md
+├── build/                            # Binary bridge local
+├── tests/                            # Unit và async contract tests
+├── DOCS.md                           # Hướng dẫn API đầy đủ
+├── FLOWCHART.md                      # Runtime flow
+├── mindmap-mermaid.md                # Bản đồ codebase
+├── CHANGELOG.md
 └── pyproject.toml
 ```
 
 ---
 
-## Yêu cầu hệ thống
+## 🔧 Yêu cầu hệ thống
 
-| Thành phần | Tối thiểu | Ghi chú |
-|---|---:|---|
-| Python | 3.10+ | CI hiện test Python 3.11 |
-| Go | 1.24+ | Chỉ cần khi tự build bridge E2EE |
-| Git | bất kỳ | Cần khi clone submodule `bridge-e2ee/meta` |
-| Cookie Facebook | bắt buộc | Cần `c_user`, `xs`, `fr`, `datr` |
+| Thành phần | Tối thiểu | Khuyến nghị | Ghi chú |
+|---|---|---|---|
+| Python | 3.10 | 3.11 / 3.12 | Bắt buộc |
+| Go (toolchain) | 1.24 | 1.24+ | **Chỉ cần cho E2EE** - để build `fbchat-bridge-e2ee` |
+| Git | bất kỳ | latest | Cần cho `go mod tidy` kéo `mautrix/meta` |
+| Hệ điều hành | Windows / Linux / macOS | - | - |
+| RAM | 256 MB | 1 GB+ | Bridge E2EE chiếm ~80–150 MB khi chạy |
+| Mạng | Kết nối ổn định, không bị chặn `facebook.com` và `edge-chat.facebook.com` | - | - |
 
-Phụ thuộc chính:
+Phụ thuộc Python chính trong `pyproject.toml`:
 
 ```toml
-httpx>=0.27.0
-paho-mqtt>=1.6.1
-pyotp>=2.9.0
-requests>=2.32.0
+dependencies = [
+    "httpx>=0.27.0",
+    "paho-mqtt>=1.6.1",
+    "pyotp>=2.9.0",
+    "requests>=2.32.0",
+]
 ```
+
+`httpx` là transport chính cho session và feature async. `requests` chỉ còn ở boundary blocking của credential login và compatibility upload.
 
 ---
 
-## Cài đặt
+## 📦 Cài đặt
 
-### 1. Clone repo
+> Tóm tắt: **Bước 1–4 bắt buộc** cho mọi user. **Bước 5 chỉ cần nếu bạn muốn nhận tin nhắn 1-1 (E2EE)**.
+
+### 1. Clone mã nguồn
 
 ```bash
 git clone https://github.com/MinhHuyDev/fbchat-v2
 cd fbchat-v2
 ```
 
-Nếu cần bridge E2EE và repo có submodule:
+> Cách khác: `Code → Download ZIP` trên GitHub.
 
-```bash
-git submodule update --init --recursive
-```
-
-### 2. Tạo virtual environment
+### 2. Tạo môi trường ảo *(không bắt buộc nhưng khuyến nghị)*
 
 ```bash
 python -m venv .venv
 ```
 
-Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Linux hoặc macOS:
+Kích hoạt môi trường:
 
 ```bash
+# Windows (PowerShell)
+.venv\Scripts\activate
+
+# macOS / Linux
 source .venv/bin/activate
 ```
 
-### 3. Cài dependency
+### 3. Cài đặt phụ thuộc Python
 
 ```bash
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
+pip install --upgrade pip
+pip install -e .
 ```
 
-### 4. Kiểm tra import
+Kiểm tra nhanh:
 
 ```bash
-python -c "import httpx, pyotp, requests, paho.mqtt.client; print('OK')"
+python -c "import requests, paho.mqtt.client, attr, pyotp; print('OK')"
 ```
+
+### 4. Cho phép import từ `src/`
+
+Khi chạy script ở thư mục gốc dự án, hãy expose `src/` để các module `_core`, `_features`, `_messaging` được import đúng:
+
+```bash
+# Windows (PowerShell)
+$env:PYTHONPATH = "src"
+
+# macOS / Linux
+export PYTHONPATH=src
+```
+
+Hoặc bạn có thể import thủ công với prefix đầy đủ `src.`.
+
+### 5. *(Tuỳ chọn)* Build bridge E2EE - cho tin nhắn 1-1
+
+Nếu bạn chỉ cần nhận tin nhắn nhóm, **bỏ qua bước này**. Ngược lại, tin nhắn cá nhân (E2EE) cần binary Go `fbchat-bridge-e2ee`.
+
+#### 5.1. Cài Go toolchain
+
+- Tải về: <https://go.dev/dl/> (Go ≥ 1.24).
+- Sau khi cài, mở terminal mới và kiểm tra:
+
+  ```bash
+  go version
+  ```
+
+#### 5.2. Kéo source `mautrix/meta`
+
+Repo đã khai báo `bridge-e2ee/meta` trong `.gitmodules`, nên ưu tiên dùng submodule:
+
+```bash
+git submodule update --init --recursive bridge-e2ee/meta
+```
+
+Nếu bạn chỉ build thủ công từ một bản source không có `.gitmodules`, clone fallback:
+
+```bash
+cd bridge-e2ee
+git clone https://github.com/mautrix/meta.git ./meta
+```
+
+> `go.mod` của `bridge-e2ee/` dùng directive `replace` trỏ tới thư mục `./meta`, nên path `bridge-e2ee/meta` phải tồn tại trước khi `go mod tidy` / `go build`.
+
+#### 5.3. Tải dep & build
+
+```bash
+go mod tidy
+
+# Windows
+go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .
+
+# Linux / macOS
+go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee .
+```
+
+Lần build đầu mất vài phút (~300 MB cache Go module). Sau đó binary khoảng 25–40 MB nằm ở `fbchat-v2/build/`.
+
+#### 5.4. Verify
+
+```bash
+cd ..
+# Windows
+.\build\fbchat-bridge-e2ee.exe --help
+# Linux/macOS
+./build/fbchat-bridge-e2ee --help
+```
+
+Nếu binary không nằm ở vị trí mặc định, set biến môi trường:
+
+```bash
+# Windows
+$env:FBCHAT_E2EE_BIN = "C:\path\to\fbchat-bridge-e2ee.exe"
+# Linux/macOS
+export FBCHAT_E2EE_BIN=/path/to/fbchat-bridge-e2ee
+```
+
+Chi tiết thêm: [`bridge-e2ee/README.md`](bridge-e2ee/README.md).
+
+### 6. Cấu hình cookie
+
+Sao chép [`src/config.example.json`](src/config.example.json) thành `src/config.json`, rồi dán cookie phiên Facebook vào trường `cookies`. Xem chi tiết ở mục [Cấu hình](#-cấu-hình).
+
+### 7. Smoke test
+
+```bash
+python src/main.py
+```
+
+Nếu console in ra thông tin tài khoản + `last_seq_id`, cài đặt đã hoàn tất.
 
 ---
 
-## Cấu hình
+## ⚙️ Cấu hình
 
-Sao chép template:
-
-```bash
-cp src/config.example.json src/config.json
-```
-
-Windows PowerShell:
+Sao chép template local:
 
 ```powershell
 Copy-Item src\config.example.json src\config.json
 ```
 
-Ví dụ `src/config.json`:
+```bash
+cp src/config.example.json src/config.json
+```
+
+Ví dụ:
 
 ```json
 {
@@ -231,36 +357,44 @@ Ví dụ `src/config.json`:
 }
 ```
 
-`src/config.json` phải nằm local và không được commit. Nếu cookie lộ, hãy đăng xuất phiên Facebook hoặc đổi cookie ngay.
+| Khóa | Bắt buộc | Ý nghĩa |
+|---|---|---|
+| `cookies` | Có | Cookie phiên Facebook dạng chuỗi |
+| `prefix` | Không | Tiền tố lệnh, mặc định `/` |
+| `admins` | Không | Danh sách Facebook ID được dùng lệnh quản trị |
+| `botName` | Không | Metadata cho config, bot mẫu hiện không dùng |
+| `version` | Không | Metadata cho config, bot mẫu hiện không dùng |
+
+`src/config.json` đã bị gitignore. Không dùng `config.example.json` để chứa cookie thật.
 
 ---
 
-## Bắt đầu nhanh
+## 🚀 Bắt đầu nhanh
 
-Chạy bot mẫu:
+Sau khi cấu hình cookie và bridge:
 
 ```bash
 python src/main.py
 ```
 
-Sau khi bot báo E2EE listener sẵn sàng, nhắn các lệnh sau vào chat:
+Bot đợi cả kết nối thường và E2EE sẵn sàng trước khi xử lý lệnh. Các lệnh mẫu:
 
 ```text
 /ping
-/id
 /help
-/echo hello
+/id
+/echo xin chào
 /search Minh
 /unsend
 ```
 
-`/unsend` chỉ thu hồi tin E2EE cuối mà bot gửi trong chat hiện tại. Với chat thường không có `chatJid`, lệnh này sẽ báo không hỗ trợ.
+`/unsend` chỉ thu hồi tin E2EE cuối do bot gửi trong chat hiện tại. Chat thường không có `chatJid` sẽ được từ chối rõ ràng.
 
 ---
 
-## Ví dụ async/await
+## ⚡ Sử dụng API async
 
-### Lấy session từ cookie
+### Tạo session từ cookie
 
 ```python
 import asyncio
@@ -278,87 +412,87 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Nếu đang ở FastAPI, Jupyter, Discord bot hoặc một event loop đã chạy, không gọi `asyncio.run()`. Hãy `await dataGetHome(...)` trực tiếp.
+Trong FastAPI, Jupyter hoặc bot framework đã có event loop, gọi `await dataGetHome(...)` trực tiếp. Không lồng thêm `asyncio.run()`.
 
 ### Gửi tin nhắn thường
 
 ```python
-import asyncio
-
-from _core._session import dataGetHome
 from _messaging._send import api as SendAPI
 
-
-async def main() -> None:
-    data_fb = await dataGetHome("c_user=...; xs=...; fr=...; datr=...;")
-    sender = SendAPI()
-    result = await sender.send(
-        data_fb,
-        "Xin chào từ async/await",
-        threadID="100012345678",
-        typeChat="user",
-    )
-    print(result)
-
-
-asyncio.run(main())
+sender = SendAPI()
+result = await sender.send(
+    data_fb,
+    "Xin chào từ fbchat-v2",
+    threadID="100012345678"
+)
+if result.get("error"):
+    raise RuntimeError(result["payload"]["error-decription"])
 ```
 
-### Tái sử dụng HTTP client
+`threadID` có thể là một ID hoặc danh sách ID khi `typeChat="user"`. Khi gửi attachment, `typeAttachment` và `attachmentID` phải đi cùng nhau.
+
+### Tái sử dụng HTTP connection
 
 ```python
+import asyncio
 import httpx
 
-from _features._facebook import _search
-
+from _features._facebook import _notification, _search
 
 async with httpx.AsyncClient(timeout=30) as client:
-    result = await _search.func(data_fb, "Minh", client=client)
-    print(result)
+    notifications, users = await asyncio.gather(
+        _notification.func(data_fb, client=client),
+        _search.func(data_fb, "Minh", client=client),
+    )
 ```
+
+Client do caller tạo thì caller chịu trách nhiệm đóng. Không dùng chung một client đã đóng và không truyền `httpx.Client` sync vào tham số `client=` của API async.
+
+### Upload attachment
+
+```python
+from _messaging import _attachments
+from _messaging._send import api as SendAPI
+
+uploaded = await _attachments.func("photo.jpg", data_fb, include_error=True)
+if not uploaded or not uploaded.get("attachmentID"):
+    raise RuntimeError(f"Upload thất bại: {uploaded}")
+
+await SendAPI().send(
+    data_fb,
+    "Ảnh đính kèm (file path)",
+    threadID="100012345678",
+    typeAttachment=uploaded["typeAttachment"],
+    attachmentID=uploaded["attachmentID"],
+)
+```
+
+### Listener MQTT thường
+
+```python
+import asyncio
+
+from _messaging._listening import listeningEvent
+
+listener = listeningEvent(data_fb, message_queue_maxsize=1000)
+listener_task = asyncio.create_task(listener.connect_mqtt())
+try:
+    while True:
+        event = await listener.get_message(timeout=30)
+        if event is not None:
+            print(event)
+finally:
+    await listener.disconnect()
+    await listener_task
+```
+
+Đọc từng event qua `get_message()`. `bodyResults` chỉ là snapshot tương thích và có thể bỏ lỡ burst.
 
 ---
 
-## E2EE listener
+## 🔐 Listener E2EE
 
-Chat cá nhân Messenger cần E2EE bridge. Bridge mặc định được tìm tại:
-
-```text
-build/fbchat-bridge-e2ee.exe      # Windows
-build/fbchat-bridge-e2ee          # Linux/macOS
-```
-
-Tự build:
-
-```bash
-git submodule update --init --recursive bridge-e2ee/meta
-cd bridge-e2ee
-go mod tidy
-go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee .
-```
-
-Windows:
-
-```powershell
-git submodule update --init --recursive bridge-e2ee/meta
-Set-Location bridge-e2ee
-go mod tidy
-go build -ldflags="-s -w" -o ..\build\fbchat-bridge-e2ee.exe .
-```
-
-Nếu binary nằm chỗ khác:
-
-```bash
-export FBCHAT_E2EE_BIN=/path/to/fbchat-bridge-e2ee
-```
-
-Windows PowerShell:
-
-```powershell
-$env:FBCHAT_E2EE_BIN = "C:\path\to\fbchat-bridge-e2ee.exe"
-```
-
-Ví dụ listener E2EE:
+`listeningE2EEEvent` spawn bridge Go và trao đổi JSON-RPC qua stdin/stdout. Callback bridge chạy ngoài event loop, vì vậy ứng dụng asyncio nên chuyển event vào `asyncio.Queue` bằng `loop.call_soon_threadsafe`.
 
 ```python
 import asyncio
@@ -366,14 +500,21 @@ import asyncio
 from _messaging._listening_e2ee import listeningE2EEEvent
 
 
-async def main(data_fb: dict) -> None:
+async def run_listener(data_fb: dict) -> None:
     listener = listeningE2EEEvent(data_fb)
+    loop = asyncio.get_running_loop()
+    events: asyncio.Queue[dict] = asyncio.Queue(maxsize=1000)
 
-    @listener.on_message
-    def on_event(event: dict) -> None:
-        print(event)
+    def enqueue(event: dict) -> None:
+        if events.full():
+            events.get_nowait()
+        events.put_nowait(event)
 
-    task = asyncio.create_task(listener.connect_mqtt())
+    listener.on_message(
+        lambda event: loop.call_soon_threadsafe(enqueue, event)
+    )
+    listener_task = asyncio.create_task(listener.connect_mqtt())
+
     try:
         ready = await asyncio.to_thread(
             listener.wait_until_connected,
@@ -381,60 +522,69 @@ async def main(data_fb: dict) -> None:
             require_e2ee=True,
         )
         if not ready:
-            raise RuntimeError("E2EE listener chưa sẵn sàng.")
+            raise TimeoutError("E2EE handshake chưa hoàn tất.")
 
         await listener.send_e2ee_message(
             "100012345678@msgr",
             "Xin chào E2EE",
         )
+
+        while True:
+            event = await events.get()
+            if event.get("type") in {"e2eeMessage", "message"}:
+                print(event["data"])
     finally:
         listener.stop()
-        await task
+        await listener_task
 ```
 
-Event đáng chú ý:
+Event chính:
 
-| Event | Ý nghĩa |
+| Type | Dữ liệu đáng chú ý | Ý nghĩa |
+|---|---|---|
+| `ready` | `isNewSession` | Bridge đã tạo client |
+| `e2eeConnected` | trạng thái handshake | Signal/Labyrinth đã sẵn sàng |
+| `e2eeMessage` | `chatJid`, `senderJid`, `id`, `text` | Tin cá nhân đã giải mã |
+| `message` | `threadId`, `senderId`, `id`, `text` | Tin thường |
+| `error` | lỗi bridge/transport | Cần log và giám sát |
+| `bridge_fatal` | số lần retry | Watchdog đã bỏ cuộc |
+
+Action nâng cao như edit, unsend, typing, mark-read, gửi ảnh/audio và download media nằm trong `BridgeActions`. Xem [tài liệu messaging](src/_messaging/README.md).
+
+---
+
+## 🤖 Bot mẫu
+
+[`src/main.py`](src/main.py) là ví dụ hoàn chỉnh cho lifecycle async:
+
+1. Đọc config bằng `FileSessionStorage`.
+2. Gọi `await dataGetHome(...)` và validate các field bắt buộc.
+3. Mở một `httpx.AsyncClient` dùng chung cho command HTTP.
+4. Start `listeningE2EEEvent.connect_mqtt()` thành task.
+5. Chuyển callback bridge sang `asyncio.Queue` thread-safe.
+6. Parse command và bỏ qua message do chính bot gửi.
+7. Reply bằng E2EE khi có `chatJid`, fallback thường khi chỉ có `threadId`.
+8. Stop bridge, await task và đóng HTTP client khi shutdown.
+
+Queue của bot có giới hạn 1000 event và drop event cũ nhất khi đầy. Đây là chính sách giữ bot sống dưới burst, không phải đảm bảo giao nhận tuyệt đối.
+
+---
+
+## 📖 Tài liệu từng module
+
+| Tài liệu | Nội dung |
 |---|---|
-| `ready` | Bridge đã nhận session |
-| `e2eeConnected` | E2EE handshake xong |
-| `e2eeMessage` | Tin nhắn cá nhân đã giải mã |
-| `message` | Tin nhắn thường |
-| `error` | Bridge hoặc transport báo lỗi |
+| [DOCS.md](DOCS.md) | Hướng dẫn API và workflow đầy đủ |
+| [Core](src/_core/README.md) | Session, HTTP, storage và login |
+| [Features](src/_features/README.md) | Facebook feature và thread |
+| [Messaging](src/_messaging/README.md) | Send, listener, attachment và E2EE |
+| [Bridge E2EE](bridge-e2ee/README.md) | Build, binary discovery và JSON-RPC |
+| [Flowchart](FLOWCHART.md) | Luồng session, HTTP, MQTT, E2EE và shutdown |
+| [Mindmap](mindmap-mermaid.md) | Bản đồ module toàn dự án |
 
 ---
 
-## Bot mẫu
-
-[`src/main.py`](src/main.py) là bot demo async-first:
-
-- Đọc `src/config.json` bằng `FileSessionStorage`.
-- Lấy `dataFB` qua `await dataGetHome(...)`.
-- Tạo `listeningE2EEEvent`.
-- Đưa callback bridge vào `asyncio.Queue` để xử lý lệnh an toàn trong event loop.
-- Gửi reply bằng `send_e2ee_message` nếu event có `chatJid`.
-- Fallback `send_message` nếu event là `message` thường.
-- Không để log Unicode làm crash console Windows.
-
-Luồng chính:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Bridge
-    participant Bot
-    participant FB
-
-    User->>Bridge: gửi /ping
-    Bridge->>Bot: e2eeMessage hoặc message
-    Bot->>Bot: parse command
-    Bot->>Bridge: send_e2ee_message hoặc send_message
-    Bridge->>FB: gửi reply
-```
-
----
-
-## Kiểm tra chất lượng
+## ✅ Kiểm tra chất lượng
 
 Chạy đúng command CI:
 
@@ -442,65 +592,56 @@ Chạy đúng command CI:
 pytest tests/ -v --tb=short
 ```
 
-Lint:
+Các gate nên chạy trước commit:
 
 ```bash
+python -m compileall -q src tests
 ruff check src tests
-```
-
-Compile nhanh:
-
-```bash
-python -m py_compile src/main.py src/_core/_facebookLogin.py
-```
-
-Kiểm tra whitespace trước khi commit:
-
-```bash
+ruff format --check src tests
 git diff --check
 ```
 
----
+Với bridge:
 
-## Bảo mật
+```bash
+cd bridge-e2ee
+go test ./...
+go vet ./...
+```
 
-- Không commit `src/config.json`, `.env`, cookie, password, token, `dataFB`.
-- Không in request form login ra terminal vì form có password và access token.
-- Không gửi TOTP secret sang dịch vụ bên thứ ba. Module login dùng `pyotp` để tạo OTP cục bộ.
-- Nếu dùng credential login, ưu tiên OTP 6-8 số hoặc TOTP secret hợp lệ.
-- Các endpoint Facebook private có thể đổi bất kỳ lúc nào. Luôn xử lý timeout, response thiếu field và lỗi dạng `error`.
-
----
-
-## Đóng góp
-
-1. Fork repo và tạo branch riêng.
-2. Giữ kiến trúc 3 tầng: `_core`, `_features`, `_messaging`.
-3. Code mới nên dùng `async`/`await` và giữ tên public API ngắn gọn.
-4. Dùng Conventional Commits, ví dụ `fix(bot): handle e2ee commands`.
-5. Chạy test trước khi mở PR.
-6. Không commit secret.
+Tài liệu tiếng Việt phải là UTF-8 thực. Nếu PowerShell hiển thị ký tự lạ, kiểm tra codepoint hoặc đọc file với `encoding="utf-8"` trước khi sửa hàng loạt.
 
 ---
 
-## Vinh danh
+## 🌟 Vinh danh người đóng góp
 
-Cảm ơn cộng đồng đã đóng góp bug report, ý tưởng và upstream code để `fbchat-v2` tiếp tục sống sót sau các lần Messenger đổi giao thức.
+Sau **4 năm** phát triển, dự án sẽ không thể tồn tại nếu thiếu cộng đồng. Cảm ơn từ tận đáy lòng tới mọi người đã đóng góp ý tưởng, báo lỗi và giữ cho `fbchat` còn sống tới ngày hôm nay.
 
-Upstream quan trọng cho E2EE:
+### 👥 Cộng đồng đóng góp
 
-- [`mautrix/meta`](https://github.com/mautrix/meta)
-- [`tulir/whatsmeow`](https://github.com/tulir/whatsmeow)
-- [`yumi-team/meta-messenger.js`](https://github.com/yumi-team/meta-messenger.js)
+- [tomdev112](https://github.com/tomdev211)
+- [syrex1013](https://github.com/syrex1013)
+- [Kheir Eddine](https://www.facebook.com/61557637127396/)
+- 陶世玉
+- Jihadi John
+- [Bắc Trịnh](https://www.facebook.com/1228855777/)
+- [Quang Trần](https://www.facebook.com/100005048402622/)
+- [Minh Trần Ngọc](https://www.facebook.com/100000277273223/)
+- Victor Knutsenberger
+- [Hoàng Lân](https://www.facebook.com/100026754347158/)
+- Kareem Adel Abomandor
+- @lluevy · @phuncnheo · @minhphatnw · @khanh235a · @chapesh1 · @klongg13 · @seafibrahem · @agent1047 · @stefekdziura
+
+> Nếu bạn đã từng đóng góp mà chưa thấy tên ở đây, hãy mở issue hoặc PR - mình rất vinh hạnh được bổ sung bạn vào danh sách.
 
 ---
 
-## Bản quyền
+## 📜 Bản quyền
 
-Dự án được phân phối theo điều khoản trong [LICENSE](LICENSE). Hãy cân nhắc kỹ trước khi dùng cho production vì đây là API không chính thức.
+Dự án được phân phối theo điều khoản trong [LICENSE](LICENSE). Phần bridge có thành phần upstream với giấy phép riêng; xem [bridge-e2ee/README.md](bridge-e2ee/README.md) trước khi phân phối binary.
 
 <div align="center">
 
-Được làm bởi [MinhHuyDev](https://github.com/MinhHuyDev) · [Telegram](https://t.me/MinhHuyDev)
+[MinhHuyDev](https://github.com/MinhHuyDev) | [Telegram](https://t.me/MinhHuyDev)
 
 </div>

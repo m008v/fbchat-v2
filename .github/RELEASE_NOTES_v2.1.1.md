@@ -1,6 +1,6 @@
 ## 🎉 fbchat-v2 đã có trên PyPI!
 
-> Tài liệu lịch sử. Cách dùng hiện hành nằm trong `README.md` và `DOCS.md`, ưu tiên async/await.
+> Tài liệu lịch sử của v2.1.1. Cách dùng hiện hành nằm trong [`README.md`](../README.md) và [`DOCS.md`](../DOCS.md), ưu tiên async/await.
 
 > Bản vá tài liệu & hạ tầng phân phối. Không thay đổi runtime - không breaking change.
 > Từ phiên bản này bạn có thể cài đặt trực tiếp:
@@ -57,8 +57,8 @@ Không có breaking change. Chỉ cần:
 pip install --upgrade fbchat-v2
 ```
 
-Người dùng E2EE (`_listening_e2ee.py`) vẫn cần build bridge Go một lần như
-hướng dẫn ở v2.1.0 - xem [README §Cài đặt bước 5](../README.md#5-tu%E1%BB%B3-ch%E1%BB%8Dn-build-bridge-e2ee--cho-tin-nh%E1%BA%AFn-1-1).
+Người dùng E2EE (`_listening_e2ee.py`) vẫn cần bridge Go - xem
+[hướng dẫn build và binary discovery](../bridge-e2ee/README.md#build-từ-source).
 
 ---
 

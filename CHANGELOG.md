@@ -394,8 +394,8 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 ### ⚠️ Lưu ý nâng cấp từ 2.0.x
 
 - Không có breaking change với code đang dùng `_listening.py`.
-- Để bật E2EE, người dùng cần cài Go 1.24+ và build binary 1 lần - xem
-  [README §Cài đặt bước 5](README.md#5-tu%E1%BB%B3-ch%E1%BB%8Dn-build-bridge-e2ee--cho-tin-nh%E1%BA%AFn-1-1).
+- Tại thời điểm phát hành, người dùng cần build bridge thủ công. Hướng dẫn
+  hiện hành nằm tại [bridge-e2ee/README.md](bridge-e2ee/README.md#build-từ-source).
 
 ---
 
