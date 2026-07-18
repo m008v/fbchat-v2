@@ -3,20 +3,18 @@ from __future__ import annotations
 import json
 import mimetypes
 import random
-from itertools import count
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-from _core._utils import str_base
+from _core._utils import formAll
 
 USER_AGENTS: tuple[str, ...] = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/537.36 Chrome/42.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/137 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/137 Safari/537.36",
 )
-_REQUEST_COUNTER = count(1)
 _UPLOAD_URL = "https://upload.facebook.com/ajax/mercury/upload.php"
 
 
@@ -55,6 +53,9 @@ def _build_request(
     if missing:
         raise FileNotFoundError(f"Không tìm thấy tệp upload: {', '.join(missing)}")
 
+    data_form = formAll(dataFB, requireGraphql=False)
+    data_form["voice_clip"] = False
+
     request: dict[str, Any] = {
         "url": _UPLOAD_URL,
         "headers": {
@@ -63,12 +64,7 @@ def _build_request(
             "User-Agent": random.choice(USER_AGENTS),
             "Cookie": dataFB["cookieFacebook"],
         },
-        "data": {
-            "voice_clip": False,
-            "__a": 1,
-            "__req": str_base(next(_REQUEST_COUNTER), 36),
-            "fb_dtsg": dataFB["fb_dtsg"],
-        },
+        "data": data_form,
         "files": {},
     }
     try:
@@ -85,17 +81,52 @@ def _build_request(
     return request
 
 
-def _parse_response(text: str) -> dict[str, Any] | None:
+def _response_excerpt(text: str, limit: int = 600) -> str:
+    return " ".join(text.strip().split())[:limit]
+
+
+def _parse_upload_error(root: Any, text: str) -> dict[str, Any]:
+    if isinstance(root, dict):
+        payload = root.get("payload") if isinstance(root.get("payload"), dict) else {}
+        return {
+            "error": 1,
+            "payload": {
+                "error-code": root.get("error") or payload.get("error"),
+                "error-summary": root.get("errorSummary")
+                or payload.get("errorSummary")
+                or payload.get("error-summary"),
+                "error-description": root.get("errorDescription")
+                or payload.get("errorDescription")
+                or payload.get("error-description"),
+                "raw-excerpt": _response_excerpt(text),
+            },
+        }
+    return {
+        "error": 1,
+        "payload": {
+            "error-description": "Facebook không trả JSON object cho upload.",
+            "raw-excerpt": _response_excerpt(text),
+        },
+    }
+
+
+def _parse_response(text: str, *, include_error: bool = False) -> dict[str, Any] | None:
     try:
         root = json.loads(text.removeprefix("for (;;);"))
     except json.JSONDecodeError:
+        if include_error:
+            return _parse_upload_error(None, text)
         return None
 
     if not isinstance(root, dict):
+        if include_error:
+            return _parse_upload_error(root, text)
         return None
 
     payload = root.get("payload")
     if not isinstance(payload, dict):
+        if include_error:
+            return _parse_upload_error(root, text)
         return None
 
     metadata = payload.get("metadata")
@@ -106,6 +137,8 @@ def _parse_response(text: str) -> dict[str, Any] | None:
     else:
         item = None
     if not isinstance(item, dict):
+        if include_error:
+            return _parse_upload_error(root, text)
         return None
     attachment_type = (
         item.get("attachmentType")
@@ -127,6 +160,7 @@ def func(
     dataFB: dict[str, Any],
     *,
     client: httpx.Client | None = None,
+    include_error: bool = False,
 ) -> dict[str, Any] | None:
     request = _build_request(filenames, dataFB)
     try:
@@ -136,7 +170,7 @@ def func(
             with httpx.Client(timeout=30) as owned_client:
                 response = owned_client.post(**request)
         response.raise_for_status()
-        return _parse_response(response.text)
+        return _parse_response(response.text, include_error=include_error)
     finally:
         _close_request_files(request)
 
@@ -146,6 +180,7 @@ async def func_async(
     dataFB: dict[str, Any],
     *,
     client: httpx.AsyncClient | None = None,
+    include_error: bool = False,
 ) -> dict[str, Any] | None:
     request = _build_request(filenames, dataFB)
     try:
@@ -155,6 +190,6 @@ async def func_async(
             async with httpx.AsyncClient(timeout=30) as owned_client:
                 response = await owned_client.post(**request)
         response.raise_for_status()
-        return _parse_response(response.text)
+        return _parse_response(response.text, include_error=include_error)
     finally:
         _close_request_files(request)

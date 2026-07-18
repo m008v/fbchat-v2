@@ -19,6 +19,11 @@ def test_build_request(mock_dataFB, tmp_path):
     assert req["url"] == "https://upload.facebook.com/ajax/mercury/upload.php"
     assert req["headers"]["Cookie"] == mock_dataFB["cookieFacebook"]
     assert req["data"]["fb_dtsg"] == mock_dataFB["fb_dtsg"]
+    assert req["data"]["jazoest"] == mock_dataFB["jazoest"]
+    assert req["data"]["__user"] == mock_dataFB["FacebookID"]
+    assert req["data"]["__rev"] == mock_dataFB["clientRevision"]
+    assert req["data"]["av"] == mock_dataFB["FacebookID"]
+    assert req["data"]["voice_clip"] is False
     assert "upload_0" in req["files"]
 
     # Just check the file name and mime type in the tuple
@@ -61,6 +66,27 @@ def test_parse_response_failure():
 )
 def test_parse_response_ignores_empty_or_malformed_payload(resp_text):
     assert _parse_response(resp_text) is None
+
+
+def test_parse_response_can_return_upload_error_details():
+    resp_text = (
+        'for (;;);{"error":1357001,"errorSummary":"Upload blocked",'
+        '"errorDescription":"Session checkpointed","payload":null}'
+    )
+    result = _parse_response(resp_text, include_error=True)
+    assert result is not None
+    assert result["error"] == 1
+    assert result["payload"]["error-code"] == 1357001
+    assert result["payload"]["error-summary"] == "Upload blocked"
+    assert result["payload"]["error-description"] == "Session checkpointed"
+    assert "raw-excerpt" in result["payload"]
+
+
+def test_parse_response_can_return_non_json_upload_error_excerpt():
+    result = _parse_response("<html>checkpoint</html>", include_error=True)
+    assert result is not None
+    assert result["error"] == 1
+    assert result["payload"]["raw-excerpt"] == "<html>checkpoint</html>"
 
 
 @pytest.mark.parametrize(

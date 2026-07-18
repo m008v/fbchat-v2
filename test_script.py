@@ -130,7 +130,11 @@ async def main():
     print("\n6. Test upload attachments...")
     try:
         attachment_path = get_attachment_path()
-        att_res = await attachments_async(str(attachment_path), dataFB)
+        att_res = await attachments_async(
+            str(attachment_path),
+            dataFB,
+            include_error=True,
+        )
         print(f"Kết quả Upload Attachment: {att_res}")
         if not att_res or not att_res.get("attachmentID"):
             raise RuntimeError("Upload không trả attachmentID. Cookie/file/endpoint đang có vấn đề.")
