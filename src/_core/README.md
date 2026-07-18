@@ -65,7 +65,7 @@ login = loginFacebook(
 result = await login.main()
 ```
 
-Phải cấu hình `FBCHAT_APP_ACCESS_TOKEN`. TOTP secret được tính ngay trên máy bằng `pyotp`; OTP 6–8 số cũng được chấp nhận trực tiếp. Module không gọi `2fa.live`, không hardcode app secret và không in password/request form. Credential login dùng form/header FB4A legacy và `requests` dưới hood; `main()` bọc phần I/O này bằng worker thread.
+Credential login dùng mặc định FB4A legacy; `FBCHAT_APP_ACCESS_TOKEN` và `FBCHAT_API_KEY` chỉ là override tuỳ chọn. TOTP secret được tính ngay trên máy bằng `pyotp`; OTP 6–8 số cũng được chấp nhận trực tiếp. Module không gọi `2fa.live` và không in password/request form. Credential login dùng form/header FB4A legacy và `requests` dưới hood; `main()` bọc phần I/O này bằng worker thread.
 
 ## Quy tắc phát triển
 
@@ -82,6 +82,6 @@ Phải cấu hình `FBCHAT_APP_ACCESS_TOKEN`. TOTP secret được tính ngay tr
 |---|---|
 | `dataGetHome()` trả `None` | Cookie hết hạn, mạng lỗi hoặc marker HTML đổi |
 | HTTP 401/403 | Cookie/token không còn hợp lệ |
-| Login trả code `-4` | Thiếu `FBCHAT_APP_ACCESS_TOKEN` |
+| Login trả `Login failed` | Xem `description`, `error_code`, `error_subcode` Facebook trả về |
 | Login yêu cầu 2FA | Truyền TOTP secret hoặc OTP hiện hành |
 | JSON parse lỗi | Facebook đổi endpoint/prefix/response schema |

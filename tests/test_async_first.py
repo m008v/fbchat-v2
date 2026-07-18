@@ -3,7 +3,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from _core._facebookLogin import _get_token_2fa_local, loginFacebook
+from _core._facebookLogin import (
+    DEFAULT_FB4A_APP_ACCESS_TOKEN,
+    _get_token_2fa_local,
+    loginFacebook,
+)
 from _features._facebook import _createPost, _marketplace, _professional
 from _features._thread import _addAdmin
 from _messaging._listening import listeningEvent
@@ -63,14 +67,26 @@ def test_marketplace_supports_all_declared_categories_and_escapes_brand(mock_dat
     assert common["photo_ids"] == ["123"]
 
 
-def test_login_requires_app_token_without_network(monkeypatch):
+def test_login_uses_default_fb4a_token_without_env(monkeypatch):
     monkeypatch.delenv("FBCHAT_APP_ACCESS_TOKEN", raising=False)
+    calls = []
+
+    def fake_post(url, data, headers, proxies=None, timeout=None):
+        calls.append(dict(data))
+        return _LoginResponse(
+            {
+                "access_token": "access",
+                "session_cookies": [{"name": "c_user", "value": "123"}],
+            }
+        )
+
     login = loginFacebook("user@example.com", "secret")
 
-    result = login.main_blocking()
+    with patch("requests.post", side_effect=fake_post):
+        result = login.main_blocking()
 
-    assert result["error"]["error_code"] == -4
-    assert "FBCHAT_APP_ACCESS_TOKEN" in result["error"]["description"]
+    assert result["success"]["setCookies"] == "c_user=123; "
+    assert calls[0]["access_token"] == DEFAULT_FB4A_APP_ACCESS_TOKEN
 
 
 def test_totp_is_generated_locally_and_direct_otp_is_preserved():

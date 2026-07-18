@@ -65,7 +65,7 @@ login = loginFacebook(
 result = await login.main()
 ```
 
-`FBCHAT_APP_ACCESS_TOKEN` must be configured. The TOTP secret is evaluated locally with `pyotp`; a direct 6–8 digit OTP is also accepted. The module does not call `2fa.live`, hardcode an app secret, or print password-bearing request forms. Credential login uses the legacy FB4A form/header and `requests` under the hood; `main()` wraps that I/O in a worker thread.
+Credential login uses the legacy FB4A defaults; `FBCHAT_APP_ACCESS_TOKEN` and `FBCHAT_API_KEY` are optional overrides. The TOTP secret is evaluated locally with `pyotp`; a direct 6–8 digit OTP is also accepted. The module does not call `2fa.live` or print password-bearing request forms. Credential login uses the legacy FB4A form/header and `requests` under the hood; `main()` wraps that I/O in a worker thread.
 
 ## Development rules
 
@@ -81,6 +81,6 @@ result = await login.main()
 |---|---|
 | `dataGetHome()` returns `None` | Expired cookie, network failure, or changed HTML markers |
 | HTTP 401/403 | Invalid cookie/session tokens |
-| Login returns code `-4` | Missing `FBCHAT_APP_ACCESS_TOKEN` |
+| Login returns `Login failed` | Inspect Facebook's `description`, `error_code`, and `error_subcode` |
 | Login asks for 2FA | Provide a TOTP secret or current OTP |
 | JSON parse failure | Facebook changed the endpoint, prefix, or response schema |
