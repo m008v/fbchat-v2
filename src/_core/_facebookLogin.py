@@ -19,6 +19,7 @@ LEGACY_FB4A_USER_AGENT = (
     "FBDV/SM-G988N;FBSV/7.1.2;FBCA/x86:armeabi-v7a;"
     "FBDM/{density=1.0,width=540,height=960};FB_FW/1;FBRV/0;]"
 )
+_DOTENV_LOADED = False
 
 """
 Written by Nguyen Minh Huy (RainTee)
@@ -57,6 +58,43 @@ def randStr(length):
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 
+def _load_dotenv_file_once():
+    """Load `.env` nhẹ nhàng, không cần thêm dependency python-dotenv."""
+    global _DOTENV_LOADED
+    if _DOTENV_LOADED:
+        return
+    _DOTENV_LOADED = True
+
+    env_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+    )
+    if not os.path.isfile(env_path):
+        return
+
+    try:
+        with open(env_path, encoding="utf-8") as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except OSError:
+        return
+
+
+def _get_config_value(*names, default=""):
+    _load_dotenv_file_once()
+    for name in names:
+        value = os.environ.get(name)
+        if value is not None and value.strip():
+            return value.strip()
+    return default
+
+
 def _build_cookie_export(session_cookies):
     exported = []
     for cookie in session_cookies or []:
@@ -80,6 +118,35 @@ def _requests_proxy_config(proxies):
     return {"http": proxy, "https": proxy} if proxy else None
 
 
+def _compact_response_text(text, limit=800):
+    return " ".join(str(text or "").split())[:limit]
+
+
+def _extract_error_payload(payload, fallback_message, *, status_code=None):
+    if isinstance(payload, dict):
+        error = payload.get("error")
+        if isinstance(error, dict):
+            error.setdefault("code", status_code or error.get("code") or -1)
+            error.setdefault("error_user_msg", fallback_message)
+            return {"error": error}
+        if payload.get("error_code") or payload.get("error_msg"):
+            return {
+                "error": {
+                    "code": payload.get("error_code") or status_code or -1,
+                    "error_subcode": payload.get("error_subcode"),
+                    "error_user_title": payload.get("error_title"),
+                    "error_user_msg": payload.get("error_msg") or fallback_message,
+                    "fbtrace_id": payload.get("fbtrace_id"),
+                }
+            }
+    return {
+        "error": {
+            "error_user_msg": fallback_message,
+            "code": status_code or -1,
+        }
+    }
+
+
 def _post_json(url, data, headers, proxies):
     try:
         response = requests.post(
@@ -89,10 +156,33 @@ def _post_json(url, data, headers, proxies):
             proxies=_requests_proxy_config(proxies),
             timeout=REQUEST_TIMEOUT,
         )
-        response.raise_for_status()
-        return response.json()
-    except (requests.RequestException, ValueError) as err:
-        return {"error": {"error_user_msg": str(err), "code": -1}}
+    except requests.RequestException as err:
+        return {"error": {"error_user_msg": f"Network error: {err}", "code": -1}}
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+
+    status_code = getattr(response, "status_code", 200)
+    response_text = getattr(response, "text", "")
+    if status_code >= 400:
+        fallback = (
+            f"HTTP {status_code}: "
+            f"{_compact_response_text(response_text)}"
+        )
+        return _extract_error_payload(payload, fallback, status_code=status_code)
+    if payload is None:
+        return {
+            "error": {
+                "error_user_msg": (
+                    "Facebook trả response không phải JSON: "
+                    f"{_compact_response_text(response_text)}"
+                ),
+                "code": -1,
+            }
+        }
+    return payload
 
 
 async def _post_json_async(url, data, headers, proxies):
@@ -147,14 +237,12 @@ class loginFacebook:
             f"{randStr(8)}-{randStr(4)}-{randStr(4)}-{randStr(4)}-{randStr(12)}"
         )
         self.manchineID = randStr(24)
-        self.usernameFacebook = username  # IDFB or email/phone number need login (IDFB hoặc email/sđt cần đăng nhập)
-        self.passwordFacebook = (
-            password  # Password of the account (Mật khẩu của tài khoản)
-        )
-        self.twoTokenAccess = AuthenticationGoogleCode  # string of 16 characters (or more) provided by Facebook (một chuỗi gồm 16 kí tụ (hoặc hơn) được cấp bởi Facebook)
-        self.proxies = proxies  # Proxy settings for the request (format: ip:port) (Cài đặt proxy cho yêu cầu (định dạng: ip:port))
-        self.apiKey = os.environ.get("FBCHAT_API_KEY", DEFAULT_API_KEY).strip()
-        self.appAccessToken = os.environ.get("FBCHAT_APP_ACCESS_TOKEN", "").strip()
+        self.usernameFacebook = username                                      # IDFB or email/phone number need login (IDFB hoặc email/sđt cần đăng nhập)
+        self.passwordFacebook = password                                      # Password of the account (Mật khẩu của tài khoản)
+        self.twoTokenAccess = AuthenticationGoogleCode                        # string of 16 characters (or more) provided by Facebook (một chuỗi gồm 16 kí tụ (hoặc hơn) được cấp bởi Facebook)
+        self.proxies = proxies                                                # Proxy settings for the request (format: ip:port) (Cài đặt proxy cho yêu cầu (định dạng: ip:port))
+        self.apiKey = _get_config_value("FBCHAT_API_KEY", default=DEFAULT_API_KEY)
+        self.appAccessToken = _get_config_value("FBCHAT_APP_ACCESS_TOKEN")
 
         """
           Note: 
@@ -445,12 +533,13 @@ loginFB = loginFacebook
 if __name__ == "__main__":
     import os
 
-    # Usage: FBCHAT_USER=xxx FBCHAT_PASS=xxx FBCHAT_2FA=xxx python _facebookLogin.py
-    user = os.environ.get("FBCHAT_USER")
-    pwd = os.environ.get("FBCHAT_PASS")
-    code = os.environ.get("FBCHAT_2FA")
+    # Usage: FB_USER=xxx FB_PASS=xxx FB_2FA=xxx python _facebookLogin.py
+    _load_dotenv_file_once()
+    user = _get_config_value("FB_USER", "FBCHAT_USER")
+    pwd = _get_config_value("FB_PASS", "FBCHAT_PASS")
+    code = _get_config_value("FB_2FA", "FBCHAT_2FA") or None
     if not all([user, pwd]):
-        print("Set FBCHAT_USER and FBCHAT_PASS env vars")
+        print("Set FB_USER/FB_PASS or FBCHAT_USER/FBCHAT_PASS env vars")
         raise SystemExit(1)
     result = loginFacebook(user, pwd, code).main_blocking()
     if result.get("success"):
