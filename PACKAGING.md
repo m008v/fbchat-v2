@@ -1,7 +1,7 @@
-# fbchat-v2 — PyPI distribution
+# fbchat-v2 - PyPI distribution
 
 > Folder này là phiên bản **đóng gói lại** của repo gốc (`../fbchat-v2`) để publish lên [PyPI](https://pypi.org/).
-> Code logic giữ nguyên — chỉ tái cấu trúc layout + đổi import thành package `fbchat_v2`.
+> Code logic giữ nguyên - chỉ tái cấu trúc layout + đổi import thành package `fbchat_v2`.
 
 ---
 
@@ -29,9 +29,10 @@ fbchat-v2-pypi/
 
 ## 🚧 Trạng thái
 
-Đây là **work-in-progress**. Theo dõi các bước hoàn thành trong todo list.
+Nhánh `pypi` đang đóng gói runtime async-first `v2.2.0` từ repo gốc.
+Code module đã đổi import sang namespace `fbchat_v2.*` để chạy đúng sau khi cài qua `pip`.
 
-Nguồn: [`../fbchat-v2/CHANGELOG.md §2.1.0`](../fbchat-v2/CHANGELOG.md).
+Nguồn: [`../fbchat-v2/CHANGELOG.md`](../fbchat-v2/CHANGELOG.md).
 
 ---
 
@@ -48,8 +49,8 @@ python -m build
 
 # Kết quả nằm ở dist/
 ls dist/
-# fbchat_v2-2.1.0-py3-none-any.whl
-# fbchat_v2-2.1.0.tar.gz
+# fbchat_v2-2.2.0-py3-none-any.whl
+# fbchat_v2-2.2.0.tar.gz
 ```
 
 ## 🧪 Test cài thử
@@ -58,7 +59,7 @@ ls dist/
 deactivate
 python -m venv .venv-test
 .venv-test\Scripts\activate
-pip install dist/fbchat_v2-2.1.0-py3-none-any.whl
+pip install dist/fbchat_v2-2.2.0-py3-none-any.whl
 
 python -c "import fbchat_v2; print(fbchat_v2.__version__)"
 ```
@@ -84,12 +85,13 @@ twine upload dist/*
 
 ## 🔗 E2EE bridge
 
-Binary Go `fbchat-bridge-e2ee` **không** được đóng gói trong wheel (PyPI không nhận binary native không phải Python).
-User cài qua extras + tự build, hoặc auto-download từ GitHub Releases (đang reserve cho future).
+Binary Go `fbchat-bridge-e2ee` **không** được đóng gói trong wheel. Bản `v2.2.0`
+tự tìm/tải binary từ GitHub Releases khi cần, hoặc user có thể trỏ thủ công qua
+`FBCHAT_E2EE_BIN`.
 
 ```bash
-pip install fbchat-v2          # core (group messages)
-pip install fbchat-v2[e2ee]    # reserved — hiện chưa khác core
+pip install fbchat-v2          # core + async/httpx runtime
+pip install fbchat-v2[e2ee]    # reserved, hiện chưa thêm dependency riêng
 ```
 
 Hướng dẫn build bridge: [`../fbchat-v2/bridge-e2ee/README.md`](../fbchat-v2/bridge-e2ee/README.md).

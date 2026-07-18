@@ -1,263 +1,516 @@
-# `_features` — Tầng tính năng
+# `_features` - Tầng nghiệp vụ Facebook async
 
-> Triển khai các nghiệp vụ Facebook & Messenger cấp người dùng: hồ sơ, bài viết, tìm kiếm, thông báo, Marketplace, quản trị thread…
+> Các thao tác tài khoản Facebook và quản trị thread được xây trên `dataFB` cùng transport `httpx` của `_core`.
 
-[![Layer](https://img.shields.io/badge/layer-features-3B82F6)](.)
-[![Status](https://img.shields.io/badge/status-stable-22c55e)](.)
-[![English](https://img.shields.io/badge/docs-English-blue)](README_EN.md)
+[README chính](../../README.md) | [English](README_EN.md) | [Tài liệu API](../../DOCS.md)
 
----
+## Mục lục
 
-## 📑 Mục lục
-
-- [Vai trò](#-vai-trò)
-- [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
-- [Public API](#-public-api)
-- [Hợp đồng `dataFB`](#-hợp-đồng-datafb)
-- [Tham chiếu module](#-tham-chiếu-module)
-  - [`_facebook` — Nghiệp vụ Facebook](#facebook--nghiệp-vụ-facebook)
-  - [`_thread` — Quản trị thread](#thread--quản-trị-thread)
-- [Sơ đồ phụ thuộc](#-sơ-đồ-phụ-thuộc)
-- [Ví dụ](#-ví-dụ)
-- [Khắc phục sự cố](#-khắc-phục-sự-cố)
+- [Vai trò](#vai-trò)
+- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
+- [Public API](#public-api)
+- [Hợp đồng gọi async](#hợp-đồng-gọi-async)
+- [Facebook features](#facebook-features)
+- [Thread features](#thread-features)
+- [Tái sử dụng HTTP client](#tái-sử-dụng-http-client)
+- [Kết quả và lỗi](#kết-quả-và-lỗi)
+- [Sơ đồ phụ thuộc](#sơ-đồ-phụ-thuộc)
+- [Quy tắc thêm feature](#quy-tắc-thêm-feature)
+- [Khắc phục sự cố](#khắc-phục-sự-cố)
 
 ---
 
-## 🎯 Vai trò
+## Vai trò
 
-`_features` **không** quản lý session/token (đó là việc của `_core`). Tầng này chỉ tập trung vào **business logic**:
+`_features` chứa nghiệp vụ ngoài send/listen cơ bản:
 
-- 👤 Thao tác hồ sơ: bio, bài viết, profile phụ, professional mode.
-- 🔔 Truy xuất user info & notification.
-- 🔍 Tìm kiếm Facebook · 🚫 chặn / bỏ chặn.
-- 🛒 Tạo / lấy thông tin Marketplace listing.
-- 👥 Quản trị thread nhóm: đổi tên, emoji, biệt danh, thêm admin.
+- Thay đổi profile và bio.
+- Tạo bài timeline.
+- Tìm kiếm và đọc thông tin user.
+- Chặn, bỏ chặn và lấy notification.
+- Professional mode, additional profile và Marketplace.
+- Lấy inbox/thread metadata.
+- Đổi tên, emoji, nickname và admin của group.
+
+Tầng này nhận `dataFB` đã được `_core._session.dataGetHome()` tạo. Nó không tự đọc cookie từ config và không sở hữu lifecycle bot.
 
 ---
 
-## 📂 Cấu trúc thư mục
+## Cấu trúc thư mục
 
 ```text
 src/_features/
-├── _facebook/                # Nghiệp vụ trên tài khoản Facebook
-│   ├── __init__.py
-│   ├── _blocking.py
-│   ├── _changeBio.py
-│   ├── _createPost.py
-│   ├── _get_user_info.py
-│   ├── _marketplace.py
-│   ├── _notification.py
-│   ├── _professional.py
-│   ├── _registerOnProfile.py
-│   └── _search.py
-├── _thread/                  # Quản trị nhóm chat
-│   ├── __init__.py
+├── _facebook/
+│   ├── _blocking.py             # Block/unblock user
+│   ├── _changeBio.py            # Đổi bio
+│   ├── _createPost.py           # Tạo bài timeline
+│   ├── _get_user_info.py        # Profile info
+│   ├── _marketplace.py          # Marketplace create/read
+│   ├── _notification.py         # Notification
+│   ├── _professional.py         # Professional mode
+│   ├── _registerOnProfile.py    # Additional profile
+│   └── _search.py               # User search
+├── _thread/
 │   ├── _addAdmin.py
 │   ├── _all_thread_data.py
 │   ├── _changeEmoji.py
 │   ├── _changeNameThread.py
 │   └── _changeNickname.py
-├── README.md                 # ← bạn đang ở đây
+├── README.md
 └── README_EN.md
 ```
 
 ---
 
-## 📦 Public API
+## Public API
+
+`_features._facebook.__all__`:
 
 ```python
-# src/_features/_facebook/__init__.py
-__all__ = [
-    "_changeBio", "_createPost", "_professional", "_search",
-    "_blocking", "_registerOnProfile", "_notification",
-    "_marketplace", "_get_user_info",
-]
-
-# src/_features/_thread/__init__.py
-__all__ = [
-    "_changeNickname", "_addAdmin", "_changeEmoji", "_changeNameThread",
+[
+    "_changeBio",
+    "_createPost",
+    "_professional",
+    "_search",
+    "_blocking",
+    "_registerOnProfile",
+    "_notification",
+    "_marketplace",
+    "_get_user_info",
 ]
 ```
 
-Sau khi `from _features._facebook import *` (hoặc `_thread`), bạn có thể gọi trực tiếp các module liệt kê trên.
+`_features._thread.__all__`:
+
+```python
+[
+    "_changeNickname",
+    "_addAdmin",
+    "_changeEmoji",
+    "_changeNameThread",
+    "_all_thread_data",
+]
+```
+
+Import theo module giúp giữ tên `func` nhất quán:
+
+```python
+from fbchat_v2._features._facebook import _search
+from fbchat_v2._features._thread import _changeEmoji
+
+users = await _search.func(data_fb, "Minh")
+changed = await _changeEmoji.func(data_fb, "thread-id", "🔥")
+```
 
 ---
 
-## 🧩 Hợp đồng `dataFB`
+## Hợp đồng gọi async
 
-Hầu hết các hàm trong `_features` đều nhận **`dataFB`** làm tham số đầu tiên — sinh ra từ `_core._session.dataGetHome(setCookies)`.
+Mọi feature mạng trong thư mục này là coroutine. Chữ ký thường có dạng:
 
-Trường thường dùng: `fb_dtsg` · `jazoest` · `FacebookID` · `clientRevision` · `sessionID` · `cookieFacebook`.
+```python
+async def func(
+    dataFB: dict[str, Any],
+    feature_value: str,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    ...
+```
 
-> 📖 Chi tiết schema: xem [`_core/README.md`](../_core/README.md#-hợp-đồng-dữ-liệu-datafb).
+Quy tắc:
+
+- Luôn dùng `await`.
+- Truyền `client=` bằng keyword.
+- Caller tạo client thì caller đóng client.
+- Input invalid có thể raise `ValueError` hoặc `NotImplementedError` trước I/O.
+- Lỗi HTTP/parser thường được chuyển thành dict `{"error": 1, ...}` tại boundary feature.
 
 ---
 
-## 📚 Tham chiếu module
+## Facebook features
 
-### `_facebook` — Nghiệp vụ Facebook
-
-#### `_changeBio.py`
+### `_changeBio.py`
 
 ```python
-func(dataFB, newContents, uploadPost=False)
+result = await _changeBio.func(
+    data_fb,
+    "Đang xây bot async",
+    uploadPost=False,
+    client=client,
+)
 ```
 
-Đổi bio tài khoản. `uploadPost=True` sẽ đăng feed story kèm theo.
-
-- ✅ Thành công: `{ "success": 1, "messages": ... }`
-- ❌ Thất bại: `{ "error": 1, ... }`
-
-#### `_createPost.py`
-
-```python
-func(dataFB, newContents, attachmentID=None)
-```
-
-Tạo bài viết mới trên timeline. `attachmentID` là tham số dự phòng (chưa hoạt động trong flow hiện tại).
-
-- ✅ Trả về `urlPost`.
-- ❌ Trả `error` + message từ API.
-
-#### `_professional.py`
-
-```python
-func(dataFB, statusBusiness=None)
-```
-
-Bật/tắt **Professional Mode**. `statusBusiness` chấp nhận: `"on"`, `"off"`, `"bật"`, `"tắt"`, `True`, `False`.
-
-#### `_search.py`
-
-```python
-func(dataFB, keywordSearch)
-```
-
-Tìm kiếm người dùng. Trả về:
-
-- `searchResults` — chuỗi đã format đẹp (cho bot/CLI).
-- `searchResultsDict` — list các dict `{name, id, url}`.
-
-#### `_blocking.py`
-
-```python
-func(dataFB, idUser, choiceInteract)
-```
-
-Chặn / bỏ chặn user. `choiceInteract`: `"block"` hoặc `"unblock"`.
-
-#### `_registerOnProfile.py`
-
-```python
-func(dataFB, newName, newUsername)
-```
-
-Tạo **profile phụ** trên cùng tài khoản.
-
-> ⚠️ Chỉ hoạt động trên một số tài khoản đủ điều kiện.
-
-#### `_notification.py`
-
-```python
-func(dataFB)
-```
-
-Lấy danh sách thông báo.
-
-- ✅ `{ "success": 1, "NotificationResults": [...] }`
-- ❌ `{ "error": 1, "messages": ... }`
-
-#### `_marketplace.py`
-
-| Hàm | Mục đích |
+| Tham số | Ý nghĩa |
 |---|---|
-| `createItem(dataFB, nameItem, brandItem, priceItem, currencyItem, decriptionItem, hashtagList, typeItem, photoIDList, locationSeller)` | Đăng sản phẩm Marketplace mới. `photoIDList` lấy từ `_messaging._attachments`. |
-| `getInformationProductItemMarketPlace(dataFB, idProductItem)` | Lấy chi tiết sản phẩm theo ID. |
+| `newContents` | Nội dung bio mới |
+| `uploadPost` | Có yêu cầu chia sẻ thay đổi hay không |
 
-#### `_get_user_info.py`
+Success trả `{"success": 1, "messages": "..."}`. Error từ GraphQL hoặc transport trả `{"error": 1, ...}`.
+
+### `_createPost.py`
 
 ```python
-func(dataFB, userID)
+result = await _createPost.func(
+    data_fb,
+    "Bài viết từ fbchat-v2",
+    client=client,
+)
 ```
 
-Lấy thông tin người dùng qua endpoint chat user info.
+Nội dung rỗng bị reject. `attachmentID` có trong chữ ký để giữ hướng phát triển, nhưng Composer schema attachment chưa ổn định. Truyền giá trị sẽ raise `NotImplementedError` thay vì âm thầm đăng bài text-only.
 
-- ✅ Dict thông tin chi tiết.
-- ❌ `{ "err": 0 }`.
+Success:
+
+```python
+{
+    "success": 1,
+    "messages": "Tạo bài viết thành công!",
+    "urlPost": "https://www.facebook.com/...",
+}
+```
+
+### `_professional.py`
+
+```python
+enabled = await _professional.func(data_fb, True, client=client)
+disabled = await _professional.func(data_fb, "off", client=client)
+```
+
+`statusBusiness` hỗ trợ bool và chuỗi normalize như `on`, `off`, `bật`, `tắt`. Giá trị khác raise `ValueError`.
+
+### `_search.py`
+
+```python
+result = await _search.func(data_fb, "m008v", client=client)
+```
+
+Success:
+
+```python
+{
+    "success": 1,
+    "searchResults": "Tìm kiếm Facebook: ...",
+    "searchResultsDict": [
+        {"name": "...", "id": "...", "url": "..."},
+    ],
+}
+```
+
+Parser loại trùng theo ID và lấy tối đa 5 kết quả. Keyword rỗng raise `ValueError`.
+
+### `_blocking.py`
+
+```python
+blocked = await _blocking.func(
+    data_fb,
+    "100012345678",
+    "block",
+    client=client,
+)
+unblocked = await _blocking.func(
+    data_fb,
+    "100012345678",
+    "unblock",
+    client=client,
+)
+```
+
+`choiceInteract` chỉ nhận `block` hoặc `unblock`, không dùng truthy/falsy mơ hồ.
+
+### `_registerOnProfile.py`
+
+```python
+result = await _registerOnProfile.func(
+    data_fb,
+    newName="Tên profile",
+    newUsername="username-mới",
+    client=client,
+)
+```
+
+Endpoint tạo profile bổ sung có thể bị giới hạn theo tài khoản và rollout của Facebook. Caller phải kiểm tra `result.get("error")` dù HTTP status là 200.
+
+### `_notification.py`
+
+```python
+result = await _notification.func(data_fb, client=client)
+items = result.get("NotificationResults", [])
+for item in items[:5]:
+    print(item)
+```
+
+Kết quả là dict, không phải list. Slice trực tiếp `result[:2]` sẽ gây lỗi `slice(None, 2, None)`.
+
+### `_get_user_info.py`
+
+```python
+profile = await _get_user_info.func(
+    data_fb,
+    "100012345678",
+    client=client,
+)
+```
+
+Kết quả có thể chứa:
+
+```python
+{
+    "idUser": "...",
+    "nameUser": "...",
+    "firstName": "...",
+    "Username": "...",
+    "thumbSrc": "...",
+    "urlProfile": "...",
+    "genderUser": "Male (Nam)",
+    "alternateName": None,
+    "chatWithUSerIsNonFriend": False,
+}
+```
+
+Nếu profile không có trong payload, module trả error dict thay vì index mù vào `profiles[userID]`.
+
+### `_marketplace.py`
+
+Tạo item:
+
+```python
+result = await _marketplace.createItem(
+    data_fb,
+    nameItem="Bàn phím cơ",
+    brandItem="Custom",
+    priceItem=1200000,
+    currencyItem="VND",
+    decriptionItem="Tình trạng tốt",
+    hashtagList=["keyboard", "mechanical"],
+    typeItem="ELECTRONICS",
+    photoIDList=["photo-id"],
+    locationSeller={"latitude": 10.776, "longitude": 106.700},
+    client=client,
+)
+```
+
+Đọc item:
+
+```python
+details = await _marketplace.getInformationProductItemMarketPlace(
+    data_fb,
+    "product-id",
+    client=client,
+)
+```
+
+Validation trước request:
+
+- Tên sản phẩm không rỗng.
+- Có ít nhất một photo ID.
+- Giá chuyển được sang số và không âm.
+- Tọa độ nằm trong phạm vi latitude/longitude hợp lệ.
+- Category/type nằm trong tập module hỗ trợ.
 
 ---
 
-### `_thread` — Quản trị thread
+## Thread features
 
-| Module | Hàm | Mục đích |
+### `_all_thread_data.py`
+
+```python
+threads = await _all_thread_data.func(data_fb, client=client)
+```
+
+Success:
+
+```python
+{
+    "dataGet": "{...}",
+    "ProcessingTime": 0.42,
+    "last_seq_id": "...",
+    "dataAllThread": {
+        "threadIDList": ["..."],
+        "threadNameList": ["..."],
+        "countThread": 1,
+    },
+}
+```
+
+`dataGet` là JSON string của GraphQL batch đã parse. Không dùng `result[0]`; đây là dict có key rõ ràng.
+
+Parse một thread đã tải:
+
+```python
+info = await _all_thread_data.features(
+    threads["dataGet"],
+    "thread-id",
+    "threadInfomation",
+)
+```
+
+`commandUse` hỗ trợ:
+
+| Lệnh | Kết quả |
+|---|---|
+| `getAdmin` | `adminThreadList` |
+| `threadInfomation` | Tên, emoji, count, approval, join link |
+| `exportMemberListToJson` | Danh sách JSON member |
+
+Tên `threadInfomation` giữ nguyên chính tả legacy để tương thích. Lệnh khác trả error dict.
+
+### `_changeNameThread.py`
+
+```python
+result = await _changeNameThread.func(
+    data_fb,
+    "thread-id",
+    "Tên nhóm mới",
+    client=client,
+)
+```
+
+Tên rỗng raise `ValueError`. Module phân biệt thread không tồn tại, không có quyền và error server.
+
+### `_changeEmoji.py`
+
+```python
+result = await _changeEmoji.func(
+    data_fb,
+    "thread-id",
+    "🔥",
+    client=client,
+)
+```
+
+Emoji rỗng bị reject trước request.
+
+### `_changeNickname.py`
+
+```python
+result = await _changeNickname.func(
+    data_fb,
+    "thread-id",
+    "user-id",
+    "Biệt danh",
+    client=client,
+)
+```
+
+Response phân biệt user không nằm trong thread và thread không tồn tại.
+
+### `_addAdmin.py`
+
+```python
+added = await _addAdmin.func(
+    data_fb,
+    "thread-id",
+    "user-id",
+    statusChoice=True,
+    client=client,
+)
+removed = await _addAdmin.func(
+    data_fb,
+    "thread-id",
+    "user-id",
+    statusChoice=False,
+    client=client,
+)
+```
+
+`False` là gỡ admin thật, không phải chỉ đổi message success. Caller hiện tại phải là admin và target phải thuộc group hợp lệ.
+
+---
+
+## Tái sử dụng HTTP client
+
+Một workflow nhiều request nên dùng một client:
+
+```python
+import asyncio
+import httpx
+
+from fbchat_v2._features._facebook import _notification, _search
+from fbchat_v2._features._thread import _all_thread_data
+
+async with httpx.AsyncClient(
+    timeout=httpx.Timeout(30, connect=10),
+) as client:
+    notifications, users, threads = await asyncio.gather(
+        _notification.func(data_fb, client=client),
+        _search.func(data_fb, "Minh", client=client),
+        _all_thread_data.func(data_fb, client=client),
+    )
+```
+
+Chỉ chạy song song các action độc lập. Không `gather()` hai mutation có thứ tự phụ thuộc, ví dụ xóa note rồi tạo note hoặc thêm admin rồi đổi quyền dựa trên kết quả trước.
+
+---
+
+## Kết quả và lỗi
+
+Module cũ chưa dùng một model kết quả thống nhất. Các dạng phổ biến:
+
+```python
+{"success": 1, "messages": "..."}
+{"error": 1, "messages": "..."}
+```
+
+Feature đọc dữ liệu có key domain-specific. Caller an toàn:
+
+```python
+result = await _search.func(data_fb, query)
+if not isinstance(result, dict):
+    raise TypeError("Feature không trả dict.")
+if result.get("error"):
+    logger.warning("Search failed: %s", result.get("messages"))
+else:
+    users = result.get("searchResultsDict", [])
+```
+
+Không coi HTTP 200 là success. Facebook thường đặt error trong GraphQL `errors`, payload nested hoặc field null.
+
+---
+
+## Sơ đồ phụ thuộc
+
+```mermaid
+flowchart LR
+    A[dataFB] --> B[_features._facebook]
+    A --> C[_features._thread]
+    B --> D[formAll]
+    C --> D
+    D --> E[post_form_json_async]
+    E --> F[httpx.AsyncClient]
+    F --> G[Facebook private endpoints]
+```
+
+`_features` phụ thuộc `_core`; `_core` không import ngược lại `_features`.
+
+---
+
+## Quy tắc thêm feature
+
+1. Validate input trước I/O.
+2. Tách `_build_request`, transport call và `_parse_response`.
+3. Public I/O function dùng async và tên ngắn theo convention module.
+4. Nhận keyword-only `client: httpx.AsyncClient | None = None`.
+5. Dùng helper `_core` thay vì dựng HTTP transport riêng.
+6. Đặt timeout hữu hạn và giữ TLS verification.
+7. Không giả success khi response thiếu `data` hoặc có `errors`.
+8. Không âm thầm bỏ tham số chưa hỗ trợ.
+9. Test input rỗng, response thiếu field, GraphQL error và success.
+10. Cập nhật cả README Việt, Anh và `DOCS.md`.
+
+---
+
+## Khắc phục sự cố
+
+| Hiện tượng | Nguyên nhân | Xử lý |
 |---|---|---|
-| `_changeNameThread.py` | `func(dataFB, threadID, newNameThread)` | Đổi tên nhóm. |
-| `_changeEmoji.py` | `func(dataFB, threadID, newEmoji)` | Đổi emoji mặc định của thread. |
-| `_addAdmin.py` | `func(dataFB, threadID, idUser, statusChoice=True)` | Thêm / bỏ quyền admin. |
-| `_changeNickname.py` | `func(dataFB, threadID, idUser, NewNickname)` | Đổi biệt danh thành viên. |
+| `slice(None, 2, None)` ở notification | Slice dict như list | Lấy `NotificationResults` trước |
+| `All Thread Data: 0` | Index response dict bằng số | Dùng `dataAllThread` hoặc `dataGet` |
+| `Không tìm thấy object o0` | GraphQL batch schema đổi/error | Kiểm tra error payload đã sanitize |
+| Search trả rỗng | GraphQL result strategy đổi hoặc không có match | Kiểm tra `error`, không chỉ list length |
+| Create post attachment fail | Chưa hỗ trợ Composer attachment schema | Không truyền `attachmentID` hoặc implement schema + test |
+| Professional mode ValueError | Giá trị state không hợp lệ | Truyền bool, `on/off` hoặc `bật/tắt` |
+| HTTP call chậm khi lặp | Mỗi call tạo client riêng | Inject một `httpx.AsyncClient` dùng chung |
+| Response có HTTP 200 nhưng action fail | Error nằm trong JSON | Kiểm tra `error`, `errors` và field bắt buộc |
 
-Tất cả trả về `formatResults("success" \| "error", message)` từ `_core._utils`.
-
-#### `_all_thread_data.py`
-
-| Hàm | Mục đích |
-|---|---|
-| `func(dataFB)` | Lấy danh sách INBOX + `last_seq_id`. Trả về `dataGet`, `ProcessingTime`, `last_seq_id`, `dataAllThread`. |
-| `features(dataGet, threadID, commandUse)` | Bóc tách dữ liệu từ `dataGet`. `commandUse` ∈ `{"getAdmin", "threadInfomation", "exportMemberListToJson"}`. |
-
----
-
-## 🔗 Sơ đồ phụ thuộc
-
-`_features` chủ yếu phụ thuộc vào `_core`:
-
-```text
-_core._session.dataGetHome(setCookies)  →  dataFB
-_core._utils  →  formAll · mainRequests · parse_cookie_string
-                 Headers · formatResults · randStr
-```
-
-> ⚠️ Có thể gãy nếu Facebook đổi schema GraphQL hoặc `doc_id`.
-
----
-
-## 💡 Ví dụ
-
-```python
-from _core._session import dataGetHome
-from _features._facebook import _notification, _blocking
-from _features._thread import _changeEmoji, _all_thread_data
-
-dataFB = dataGetHome("c_user=...; xs=...;")
-
-# Lấy thông báo
-print(_notification.func(dataFB))
-
-# Chặn người dùng
-print(_blocking.func(dataFB, idUser="1000...", choiceInteract="block"))
-
-# Đổi emoji nhóm
-print(_changeEmoji.func(dataFB, threadID="1234567890", newEmoji="🔥"))
-
-# Lấy toàn bộ inbox
-threads = _all_thread_data.func(dataFB)
-print(threads["dataAllThread"])
-```
-
----
-
-## 🛠 Khắc phục sự cố
-
-| Triệu chứng | Hướng xử lý |
-|---|---|
-| Lỗi auth/session ở nhiều feature | Cookie hết hạn → tạo lại `dataFB`. |
-| API trả lỗi hoặc rỗng dữ liệu | Endpoint / `doc_id` đã đổi; verify `variables` đúng schema mới. |
-| Lỗi parse JSON response | Một số endpoint có tiền tố `for (;;);` — split trước khi `json.loads`. |
-
----
-
-<div align="right">
-
-⬆️ [Về README chính](../../README.md) · 🇬🇧 [English](README_EN.md)
-
-</div>
+Đừng chữa parser bằng một dãy `try/except Exception: return {}`. Kiểu đó chỉ biến lỗi rõ ràng thành đống rác im lặng khó debug hơn.

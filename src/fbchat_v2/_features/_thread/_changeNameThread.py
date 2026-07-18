@@ -1,53 +1,90 @@
-import json, requests, time, random
-from unittest import case
-from fbchat_v2._core._utils import formAll, mainRequests, formatResults
+from __future__ import annotations
 
-def func(dataFB, threadID, newNameThread): # Thay đổi tên nhóm
-          
-    randomNumber = str(int(format(int(time.time() * 1000), "b") + ("0000000000000000000000" + format(int(random.random() * 4294967295), "b"))[-22:], 2))
+import random
+import time
+from typing import Any
 
-    dataForm = formAll(dataFB, requireGraphql=False)
-    dataForm["client"] = "mercury"
-    dataForm["action_type"] = "ma-type:log-message"
-    dataForm["thread_id"] = ""
-    dataForm["author_email"] = ""
-    dataForm["action_type"] = ""
-    dataForm["timestamp"] = int(time.time() * 1000)
-    dataForm["timestamp_absolute"] = "Today"
-    dataForm["author"] = "fbid:" + str(dataFB["FacebookID"])
-    dataForm["is_unread"] = False
-    dataForm["is_cleared"] = False
-    dataForm["is_forward"] = False
-    dataForm["is_filtered_content"] = False
-    dataForm["is_filtered_content_bh"] = False
-    dataForm["is_filtered_content_account"] = False
-    dataForm["is_filtered_content_quasar"] = False
-    dataForm["is_filtered_content_invalid_app"] = False
-    dataForm["is_spoof_warning"] = False
-    dataForm["thread_fbid"] = str(threadID)
-    dataForm["thread_name"] = newNameThread
-    dataForm["thread_id"] = str(threadID)
-    dataForm["source"] = "source:chat:web"
-    dataForm["source_tags[0]"] = "source:chat"
-    dataForm["client_thread_id"] = "root:" + randomNumber
-    dataForm["offline_threading_id"] = randomNumber
-    dataForm["message_id"] = randomNumber
-    dataForm["threading_id"] = "<{}:{}-{}@mail.projektitan.com>".format(int(time.time() * 1000), int(random.random() * 4294967295), hex(int(random.random() * 2 ** 31))[2:])
-    dataForm["ephemeral_ttl_mode"] = "0"
-    dataForm["manual_retry_cnt"] = "0"
-    dataForm["ui_push_phase"] = "V3"
-    dataForm["log_message_type"] = "log:thread-name"
-    # dataForm["thread_name"] = newNameThread
-    # dataForm["thread_id"] = self.threadID
+import httpx
+
+from fbchat_v2._core._utils import (
+    formatResults,
+    formAll,
+    gen_threading_id,
+    post_form_json_async,
+)
+
+_URL = "https://www.facebook.com/messaging/set_thread_name/"
 
 
-    sendRequests = json.loads(requests.post(**mainRequests("https://www.facebook.com/messaging/set_thread_name/", dataForm, dataFB["cookieFacebook"])).text.split("for (;;);")[1])
+def _build_form(
+    dataFB: dict[str, Any], threadID: str | int, newNameThread: str
+) -> dict[str, Any]:
+    if not newNameThread.strip():
+        raise ValueError("Tên cuộc trò chuyện không được để trống.")
+    threading_id = gen_threading_id()
+    now_ms = int(time.time() * 1000)
+    data_form = formAll(dataFB, requireGraphql=False)
+    data_form.update(
+        {
+            "client": "mercury",
+            "author": f"fbid:{dataFB['FacebookID']}",
+            "timestamp": now_ms,
+            "timestamp_absolute": "Today",
+            "is_unread": False,
+            "is_cleared": False,
+            "is_forward": False,
+            "is_filtered_content": False,
+            "is_filtered_content_bh": False,
+            "is_filtered_content_account": False,
+            "is_filtered_content_quasar": False,
+            "is_filtered_content_invalid_app": False,
+            "is_spoof_warning": False,
+            "thread_fbid": str(threadID),
+            "thread_name": newNameThread.strip(),
+            "thread_id": str(threadID),
+            "source": "source:chat:web",
+            "source_tags[0]": "source:chat",
+            "client_thread_id": f"root:{threading_id}",
+            "offline_threading_id": threading_id,
+            "message_id": threading_id,
+            "threading_id": f"<{now_ms}:{random.randrange(2**32)}-{random.randrange(2**31):x}@mail.projektitan.com>",
+            "ephemeral_ttl_mode": "0",
+            "manual_retry_cnt": "0",
+            "ui_push_phase": "V3",
+            "log_message_type": "log:thread-name",
+        }
+    )
+    return data_form
 
-    if (sendRequests.get("error")):
-        match sendRequests.get("error"):
-            case 1545012:
-                return formatResults("error", "Bạn không thể thay đổi tên nhóm khi bạn không phải là một thành viên của nhóm.")
-            case 1545003:
-                return formatResults("error", "Không thể thay đổi tên nhóm không tồn tại.")
-    else:
-        return formatResults("error", "Thay đổi tên nhóm thành công.")
+
+def _parse_result(payload: dict[str, Any]) -> dict[str, str]:
+    error = payload.get("error")
+    if error == 1545012:
+        return formatResults(
+            "error", "Bạn không thể đổi tên khi không còn là thành viên."
+        )
+    if error == 1545003:
+        return formatResults(
+            "error", "Không thể đổi tên cuộc trò chuyện không tồn tại."
+        )
+    if error:
+        return formatResults("error", f"Facebook từ chối đổi tên: {error}.")
+    return formatResults("success", "Thay đổi tên cuộc trò chuyện thành công.")
+
+
+
+async def func(
+    dataFB: dict[str, Any],
+    threadID: str | int,
+    newNameThread: str,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, str]:
+    payload = await post_form_json_async(
+        _URL,
+        _build_form(dataFB, threadID, newNameThread),
+        dataFB["cookieFacebook"],
+        strip_for_loop_prefix=True,
+        client=client,
+    )
+    return _parse_result(payload)

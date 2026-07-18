@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fbchat-v2"
-version = "2.1.6"
-description = "Modern, account-based Python library for the unofficial Facebook Messenger API — with E2EE support."
+version = "2.2.0"
+description = "Async-first, account-based Python library for the unofficial Facebook Messenger API with E2EE support."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -39,20 +39,21 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "requests>=2.31.0",
+    "httpx>=0.27.0",
+    "requests>=2.32.0",
     "paho-mqtt>=1.6.1",
-    "attrs>=23.2.0",
     "pyotp>=2.9.0",
 ]
 
 [project.optional-dependencies]
-# Bridge Go cho E2EE phải build/tải riêng — xem README.
+# Bridge Go cho E2EE phải build/tải riêng - xem README.
 # Extras này hiện reserved, dành cho future helper Python (vd: auto-download binary).
 e2ee = []
 dev = [
     "build>=1.2.0",
     "twine>=5.0.0",
     "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
     "ruff>=0.4.0",
 ]
 
