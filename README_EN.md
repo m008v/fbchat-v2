@@ -1,6 +1,6 @@
 # fbchat-v2
 
-An async-first Python library for automating Facebook Messenger through an authenticated cookie session. It uses `httpx.AsyncClient` for most HTTP, a legacy `requests` adapter for a few transport-sensitive Facebook endpoints, MQTT/WebSocket for regular messages, and a separate Go bridge for E2EE.
+An async-first Python library for automating Facebook Messenger through an authenticated cookie session. Async HTTP uses `httpx.AsyncClient`, legacy adapters stay behind async APIs, MQTT/WebSocket handles regular messages, and a separate Go bridge handles E2EE.
 
 > This is an unofficial Facebook API. Cookies and tokens grant account access: never commit, log, or send them to third-party services.
 
@@ -93,7 +93,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-`connect_mqtt()` moves `paho-mqtt`'s blocking loop to a dedicated worker thread. That is the correct adapter for a synchronous MQTT library; most HTTP requests use `httpx.AsyncClient`, while proven legacy endpoints such as credential login/upload attachment use a controlled `requests` adapter.
+`connect_mqtt()` moves `paho-mqtt`'s blocking loop to a dedicated worker thread. That is the correct adapter for a synchronous MQTT library; async HTTP workflows use `httpx.AsyncClient` and keep legacy adapters only at internal Facebook boundaries when required.
 
 ## Async E2EE
 
@@ -120,10 +120,10 @@ The bridge is discovered at `build/fbchat-bridge-e2ee(.exe)`. Set `FBCHAT_E2EE_B
 
 ## Credential login and 2FA
 
-Cookies are the recommended flow. If credential login is unavoidable, configure the app token through the environment and never hardcode it:
+Cookies are the recommended flow. If credential login is unavoidable, the FB4A defaults are built in and environment variables are optional overrides:
 
 ```powershell
-$env:FBCHAT_APP_ACCESS_TOKEN = "<app-id>|<app-secret>"
+$env:FBCHAT_APP_ACCESS_TOKEN = "<optional-override>"
 ```
 
 ```python
@@ -144,13 +144,13 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-The TOTP secret is processed locally with `pyotp`; it is never sent to `2fa.live` or another third-party endpoint. Credential login uses the legacy FB4A form/header from the first codebase, but the app access token must still come from the environment.
+The TOTP secret is processed locally with `pyotp`; it is never sent to `2fa.live` or another third-party endpoint. Credential login uses the legacy FB4A form/header from the first codebase; `FBCHAT_APP_ACCESS_TOKEN` and `FBCHAT_API_KEY` are optional overrides.
 
 ## Layout
 
 ```text
 src/
-├── _core/       # httpx transport, legacy requests adapter, session, login, storage, utilities
+├── _core/       # httpx transport, session, login, storage, utilities
 ├── _features/   # Facebook and thread-management business features
 ├── _messaging/  # send/receive, MQTT, E2EE, notes, themes, attachments
 └── main.py      # async-first example bot

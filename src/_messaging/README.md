@@ -1,4 +1,4 @@
-# `_messaging` — Messenger async
+# `_messaging` - Messenger async
 
 Tầng gửi/nhận tin nhắn, attachment, reaction, note, theme và E2EE. `dataFB` phải được tạo trước bằng `dataGetHome()`.
 
@@ -16,7 +16,7 @@ Tầng gửi/nhận tin nhắn, attachment, reaction, note, theme và E2EE. `dat
 | `_changeTheme.py` | `listThemes`, `findTheme`, `changeTheme` |
 | `_listening.py` | `connect_mqtt`, `get_message`, `disconnect` |
 | `_listening_e2ee.py` | `connect_mqtt`, `send_message`, `send_e2ee_message` |
-| `_bridge_actions.py` | các action có hậu tố `_async` |
+| `_bridge_actions.py` | action async không hậu tố và helper blocking rõ tên |
 
 ## Gửi và trả lời
 

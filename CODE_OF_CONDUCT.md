@@ -6,23 +6,23 @@ The Facebook Chatbot Project is committed to providing an inclusive and welcomin
 
 ## Our Principles
 
-1. **Respect:** Treat others with kindness, consideration, and empathy. Everyone is here to learn and contribute, regardless of their background or experience.
+1. Respect: Treat others with kindness, consideration, and empathy. Everyone is here to learn and contribute, regardless of their background or experience.
 
-2. **Inclusivity:** Embrace diversity and welcome participants of all backgrounds. We encourage a variety of perspectives and experiences to enrich our community.
+2. Inclusivity: Embrace diversity and welcome participants of all backgrounds. We encourage a variety of perspectives and experiences to enrich our community.
 
-3. **Collaboration:** Foster a spirit of cooperation and teamwork. Share your knowledge, support others, and work together to achieve common goals.
+3. Collaboration: Foster a spirit of cooperation and teamwork. Share your knowledge, support others, and work together to achieve common goals.
 
-4. **Professionalism:** Conduct yourself in a professional manner. Avoid offensive language, harassment, or any form of disruptive behavior.
+4. Professionalism: Conduct yourself in a professional manner. Avoid offensive language, harassment, or any form of disruptive behavior.
 
 ## Specific Guidelines
 
-- **Communication:** Be mindful of your language in discussions, comments, and interactions. Avoid personal attacks, discrimination, or offensive content.
+- Communication: Be mindful of your language in discussions, comments, and interactions. Avoid personal attacks, discrimination, or offensive content.
 
-- **Feedback:** Provide constructive and respectful feedback. Focus on the content and ideas rather than individuals.
+- Feedback: Provide constructive and respectful feedback. Focus on the content and ideas rather than individuals.
 
-- **Inclusiveness:** Ensure that discussions and decisions are inclusive. Avoid excluding or marginalizing any individual or group based on their characteristics.
+- Inclusiveness: Ensure that discussions and decisions are inclusive. Avoid excluding or marginalizing any individual or group based on their characteristics.
 
-- **Code of Conduct Violations:** Report any violations of this Code of Conduct to the project maintainers. Violations will be addressed promptly and appropriately.
+- Code of Conduct Violations: Report any violations of this Code of Conduct to the project maintainers. Violations will be addressed promptly and appropriately.
 
 ## Enforcement
 

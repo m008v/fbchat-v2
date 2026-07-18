@@ -1,4 +1,4 @@
-# fbchat-v2 — Async API guide
+# fbchat-v2 - Async API guide
 
 Tài liệu này mô tả API hiện hành. Mọi ví dụ mạng đều dùng `async`/`await`; API sync chỉ còn để tương thích code cũ.
 
@@ -218,14 +218,14 @@ finally:
     await task
 ```
 
-Các action bridge khác có phiên bản `_async` trong `BridgeActions`: edit, unsend, typing, mark-read, gửi audio/image và download media.
+Các action bridge khác trong `BridgeActions` dùng tên async không hậu tố: edit, unsend, typing, mark-read, gửi audio/image và download media.
 
 Bridge tự tải chỉ nhận asset từ GitHub Releases, giới hạn 200 MiB, ghi file tạm rồi replace atomically và kiểm tra SHA-256 khi GitHub cung cấp digest. Môi trường production nên pin binary đã kiểm tra bằng `FBCHAT_E2EE_BIN`.
 
 ## 12. Login credentials và TOTP
 
 ```powershell
-$env:FBCHAT_APP_ACCESS_TOKEN = "<app-id>|<app-secret>"
+$env:FBCHAT_APP_ACCESS_TOKEN = "<optional-override>"
 ```
 
 ```python
@@ -239,8 +239,8 @@ login = loginFacebook(
 result = await login.main()
 ```
 
-- `FBCHAT_APP_ACCESS_TOKEN` là bắt buộc; source không chứa app secret.
-- Có thể truyền trực tiếp OTP 6–8 số hoặc TOTP secret.
+- `FBCHAT_APP_ACCESS_TOKEN` và `FBCHAT_API_KEY` chỉ là override tùy chọn; mặc định FB4A legacy đã có sẵn trong module.
+- Có thể truyền trực tiếp OTP 6-8 số hoặc TOTP secret.
 - TOTP được tính cục bộ bằng `pyotp`, không gửi secret ra ngoài.
 - Facebook checkpoint hoặc thay đổi subcode có thể làm login credentials thất bại; cookie session vẫn là luồng ưu tiên.
 

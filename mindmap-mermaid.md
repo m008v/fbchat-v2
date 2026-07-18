@@ -1,4 +1,4 @@
-# fbchat-v2 — async architecture mind map
+# fbchat-v2 - async architecture mind map
 
 ```mermaid
 mindmap

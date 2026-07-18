@@ -1,4 +1,4 @@
-# `_messaging` — async Messenger APIs
+# `_messaging` - async Messenger APIs
 
 This layer sends and receives messages, attachments, reactions, notes, themes, and E2EE traffic. Build `dataFB` with `dataGetHome()` first.
 

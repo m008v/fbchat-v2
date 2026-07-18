@@ -1,17 +1,17 @@
-# fbchat-v2 — async flowchart
+# fbchat-v2 - async flowchart
 
 ## Session và HTTP feature
 
 ```mermaid
 flowchart TD
     A[Cookie local] --> B[dataGetHome]
-    B --> C{Token hợp lệ?}
+    B --> C{Token hợp lệ-}
     C -- Không --> D[Trả None / làm mới cookie]
     C -- Có --> E[dataFB]
     E --> F[Build form]
     F --> G[post_form_json_async]
     G --> H[httpx.AsyncClient]
-    H --> I{HTTP + JSON hợp lệ?}
+    H --> I{HTTP + JSON hợp lệ-}
     I -- Không --> J[Error có cấu trúc]
     I -- Có --> K[Parse result]
 ```

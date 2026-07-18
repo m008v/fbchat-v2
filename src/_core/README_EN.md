@@ -1,6 +1,6 @@
-# `_core` — async foundation
+# `_core` - async foundation
 
-`_core` owns HTTP transport, Facebook sessions, credential login, storage, and shared utilities. Feature modules should not create ad-hoc transports; the current exception is Facebook legacy endpoints that require `requests`.
+`_core` owns HTTP transport, Facebook sessions, credential login, storage, and shared utilities. Feature modules should not create ad-hoc transports; async HTTP goes through `httpx.AsyncClient`, while legacy adapters stay at internal Facebook boundaries only when required.
 
 ## Modules
 
@@ -65,11 +65,11 @@ login = loginFacebook(
 result = await login.main()
 ```
 
-Credential login uses the legacy FB4A defaults; `FBCHAT_APP_ACCESS_TOKEN` and `FBCHAT_API_KEY` are optional overrides. The TOTP secret is evaluated locally with `pyotp`; a direct 6–8 digit OTP is also accepted. The module does not call `2fa.live` or print password-bearing request forms. Credential login uses the legacy FB4A form/header and `requests` under the hood; `main()` wraps that I/O in a worker thread.
+Credential login uses the legacy FB4A defaults; `FBCHAT_APP_ACCESS_TOKEN` and `FBCHAT_API_KEY` are optional overrides. The TOTP secret is evaluated locally with `pyotp`; a direct 6-8 digit OTP is also accepted. The module does not call `2fa.live` or print password-bearing request forms. `main()` wraps legacy I/O in a worker thread so it does not block the event loop.
 
 ## Development rules
 
-- I/O features must expose suffix-free async APIs; prefer `httpx.AsyncClient` except for proven legacy endpoints that require `requests`.
+- I/O features must expose suffix-free async APIs; prefer `httpx.AsyncClient` and keep legacy adapters only at proven internal boundaries.
 - Accept `client=` for testing and connection-pool reuse.
 - Use finite timeouts, call `raise_for_status()`, and handle missing response fields.
 - Never disable TLS verification.

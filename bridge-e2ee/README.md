@@ -9,11 +9,11 @@ subprocess.
 
 This package is fully independent from the `meta-messenger.js/` folder. The
 underlying Go code (Signal Protocol via `whatsmeow`, Meta protocol via
-`mautrix-meta`) is the same — there is no pure-Python alternative.
+`mautrix-meta`) is the same - there is no pure-Python alternative.
 
 ## Build
 
-You need Go ≥ 1.24 installed (https://go.dev/dl/).
+You need Go >= 1.24 installed (https://go.dev/dl/).
 
 ```powershell
 cd fbchat-v2
@@ -79,12 +79,12 @@ Methods: `newClient`, `connect`, `connectE2EE`, `isConnected`, `sendMessage`,
 
 Python wrappers exposed today:
 
-- `_messaging._listening_e2ee.listeningE2EEEvent` — drives `newClient` →
-  `connect` → `connectE2EE` and streams async events back to the caller.
-- `_messaging._send_e2ee.api` — drives `sendE2EEMessage` (text only). Can
+- `_messaging._listening_e2ee.listeningE2EEEvent` - drives `newClient` ->
+  `connect` -> `connectE2EE` and streams async events back to the caller.
+- `_messaging._send_e2ee.api` - drives `sendE2EEMessage` (text only). Can
   reuse the listener's bridge process or spawn its own in standalone mode.
 
-Methods present in `bridge/` but **not yet wired** through `main.go` /
+Methods present in `bridge/` but not yet wired through `main.go` /
 Python: `sendReaction`, `editMessage`, `unsendMessage`, `sendTyping`,
 `markRead`, `MxDownloadE2EEMedia`, `SendE2EEImage`, `SendE2EEVideo`,
 `SendE2EEAudio`. To expose, add a `case "..."` in `handle(req)` of `main.go`

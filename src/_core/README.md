@@ -1,6 +1,6 @@
-# `_core` — nền tảng async
+# `_core` - nền tảng async
 
-`_core` quản lý HTTP transport, session Facebook, login credentials, storage và utility dùng chung. Code feature không nên tự dựng transport mới; ngoại lệ hiện tại là một số endpoint legacy của Facebook bắt buộc đi qua `requests`.
+`_core` quản lý HTTP transport, session Facebook, login credentials, storage và utility dùng chung. Code feature không tự dựng transport mới; HTTP async đi qua `httpx.AsyncClient`, còn legacy adapter chỉ nằm ở boundary nội bộ khi Facebook bắt buộc.
 
 ## Module
 
@@ -65,11 +65,11 @@ login = loginFacebook(
 result = await login.main()
 ```
 
-Credential login dùng mặc định FB4A legacy; `FBCHAT_APP_ACCESS_TOKEN` và `FBCHAT_API_KEY` chỉ là override tuỳ chọn. TOTP secret được tính ngay trên máy bằng `pyotp`; OTP 6–8 số cũng được chấp nhận trực tiếp. Module không gọi `2fa.live` và không in password/request form. Credential login dùng form/header FB4A legacy và `requests` dưới hood; `main()` bọc phần I/O này bằng worker thread.
+Credential login dùng mặc định FB4A legacy; `FBCHAT_APP_ACCESS_TOKEN` và `FBCHAT_API_KEY` chỉ là override tùy chọn. TOTP secret được tính ngay trên máy bằng `pyotp`; OTP 6-8 số cũng được chấp nhận trực tiếp. Module không gọi `2fa.live` và không in password/request form. `main()` bọc I/O legacy bằng worker thread để không chặn event loop.
 
 ## Quy tắc phát triển
 
-- Feature có I/O phải cung cấp API `_async`; ưu tiên `httpx.AsyncClient`, trừ endpoint legacy đã có bằng chứng cần `requests`.
+- Feature có I/O phải cung cấp API public async không hậu tố; ưu tiên `httpx.AsyncClient` và chỉ dùng legacy adapter ở boundary đã có bằng chứng cần thiết.
 - Cho phép inject `client=` để test và tái sử dụng connection pool.
 - Đặt timeout hữu hạn, gọi `raise_for_status()` và parse response thiếu field an toàn.
 - Không tắt TLS verification.

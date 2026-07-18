@@ -1,4 +1,4 @@
-# fbchat-v2 — contributor context
+# fbchat-v2 - contributor context
 
 This file is implementation context for coding agents and contributors. User-facing examples live in `README.md` and `DOCS.md`.
 
@@ -61,7 +61,7 @@ Build forms with `formAll()` and send them through `post_form_json_async()` or `
 - strips `for (;;);` only when requested;
 - returns `httpx.Response` or parsed JSON, depending on helper.
 
-Do not add `requests`, disable TLS, print request forms, or catch all exceptions without preserving a useful error.
+Do not create ad-hoc transports, disable TLS, print request forms, or catch all exceptions without preserving a useful error.
 
 ## Listener lifecycle
 
@@ -93,7 +93,7 @@ Auto-download rules:
 
 ## Login security
 
-- `FBCHAT_APP_ACCESS_TOKEN` is required for credential login and never belongs in source.
+- `FBCHAT_APP_ACCESS_TOKEN` is an optional FB4A override; real credentials and cookies never belong in source.
 - TOTP uses local `pyotp`; never send a shared secret to `2fa.live` or another service.
 - Never log password, login form, cookies, OTP, or access token.
 - Preserve handling for known 2FA continuation subcodes `1348162` and `1348023`, but do not claim live validation without a real controlled account test.

@@ -1,6 +1,6 @@
-# `_features` — async Facebook business features
+# `_features` - async Facebook business features
 
-This layer receives `dataFB` from `_core` and implements account or thread-management operations. Documentation uses async APIs; sync functions remain for compatibility.
+This layer receives `dataFB` from `_core` and implements account or thread-management operations. Documentation uses suffix-free async APIs; blocking helpers, when present, are internal compatibility paths.
 
 ## Facebook
 
@@ -68,7 +68,7 @@ await _changeEmoji.func(data_fb, "thread-id", "🔥")
 ## Rules
 
 - Validate inputs before sending a request.
-- Use `post_form_json_async`; never import `requests`.
+- Use `post_form_json_async` or `send_request_async`; do not create ad-hoc transports.
 - Accept an injected `httpx.AsyncClient` through `client=`.
 - Do not report success when responses omit `data` or contain `errors`.
 - Do not silently ignore unsupported arguments.

@@ -1,6 +1,6 @@
-# `_features` — nghiệp vụ Facebook async
+# `_features` - nghiệp vụ Facebook async
 
-Tầng này nhận `dataFB` từ `_core` và thực hiện nghiệp vụ tài khoản hoặc quản lý thread. Tài liệu chỉ dùng API async; hàm sync giữ lại cho tương thích.
+Tầng này nhận `dataFB` từ `_core` và thực hiện nghiệp vụ tài khoản hoặc quản lý thread. Tài liệu chỉ dùng API async không hậu tố; helper blocking nếu có chỉ phục vụ tương thích nội bộ.
 
 ## Facebook
 
@@ -68,7 +68,7 @@ await _changeEmoji.func(data_fb, "thread-id", "🔥")
 ## Quy tắc
 
 - Validate đầu vào trước khi gửi request.
-- Dùng helper `post_form_json_async`; không import `requests`.
+- Dùng helper `post_form_json_async` hoặc `send_request_async`; không dựng transport riêng.
 - Cho phép inject `httpx.AsyncClient` bằng `client=`.
 - Không giả thành công khi response thiếu `data` hoặc có `errors`.
 - Không âm thầm bỏ tham số chưa hỗ trợ.
