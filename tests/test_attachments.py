@@ -24,12 +24,12 @@ def test_build_request(mock_dataFB, tmp_path):
     assert req["data"]["__rev"] == mock_dataFB["clientRevision"]
     assert req["data"]["av"] == mock_dataFB["FacebookID"]
     assert req["data"]["voice_clip"] is False
-    assert "upload_0" in req["files"]
+    assert "file" in req["files"]
 
     # Just check the file name and mime type in the tuple
-    assert req["files"]["upload_0"][0] == "test.jpg"
-    assert req["files"]["upload_0"][2] == "image/jpeg"
-    req["files"]["upload_0"][1].close()
+    assert req["files"]["file"][0] == "test.jpg"
+    assert req["files"]["file"][2] == "image/jpeg"
+    req["files"]["file"][1].close()
 
 
 def test_parse_response_success():
@@ -47,6 +47,22 @@ def test_parse_response_supports_legacy_type_attachment_key():
     assert result is not None
     assert result["attachmentType"] == "application/pdf"
     assert result["typeAttachment"] == "file"
+
+
+def test_parse_response_supports_legacy_fbchat_image_id():
+    resp_text = 'for (;;);{"payload": {"metadata": [{"image_id": "12345"}]}}'
+    result = _parse_response(resp_text)
+    assert result is not None
+    assert result["attachmentID"] == "12345"
+    assert result["typeAttachment"] == "image"
+
+
+def test_parse_response_supports_legacy_fbchat_gif_id():
+    resp_text = 'for (;;);{"payload": {"metadata": [{"gif_id": "67890"}]}}'
+    result = _parse_response(resp_text)
+    assert result is not None
+    assert result["attachmentID"] == "67890"
+    assert result["typeAttachment"] == "gif"
 
 
 def test_parse_response_failure():

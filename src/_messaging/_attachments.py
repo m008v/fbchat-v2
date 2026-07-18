@@ -16,6 +16,14 @@ USER_AGENTS: tuple[str, ...] = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/137 Safari/537.36",
 )
 _UPLOAD_URL = "https://upload.facebook.com/ajax/mercury/upload.php"
+_LEGACY_ATTACHMENT_ID_KEYS = (
+    "attachmentID",
+    "image_id",
+    "gif_id",
+    "video_id",
+    "file_id",
+    "audio_id",
+)
 
 
 def _to_send_attachment_type(mime_type: str | None) -> str:
@@ -27,6 +35,26 @@ def _to_send_attachment_type(mime_type: str | None) -> str:
     if mime_group in {"image", "video", "audio"}:
         return mime_group
     return "file"
+
+
+def _infer_attachment_type(item: dict[str, Any], mime_type: str | None) -> str:
+    if "gif_id" in item:
+        return "gif"
+    if "image_id" in item:
+        return "image"
+    if "video_id" in item:
+        return "video"
+    if "audio_id" in item:
+        return "audio"
+    return _to_send_attachment_type(mime_type)
+
+
+def _extract_attachment_id(item: dict[str, Any]) -> Any:
+    for key in _LEGACY_ATTACHMENT_ID_KEYS:
+        value = item.get(key)
+        if value is not None:
+            return value
+    return None
 
 
 def _close_request_files(request: dict[str, Any]) -> None:
@@ -70,7 +98,8 @@ def _build_request(
     try:
         for index, path in enumerate(paths):
             mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-            request["files"][f"upload_{index}"] = (
+            field_name = "file" if len(paths) == 1 else f"upload_{index}"
+            request["files"][field_name] = (
                 path.name,
                 path.open("rb"),
                 mime,
@@ -156,12 +185,13 @@ def _parse_response(text: str, *, include_error: bool = False) -> dict[str, Any]
         or item.get("mimeType")
         or item.get("mime_type")
     )
+    attachment_id = _extract_attachment_id(item)
     return {
-        "attachmentID": item.get("attachmentID"),
+        "attachmentID": attachment_id,
         "attachmentUrl": item.get("attachmentUrl"),
         "videoDuration": item.get("videoDuration"),
         "attachmentType": attachment_type,
-        "typeAttachment": _to_send_attachment_type(attachment_type),
+        "typeAttachment": _infer_attachment_type(item, attachment_type),
     }
 
 
