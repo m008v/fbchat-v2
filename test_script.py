@@ -15,29 +15,29 @@ if hasattr(sys.stderr, "reconfigure"):
 # Đảm bảo import được từ thư mục src
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
 
-from _core._session import dataGetHome_async
+from _core._session import dataGetHome
 from _messaging._send import api
-from _messaging._reactions import func_async as reactions_async
-from _messaging._unsend import func_async as unsend_async
-from _messaging._attachments import func_async as attachments_async
+from _messaging._reactions import func as reactions_async
+from _messaging._unsend import func as unsend_async
+from _messaging._attachments import func as attachments_async
 from _messaging._listening_e2ee import listeningE2EEEvent
 from _messaging._send_e2ee import api as E2EESender
-from _messaging._editMessage import func_async as edit_message_async
-from _messaging._changeTheme import func_async as change_theme_async
-from _messaging._createNotes import func_async as create_notes_async
-from _messaging._message_requests import func_async as message_requests_async
-from _features._facebook._get_user_info import func_async as get_user_info_async
-from _features._facebook._search import func_async as search_facebook_async
-from _features._facebook._notification import func_async as get_notification_async
-from _features._facebook._changeBio import func_async as change_bio_async
-from _features._thread._changeEmoji import func_async as change_emoji_async
-from _features._thread._changeNickname import func_async as change_nickname_async
-from _features._thread._all_thread_data import func_async as all_thread_data_async
-from _features._thread._changeNameThread import func_async as change_name_thread_async
-from _features._facebook._createPost import func_async as create_post_async
-from _features._facebook._blocking import func_async as blocking_async
-from _features._facebook._professional import func_async as professional_async
-from _features._facebook._marketplace import createItem_async as marketplace_create_async
+from _messaging._editMessage import func as edit_message_async
+from _messaging._changeTheme import func as change_theme_async
+from _messaging._createNotes import func as create_notes_async
+from _messaging._message_requests import func as message_requests_async
+from _features._facebook._get_user_info import func as get_user_info_async
+from _features._facebook._search import func as search_facebook_async
+from _features._facebook._notification import func as get_notification_async
+from _features._facebook._changeBio import func as change_bio_async
+from _features._thread._changeEmoji import func as change_emoji_async
+from _features._thread._changeNickname import func as change_nickname_async
+from _features._thread._all_thread_data import func as all_thread_data_async
+from _features._thread._changeNameThread import func as change_name_thread_async
+from _features._facebook._createPost import func as create_post_async
+from _features._facebook._blocking import func as blocking_async
+from _features._facebook._professional import func as professional_async
+from _features._facebook._marketplace import createItem as marketplace_create_async
 
 def read_cookie():
     cookie = os.environ.get("FB_COOKIE", "").strip()
@@ -117,7 +117,7 @@ async def main():
         return
         
     print("1. Đang khởi tạo session từ Cookie...")
-    dataFB = await dataGetHome_async(cookie)
+    dataFB = await dataGetHome(cookie)
     if not dataFB:
         print("❌ Login failed: Không thể parse cookie hoặc cookie hết hạn.")
         return
@@ -127,7 +127,7 @@ async def main():
 
     print(f"\n2. Đang gửi tin nhắn thường đến {target_id}...")
     send_api_instance = api()
-    send_res = await send_api_instance.send_async(dataFB, "Test từ fbchat-v2 Async/Await!", target_id, typeChat="user")
+    send_res = await send_api_instance.send(dataFB, "Test từ fbchat-v2 Async/Await!", target_id, typeChat="user")
     print(f"Kết quả Send: {send_res}")
     
     payload_data = send_res.get("payload") or {}
@@ -160,7 +160,7 @@ async def main():
             raise RuntimeError("Upload không trả attachmentID. Cookie/file/endpoint đang có vấn đề.")
 
         attachment_send_type = att_res.get("typeAttachment") or "file"
-        attachment_send_res = await send_api_instance.send_async(
+        attachment_send_res = await send_api_instance.send(
             dataFB,
             f"Attachment test: {attachment_path.name}",
             target_id,
@@ -277,7 +277,7 @@ async def main():
     print("\n22. Khởi động E2EE Listener & Gửi E2EE...")
     listener = listeningE2EEEvent(dataFB)
     listener.on_message(on_e2ee_message)
-    listener_thread = threading.Thread(target=listener.connect_mqtt, daemon=True)
+    listener_thread = threading.Thread(target=listener.connect_mqtt_blocking, daemon=True)
     listener_thread.start()
     
     print("⏳ Đang đợi Listener E2EE khởi động (3s)...")

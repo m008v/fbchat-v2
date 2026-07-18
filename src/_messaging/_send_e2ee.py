@@ -17,7 +17,7 @@ Hai chế độ dùng:
        from _messaging._send_e2ee import api as E2EESender
 
        listener = listeningE2EEEvent(dataFB)
-       threading.Thread(target=listener.connect_mqtt, daemon=True).start()
+       threading.Thread(target=listener.connect_mqtt_blocking, daemon=True).start()
        # ... đợi event "e2eeConnected" ...
 
        sender = E2EESender(listener=listener)
