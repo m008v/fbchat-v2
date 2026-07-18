@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from _core._utils import formatResults, formAll, post_form_json, post_form_json_async
+from _core._utils import formatResults, formAll, post_form_json_async
 
 _URL = "https://www.facebook.com/messaging/save_admins/?dpr=1"
 
@@ -36,23 +36,6 @@ def _parse_result(payload: dict[str, Any], status_choice: bool) -> dict[str, str
     action = "Thêm" if status_choice else "Gỡ"
     return formatResults("success", f"{action} quản trị viên thành công.")
 
-
-def _func_blocking(
-    dataFB: dict[str, Any],
-    threadID: str | int,
-    idUser: str | int,
-    statusChoice: bool = True,
-    *,
-    client: httpx.Client | None = None,
-) -> dict[str, str]:
-    payload = post_form_json(
-        _URL,
-        _build_form(dataFB, threadID, idUser, statusChoice),
-        dataFB["cookieFacebook"],
-        strip_for_loop_prefix=True,
-        client=client,
-    )
-    return _parse_result(payload, statusChoice)
 
 
 async def func(

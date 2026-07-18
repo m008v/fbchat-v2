@@ -7,7 +7,6 @@ from _core._utils import (
     Headers,
     parse_cookie_string,
     formAll,
-    send_request,
     send_request_async,
 )
 
@@ -53,19 +52,6 @@ def _build_request(
         "verify": True,
     }
 
-
-def _func_blocking(
-    dataFB: dict[str, Any],
-    typeAdded: str,
-    messageID: str | int,
-    emojiChoice: str,
-    *,
-    client: httpx.Client | None = None,
-) -> httpx.Response:
-    req = _build_request(dataFB, typeAdded, messageID, emojiChoice)
-    response = send_request(req, client=client)
-    response.raise_for_status()
-    return response
 
 
 async def func(

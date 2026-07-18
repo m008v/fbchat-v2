@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import patch
-from _messaging._reactions import _build_request, func, _func_blocking
+from _messaging._reactions import _build_request, func
 from conftest import HttpxResponseMock
 
 
@@ -17,16 +17,6 @@ def test_build_request(mock_dataFB):
     req_remove = _build_request(mock_dataFB, "remove", "mid.123", "👍")
     variables_remove = json.loads(req_remove["data"]["variables"])
     assert variables_remove["data"]["action"] == "REMOVE_REACTION"
-
-
-@patch("_messaging._reactions.send_request")
-def test_reactions_func(mock_send, mock_dataFB):
-    mock_resp = HttpxResponseMock(200, b'{"data": {"message_reaction_mutation": {}}}')
-    mock_send.return_value = mock_resp
-
-    resp = _func_blocking(mock_dataFB, "add", "mid.123", "👍")
-    assert resp.status_code == 200
-    mock_send.assert_called_once()
 
 
 @pytest.mark.asyncio

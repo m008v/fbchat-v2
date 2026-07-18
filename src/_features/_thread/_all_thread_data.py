@@ -131,13 +131,6 @@ def _build_result(response: httpx.Response, elapsed: float) -> dict[str, Any]:
     }
 
 
-def _func_blocking(
-    dataFB: dict[str, Any], *, client: httpx.Client | None = None
-) -> dict[str, Any]:
-    started = time.perf_counter()
-    response = _post_graphqlbatch(dataFB, client)
-    return _build_result(response, time.perf_counter() - started)
-
 
 async def func(
     dataFB: dict[str, Any], *, client: httpx.AsyncClient | None = None

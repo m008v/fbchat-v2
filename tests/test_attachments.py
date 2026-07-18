@@ -5,7 +5,7 @@ from _messaging._attachments import (
     _parse_response,
     _to_send_attachment_type,
     func,
-    _func_blocking,
+    _upload_blocking,
 )
 from conftest import HttpxResponseMock
 
@@ -157,7 +157,7 @@ def test_attachments_func(mock_post, mock_dataFB, tmp_path):
     )
     mock_post.return_value = mock_resp
 
-    res = _func_blocking(str(dummy_file), mock_dataFB)
+    res = _upload_blocking(str(dummy_file), mock_dataFB)
     assert res is not None
     assert res["attachmentID"] == 123
     assert res["typeAttachment"] == "image"

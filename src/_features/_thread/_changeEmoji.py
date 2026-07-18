@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from _core._utils import formatResults, formAll, post_form_json, post_form_json_async
+from _core._utils import formatResults, formAll, post_form_json_async
 
 _URL = "https://www.facebook.com/messaging/save_thread_emoji/?source=thread_settings&__pc=EXP1%3Amessengerdotcom_pkg"
 
@@ -29,22 +29,6 @@ def _parse_result(payload: dict[str, Any]) -> dict[str, str]:
         return formatResults("error", f"Facebook từ chối đổi emoji: {error}.")
     return formatResults("success", "Thay đổi emoji mặc định thành công.")
 
-
-def _func_blocking(
-    dataFB: dict[str, Any],
-    threadID: str | int,
-    newEmoji: str,
-    *,
-    client: httpx.Client | None = None,
-) -> dict[str, str]:
-    payload = post_form_json(
-        _URL,
-        _build_form(dataFB, threadID, newEmoji),
-        dataFB["cookieFacebook"],
-        strip_for_loop_prefix=True,
-        client=client,
-    )
-    return _parse_result(payload)
 
 
 async def func(

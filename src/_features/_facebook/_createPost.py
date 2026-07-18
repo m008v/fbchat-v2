@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from _core._utils import formAll, post_form_json, post_form_json_async
+from _core._utils import formAll, post_form_json_async
 
 _URL = "https://www.facebook.com/api/graphql/"
 _DOC_ID = 6534257523262244
@@ -106,21 +106,6 @@ def _parse_result(payload: dict[str, Any]) -> dict[str, Any]:
         }
     return {"success": 1, "messages": "Tạo bài viết thành công!", "urlPost": url}
 
-
-def _func_blocking(
-    dataFB: dict[str, Any],
-    newContents: str,
-    attachmentID: str | int | None = None,
-    *,
-    client: httpx.Client | None = None,
-) -> dict[str, Any]:
-    payload = post_form_json(
-        _URL,
-        _build_form(dataFB, newContents, attachmentID),
-        dataFB["cookieFacebook"],
-        client=client,
-    )
-    return _parse_result(payload)
 
 
 async def func(

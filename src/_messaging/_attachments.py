@@ -212,7 +212,7 @@ def _parse_response(text: str, *, include_error: bool = False) -> dict[str, Any]
     }
 
 
-def _func_blocking(
+def _upload_blocking(
     filenames: str | list[str],
     dataFB: dict[str, Any],
     *,
@@ -240,7 +240,7 @@ async def func(
 ) -> dict[str, Any] | None:
     if client is None:
         return await asyncio.to_thread(
-            _func_blocking,
+            _upload_blocking,
             filenames,
             dataFB,
             include_error=include_error,

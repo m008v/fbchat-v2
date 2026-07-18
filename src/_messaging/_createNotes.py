@@ -315,36 +315,6 @@ def re_createNote_blocking(
 # ---------------------------------------------------------------------
 # Default entry point (theo style fbchat-v2): func(dataFB, action, ...)
 # ---------------------------------------------------------------------
-def _func_blocking(
-    dataFB: dict[str, Any], action: str = "check", **kwargs: Any
-) -> dict[str, Any]:
-    """
-    Args:
-         dataFB: dict trả về từ _core._session.dataGetHome(setCookies)
-         action: "check" | "create" | "delete" | "recreate"
-         kwargs:
-              - create:   text, privacy="FRIENDS"
-              - delete:   noteID
-              - recreate: oldNoteID, newText, privacy="FRIENDS"
-    """
-    action = (action or "check").lower()
-    if action == "check":
-        return _checkNote_blocking(dataFB)
-    if action == "create":
-        return _createNote_blocking(
-            dataFB, kwargs["text"], privacy=kwargs.get("privacy", "FRIENDS")
-        )
-    if action == "delete":
-        return _deleteNote_blocking(dataFB, kwargs["noteID"])
-    if action == "recreate":
-        return re_createNote_blocking(
-            dataFB,
-            kwargs["oldNoteID"],
-            kwargs["newText"],
-            privacy=kwargs.get("privacy", "FRIENDS"),
-        )
-    return {"error": 1, "messages": f"Unknown action: {action}"}
-
 
 async def checkNote(dataFB: dict[str, Any]) -> dict[str, Any]:
     variables = {"scale": 2}

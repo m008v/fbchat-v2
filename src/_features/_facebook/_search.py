@@ -9,7 +9,6 @@ import httpx
 from _core._utils import (
     formAll,
     generate_client_id,
-    post_form_json,
     post_form_json_async,
 )
 
@@ -113,16 +112,6 @@ def _parse_response(payload: dict[str, Any], keyword: str) -> dict[str, Any]:
         "searchResultsDict": results,
     }
 
-
-def _func_blocking(dataFB: dict[str, Any], keywordSearch: str) -> dict[str, Any]:
-    try:
-        keyword = str(keywordSearch).strip()
-        payload = post_form_json(
-            GRAPHQL_URL, _build_request(dataFB, keyword), dataFB["cookieFacebook"]
-        )
-        return _parse_response(payload, keyword)
-    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
-        return {"error": 1, "messages": str(exc)}
 
 
 async def func(

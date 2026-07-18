@@ -8,7 +8,6 @@ from _core._utils import (
     formAll,
     mainRequests,
     parse_json_response,
-    send_request,
     send_request_async,
 )
 
@@ -36,16 +35,6 @@ def _parse_response(text: str) -> dict[str, Any]:
         }
     return {"success": 1, "messages": "Thu hồi tin nhắn thành công."}
 
-
-def _func_blocking(
-    messageID: str,
-    dataFB: dict[str, Any],
-    *,
-    client: httpx.Client | None = None,
-) -> dict[str, Any]:
-    response = send_request(_build_request(messageID, dataFB), client=client)
-    response.raise_for_status()
-    return _parse_response(response.text)
 
 
 async def func(

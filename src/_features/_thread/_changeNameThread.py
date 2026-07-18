@@ -10,7 +10,6 @@ from _core._utils import (
     formatResults,
     formAll,
     gen_threading_id,
-    post_form_json,
     post_form_json_async,
 )
 
@@ -72,22 +71,6 @@ def _parse_result(payload: dict[str, Any]) -> dict[str, str]:
         return formatResults("error", f"Facebook từ chối đổi tên: {error}.")
     return formatResults("success", "Thay đổi tên cuộc trò chuyện thành công.")
 
-
-def _func_blocking(
-    dataFB: dict[str, Any],
-    threadID: str | int,
-    newNameThread: str,
-    *,
-    client: httpx.Client | None = None,
-) -> dict[str, str]:
-    payload = post_form_json(
-        _URL,
-        _build_form(dataFB, threadID, newNameThread),
-        dataFB["cookieFacebook"],
-        strip_for_loop_prefix=True,
-        client=client,
-    )
-    return _parse_result(payload)
 
 
 async def func(

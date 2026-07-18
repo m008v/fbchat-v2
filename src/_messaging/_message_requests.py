@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from _core._utils import formAll, mainRequests, send_request, send_request_async
+from _core._utils import formAll, mainRequests, send_request_async
 
 _URL = "https://www.facebook.com/api/graphqlbatch/"
 
@@ -88,13 +88,6 @@ def _parse_response(text: str) -> dict[str, Any]:
         "data": exported,
     }
 
-
-def _func_blocking(
-    dataFB: dict[str, Any], *, client: httpx.Client | None = None
-) -> dict[str, Any]:
-    response = send_request(_build_request(dataFB), client=client)
-    response.raise_for_status()
-    return _parse_response(response.text)
 
 
 async def func(

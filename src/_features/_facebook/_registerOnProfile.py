@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from _core._utils import formAll, post_form_json, post_form_json_async
+from _core._utils import formAll, post_form_json_async
 
 GRAPHQL_URL = "https://www.facebook.com/api/graphql/"
 
@@ -39,17 +39,6 @@ def _parse_response(payload: dict[str, Any]) -> dict[str, Any]:
     message = ((payload.get("errors") or [{}])[0]).get("message")
     return {"error": 1, "messages": message or "Tạo trang cá nhân bổ sung thất bại."}
 
-
-def _func_blocking(dataFB: dict[str, Any], newName: str, newUsername: str) -> dict[str, Any]:
-    try:
-        payload = post_form_json(
-            GRAPHQL_URL,
-            _build_request(dataFB, newName, newUsername),
-            dataFB["cookieFacebook"],
-        )
-        return _parse_response(payload)
-    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
-        return {"error": 1, "messages": str(exc)}
 
 
 async def func(

@@ -258,15 +258,6 @@ def _editMessage_blocking(
     }
 
 
-def _func_blocking(
-    dataFB: dict[str, Any],
-    messageID: str,
-    newText: str,
-    timeout: int = _DEFAULT_TIMEOUT,
-) -> dict[str, Any]:
-    return _editMessage_blocking(dataFB, messageID, newText, timeout=timeout)
-
-
 async def editMessage(
     dataFB: dict[str, Any],
     messageID: str,

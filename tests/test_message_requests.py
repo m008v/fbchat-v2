@@ -5,7 +5,6 @@ from _messaging._message_requests import (
     _build_request,
     _parse_response,
     func,
-    _func_blocking,
 )
 from conftest import HttpxResponseMock
 
@@ -27,18 +26,6 @@ def test_parse_response():
     assert result["data"]["total_count"] == 1
     assert result["data"][0]["snippet"] == "Hello"
     assert result["data"][0]["senderID"] == "123"
-
-
-@patch("_messaging._message_requests.send_request")
-def test_message_requests_func(mock_send, mock_dataFB):
-    mock_send.return_value = HttpxResponseMock(
-        200,
-        b'{"o0": {"data": {"viewer": {"message_threads": {"nodes": []}}}}}\n{"successful_results": 1}',
-    )
-    res = _func_blocking(mock_dataFB)
-    assert res["success"] == 1
-    assert res["data"]["total_count"] == 0
-    mock_send.assert_called_once()
 
 
 @pytest.mark.asyncio

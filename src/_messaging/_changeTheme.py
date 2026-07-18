@@ -374,28 +374,6 @@ def _changeTheme_blocking(
     }
 
 
-def _func_blocking(
-    dataFB: dict[str, Any],
-    threadID: str | None = None,
-    themeName: str | None = None,
-    action: str = "set",
-    **kwargs: Any,
-) -> dict[str, Any]:
-    action = (action or "set").lower()
-    if str(threadID or "").strip().lower() == "list" and themeName is None:
-        return _listThemes_blocking(dataFB)
-    if action == "list" or str(themeName or "").strip().lower() == "list":
-        return _listThemes_blocking(dataFB)
-    if action == "find":
-        return _findTheme_blocking(dataFB, themeName)
-    return _changeTheme_blocking(
-        dataFB,
-        threadID,
-        themeName,
-        initiatorID=kwargs.get("initiatorID"),
-        timeout=kwargs.get("timeout", _DEFAULT_TIMEOUT),
-    )
-
 
 async def listThemes(dataFB: dict[str, Any]) -> dict[str, Any]:
     resData = await _post_graphql_async(

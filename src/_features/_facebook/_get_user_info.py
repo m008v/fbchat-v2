@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from _core._utils import formAll, post_form_json, post_form_json_async
+from _core._utils import formAll, post_form_json_async
 
 USER_INFO_URL = "https://www.facebook.com/chat/user_info/"
 
@@ -42,18 +42,6 @@ def _parse_response(payload: dict[str, Any], userID: str | int) -> dict[str, Any
         "chatWithUSerIsNonFriend": profile.get("is_nonfriend_messenger_contact"),
     }
 
-
-def _func_blocking(dataFB: dict[str, Any], userID: str | int) -> dict[str, Any]:
-    try:
-        payload = post_form_json(
-            USER_INFO_URL,
-            _build_request(dataFB, userID),
-            dataFB["cookieFacebook"],
-            strip_for_loop_prefix=True,
-        )
-        return _parse_response(payload, userID)
-    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
-        return {"error": 1, "messages": str(exc)}
 
 
 async def func(
