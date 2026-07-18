@@ -13,14 +13,14 @@ class BridgeActions:
     def __init__(self, bridge: _BridgeProcess) -> None:
         self._bridge = bridge
 
-    def _call_sync(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
-        return self._bridge.call_sync(method, params)
+    def _call_blocking(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        return self._bridge.call_blocking(method, params)
 
     async def _call(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         return await self._bridge.call(method, params)
 
-    def edit_message_sync(self, message_id: str, new_text: str) -> dict[str, Any]:
-        return self._call_sync("editMessage", {"messageId": message_id, "newText": new_text})
+    def edit_message_blocking(self, message_id: str, new_text: str) -> dict[str, Any]:
+        return self._call_blocking("editMessage", {"messageId": message_id, "newText": new_text})
 
     async def edit_message(
         self, message_id: str, new_text: str
@@ -29,8 +29,8 @@ class BridgeActions:
             "editMessage", {"messageId": message_id, "newText": new_text}
         )
 
-    def unsend_message_sync(self, message_id: str) -> dict[str, Any]:
-        return self._call_sync("unsendMessage", {"messageId": message_id})
+    def unsend_message_blocking(self, message_id: str) -> dict[str, Any]:
+        return self._call_blocking("unsendMessage", {"messageId": message_id})
 
     async def unsend_message(self, message_id: str) -> dict[str, Any]:
         return await self._call("unsendMessage", {"messageId": message_id})
@@ -47,10 +47,10 @@ class BridgeActions:
             params["newText"] = new_text
         return params
 
-    def edit_e2ee_message_sync(
+    def edit_e2ee_message_blocking(
         self, chat_jid: str, message_id: str, new_text: str
     ) -> dict[str, Any]:
-        return self._call_sync(
+        return self._call_blocking(
             "editE2EEMessage",
             self._e2ee_message_params(chat_jid, message_id, new_text),
         )
@@ -63,8 +63,8 @@ class BridgeActions:
             self._e2ee_message_params(chat_jid, message_id, new_text),
         )
 
-    def unsend_e2ee_message_sync(self, chat_jid: str, message_id: str) -> dict[str, Any]:
-        return self._call_sync(
+    def unsend_e2ee_message_blocking(self, chat_jid: str, message_id: str) -> dict[str, Any]:
+        return self._call_blocking(
             "unsendE2EEMessage", self._e2ee_message_params(chat_jid, message_id)
         )
 
@@ -75,14 +75,14 @@ class BridgeActions:
             "unsendE2EEMessage", self._e2ee_message_params(chat_jid, message_id)
         )
 
-    def send_typing_indicator_sync(
+    def send_typing_indicator_blocking(
         self,
         thread_id: int,
         is_typing: bool,
         is_group: bool = False,
         thread_type: int = 1,
     ) -> dict[str, Any]:
-        return self._call_sync(
+        return self._call_blocking(
             "sendTypingIndicator",
             {
                 "threadId": thread_id,
@@ -109,8 +109,8 @@ class BridgeActions:
             },
         )
 
-    def mark_read_sync(self, thread_id: int, watermark_ts: int) -> dict[str, Any]:
-        return self._call_sync(
+    def mark_read_blocking(self, thread_id: int, watermark_ts: int) -> dict[str, Any]:
+        return self._call_blocking(
             "markRead", {"threadId": thread_id, "watermarkTs": watermark_ts}
         )
 
@@ -121,8 +121,8 @@ class BridgeActions:
             "markRead", {"threadId": thread_id, "watermarkTs": watermark_ts}
         )
 
-    def send_e2ee_typing_sync(self, chat_jid: str, is_typing: bool) -> dict[str, Any]:
-        return self._call_sync(
+    def send_e2ee_typing_blocking(self, chat_jid: str, is_typing: bool) -> dict[str, Any]:
+        return self._call_blocking(
             "sendE2EETyping",
             {"chatJid": normalize_chat_jid(chat_jid), "isTyping": is_typing},
         )
@@ -155,7 +155,7 @@ class BridgeActions:
             "replyToSenderJid": reply_to_sender_jid,
         }
 
-    def send_e2ee_audio_sync(
+    def send_e2ee_audio_blocking(
         self,
         chat_jid: str,
         data: bytes,
@@ -165,7 +165,7 @@ class BridgeActions:
         reply_to_id: str = "",
         reply_to_sender_jid: str = "",
     ) -> dict[str, Any]:
-        return self._call_sync(
+        return self._call_blocking(
             "sendE2EEAudio",
             self._audio_params(
                 chat_jid,
@@ -223,7 +223,7 @@ class BridgeActions:
             "replyToSenderJid": reply_to_sender_jid,
         }
 
-    def send_e2ee_image_sync(
+    def send_e2ee_image_blocking(
         self,
         chat_jid: str,
         data: bytes,
@@ -234,7 +234,7 @@ class BridgeActions:
         reply_to_id: str = "",
         reply_to_sender_jid: str = "",
     ) -> dict[str, Any]:
-        return self._call_sync(
+        return self._call_blocking(
             "sendE2EEImage",
             self._image_params(
                 chat_jid,
@@ -273,8 +273,8 @@ class BridgeActions:
             ),
         )
 
-    def download_media_sync(self, url: str) -> bytes:
-        result = self._call_sync("downloadMedia", {"url": url})
+    def download_media_blocking(self, url: str) -> bytes:
+        result = self._call_blocking("downloadMedia", {"url": url})
         return base64.b64decode(result["data"], validate=True)
 
     async def download_media(self, url: str) -> bytes:
@@ -308,7 +308,7 @@ class BridgeActions:
             result["data"] = base64.b64decode(result["data"], validate=True)
         return result
 
-    def download_e2ee_media_sync(
+    def download_e2ee_media_blocking(
         self,
         direct_path: str,
         media_key: str,
@@ -318,7 +318,7 @@ class BridgeActions:
         mime_type: str,
         file_size: int,
     ) -> dict[str, Any]:
-        result = self._call_sync(
+        result = self._call_blocking(
             "downloadE2EEMedia",
             self._download_e2ee_params(
                 direct_path,

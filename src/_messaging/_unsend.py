@@ -37,7 +37,7 @@ def _parse_response(text: str) -> dict[str, Any]:
     return {"success": 1, "messages": "Thu hồi tin nhắn thành công."}
 
 
-def func_sync(
+def _func_blocking(
     messageID: str,
     dataFB: dict[str, Any],
     *,

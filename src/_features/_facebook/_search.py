@@ -114,7 +114,7 @@ def _parse_response(payload: dict[str, Any], keyword: str) -> dict[str, Any]:
     }
 
 
-def func_sync(dataFB: dict[str, Any], keywordSearch: str) -> dict[str, Any]:
+def _func_blocking(dataFB: dict[str, Any], keywordSearch: str) -> dict[str, Any]:
     try:
         keyword = str(keywordSearch).strip()
         payload = post_form_json(

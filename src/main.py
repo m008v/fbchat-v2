@@ -105,7 +105,7 @@ class SimpleBot:
             except (asyncio.TimeoutError, asyncio.CancelledError):
                 listener_task.cancel()
 
-    def run_sync(self) -> None:
+    def run_blocking(self) -> None:
         """Wrapper CLI tương thích; trong ứng dụng async hãy await run()."""
         asyncio.run(self.run())
 
@@ -242,7 +242,7 @@ async def main() -> None:
     await bot.run()
 
 
-def main_sync() -> None:
+def main_blocking() -> None:
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
@@ -253,7 +253,7 @@ def main_sync() -> None:
 
 
 if __name__ == "__main__":
-    main_sync()
+    main_blocking()
 
 # Backwards-compatible aliases for the old `_async` API.
 SimpleBot.run_async = SimpleBot.run

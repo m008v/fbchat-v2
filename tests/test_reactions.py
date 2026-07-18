@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import patch
-from _messaging._reactions import _build_request, func, func_sync
+from _messaging._reactions import _build_request, func, _func_blocking
 from conftest import HttpxResponseMock
 
 
@@ -24,7 +24,7 @@ def test_reactions_func(mock_send, mock_dataFB):
     mock_resp = HttpxResponseMock(200, b'{"data": {"message_reaction_mutation": {}}}')
     mock_send.return_value = mock_resp
 
-    resp = func_sync(mock_dataFB, "add", "mid.123", "👍")
+    resp = _func_blocking(mock_dataFB, "add", "mid.123", "👍")
     assert resp.status_code == 200
     mock_send.assert_called_once()
 

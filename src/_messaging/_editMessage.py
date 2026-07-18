@@ -231,7 +231,7 @@ def _build_edit_context(messageID: str, newText: str) -> dict[str, Any]:
     )
 
 
-def editMessage_sync(
+def _editMessage_blocking(
     dataFB: dict[str, Any],
     messageID: str,
     newText: str,
@@ -258,13 +258,13 @@ def editMessage_sync(
     }
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any],
     messageID: str,
     newText: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> dict[str, Any]:
-    return editMessage_sync(dataFB, messageID, newText, timeout=timeout)
+    return _editMessage_blocking(dataFB, messageID, newText, timeout=timeout)
 
 
 async def editMessage(
@@ -273,7 +273,7 @@ async def editMessage(
     newText: str,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> dict[str, Any]:
-    return await asyncio.to_thread(editMessage_sync, dataFB, messageID, newText, timeout)
+    return await asyncio.to_thread(_editMessage_blocking, dataFB, messageID, newText, timeout)
 
 
 async def func(

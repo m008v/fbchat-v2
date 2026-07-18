@@ -109,7 +109,7 @@ def _resolve_cookies(
     return setCookies
 
 
-def dataGetHome_sync(
+def _dataGetHome_blocking(
     setCookies: str | None = None, storage: SessionStorage | None = None
 ) -> dict[str, Any] | None:
     setCookies = _resolve_cookies(setCookies, storage)

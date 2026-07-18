@@ -286,7 +286,7 @@ class _BridgeProcess:
         self.events.put({"type": "closed"})
 
     # ------------------------------------------------------------------
-    def call_sync(
+    def call_blocking(
         self, method: str, params: Optional[dict] = None, timeout: float = 60.0
     ) -> dict[str, Any]:
         if self._closed or self._proc.poll() is not None:
@@ -331,7 +331,7 @@ class _BridgeProcess:
         timeout: float = 60.0,
     ) -> dict[str, Any]:
         """Chờ JSON-RPC trong worker thread để không chặn event loop."""
-        return await asyncio.to_thread(self.call_sync, method, params, timeout)
+        return await asyncio.to_thread(self.call_blocking, method, params, timeout)
 
     # ------------------------------------------------------------------
     # Watchdog — auto-respawn
@@ -522,7 +522,7 @@ class listeningE2EEEvent:
         return {k: v for k, v in cks.items() if k in keep}
 
     # ------------------------------------------------------------------
-    def connect_mqtt_sync(self) -> None:
+    def connect_mqtt_blocking(self) -> None:
         """Khởi động bridge subprocess + connect Messenger (blocking poll loop).
 
         Watchdog thread tự động respawn bridge nếu subprocess crash,
@@ -568,7 +568,7 @@ class listeningE2EEEvent:
 
     async def connect_mqtt(self) -> None:
         """Chạy poll loop của bridge ngoài event loop asyncio."""
-        await asyncio.to_thread(self.connect_mqtt_sync)
+        await asyncio.to_thread(self.connect_mqtt_blocking)
 
     def stop(self) -> None:
         self._stop.set()
@@ -675,7 +675,7 @@ class listeningE2EEEvent:
 
     # ------------------------------------------------------------------
     # Helper sender APIs
-    def send_message_sync(
+    def send_message_blocking(
         self, thread_id: int, text: str, reply_to_id: str = ""
     ) -> dict[str, Any]:
         if self._bridge is None:
@@ -695,7 +695,7 @@ class listeningE2EEEvent:
             opts["replyToId"] = reply_to_id
         return await self._bridge.call("sendMessage", opts)
 
-    def send_e2ee_message_sync(
+    def send_e2ee_message_blocking(
         self,
         chat_jid: str,
         text: str,

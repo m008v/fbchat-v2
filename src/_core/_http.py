@@ -26,7 +26,7 @@ def _clean_kwargs(
 # ── Sync ────────────────────────────────────────────────────────────────
 
 
-def post_sync(
+def post_blocking(
     request_kwargs: dict[str, Any],
     *,
     client: httpx.Client | None = None,
@@ -39,7 +39,7 @@ def post_sync(
         return owned_client.post(url, **kwargs)
 
 
-def get_sync(
+def get_blocking(
     request_kwargs: dict[str, Any],
     *,
     client: httpx.Client | None = None,

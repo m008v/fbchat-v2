@@ -240,7 +240,7 @@ def _parse_detail_result(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
 
-def createItem_sync(
+def _createItem_blocking(
     dataFB: dict[str, Any],
     nameItem: str,
     brandItem: str,
@@ -308,7 +308,7 @@ async def createItem(
     return _parse_create_result(payload)
 
 
-def getInformationProductItemMarketPlace_sync(
+def _getInformationProductItemMarketPlace_blocking(
     dataFB: dict[str, Any],
     idProductItem: str | int,
     *,

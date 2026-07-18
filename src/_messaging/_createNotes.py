@@ -171,7 +171,7 @@ async def _post_graphql_async(
 # ---------------------------------------------------------------------
 # CHECK
 # ---------------------------------------------------------------------
-def checkNote_sync(dataFB: dict[str, Any]) -> dict[str, Any]:
+def _checkNote_blocking(dataFB: dict[str, Any]) -> dict[str, Any]:
     """Kiểm tra note hiện tại của tài khoản đang đăng nhập."""
     variables = {"scale": 2}
     resData = _post_graphql(
@@ -199,7 +199,7 @@ def checkNote_sync(dataFB: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------
 # CREATE
 # ---------------------------------------------------------------------
-def createNote_sync(
+def _createNote_blocking(
     dataFB: dict[str, Any], text: str, privacy: str = "FRIENDS"
 ) -> dict[str, Any]:
     """Tạo một note mới (mặc định tồn tại 24 giờ)."""
@@ -246,7 +246,7 @@ def createNote_sync(
 # ---------------------------------------------------------------------
 # DELETE
 # ---------------------------------------------------------------------
-def deleteNote_sync(
+def _deleteNote_blocking(
     dataFB: dict[str, Any],
     noteID: str,
 ) -> dict[str, Any]:
@@ -290,7 +290,7 @@ def deleteNote_sync(
 # ---------------------------------------------------------------------
 # RECREATE (delete + create)
 # ---------------------------------------------------------------------
-def recreateNote_sync(
+def re_createNote_blocking(
     dataFB: dict[str, Any], oldNoteID: str, newText: str, privacy: str = "FRIENDS"
 ) -> dict[str, Any]:
     """Xoá note cũ rồi tạo note mới."""
@@ -315,7 +315,7 @@ def recreateNote_sync(
 # ---------------------------------------------------------------------
 # Default entry point (theo style fbchat-v2): func(dataFB, action, ...)
 # ---------------------------------------------------------------------
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any], action: str = "check", **kwargs: Any
 ) -> dict[str, Any]:
     """
@@ -329,15 +329,15 @@ def func_sync(
     """
     action = (action or "check").lower()
     if action == "check":
-        return checkNote_sync(dataFB)
+        return _checkNote_blocking(dataFB)
     if action == "create":
-        return createNote_sync(
+        return _createNote_blocking(
             dataFB, kwargs["text"], privacy=kwargs.get("privacy", "FRIENDS")
         )
     if action == "delete":
-        return deleteNote_sync(dataFB, kwargs["noteID"])
+        return _deleteNote_blocking(dataFB, kwargs["noteID"])
     if action == "recreate":
-        return recreateNote_sync(
+        return re_createNote_blocking(
             dataFB,
             kwargs["oldNoteID"],
             kwargs["newText"],

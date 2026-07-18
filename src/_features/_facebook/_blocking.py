@@ -61,7 +61,7 @@ def _parse_response(payload: dict[str, Any], choice: str) -> dict[str, Any]:
     return {"error": 1, "messages": message or f"{label} người dùng thất bại!"}
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any], idUser: str | int, choiceInteract: str
 ) -> dict[str, Any]:
     try:

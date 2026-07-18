@@ -5,7 +5,7 @@ from _messaging._message_requests import (
     _build_request,
     _parse_response,
     func,
-    func_sync,
+    _func_blocking,
 )
 from conftest import HttpxResponseMock
 
@@ -35,7 +35,7 @@ def test_message_requests_func(mock_send, mock_dataFB):
         200,
         b'{"o0": {"data": {"viewer": {"message_threads": {"nodes": []}}}}}\n{"successful_results": 1}',
     )
-    res = func_sync(mock_dataFB)
+    res = _func_blocking(mock_dataFB)
     assert res["success"] == 1
     assert res["data"]["total_count"] == 0
     mock_send.assert_called_once()

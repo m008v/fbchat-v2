@@ -13,7 +13,7 @@ from typing import Any, Generator
 
 import httpx
 
-from _core._http import get_async, get_sync, post_async, post_sync
+from _core._http import get_async, get_blocking, post_async, post_blocking
 
 # User-Agent pool — xoay ngẫu nhiên để giảm fingerprint detection từ Facebook
 _USER_AGENTS: list[str] = [
@@ -149,7 +149,7 @@ def send_request(
     *,
     client: httpx.Client | None = None,
 ) -> httpx.Response:
-    return post_sync(req_kwargs, client=client)
+    return post_blocking(req_kwargs, client=client)
 
 
 async def send_request_async(
@@ -165,7 +165,7 @@ def send_get_request(
     *,
     client: httpx.Client | None = None,
 ) -> httpx.Response:
-    return get_sync(req_kwargs, client=client)
+    return get_blocking(req_kwargs, client=client)
 
 
 async def send_get_request_async(

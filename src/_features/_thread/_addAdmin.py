@@ -37,7 +37,7 @@ def _parse_result(payload: dict[str, Any], status_choice: bool) -> dict[str, str
     return formatResults("success", f"{action} quản trị viên thành công.")
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any],
     threadID: str | int,
     idUser: str | int,

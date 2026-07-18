@@ -30,7 +30,7 @@ def _parse_result(payload: dict[str, Any]) -> dict[str, str]:
     return formatResults("success", "Thay đổi emoji mặc định thành công.")
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any],
     threadID: str | int,
     newEmoji: str,

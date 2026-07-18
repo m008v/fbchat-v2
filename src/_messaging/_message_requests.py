@@ -89,7 +89,7 @@ def _parse_response(text: str) -> dict[str, Any]:
     }
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any], *, client: httpx.Client | None = None
 ) -> dict[str, Any]:
     response = send_request(_build_request(dataFB), client=client)

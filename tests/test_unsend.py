@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from _messaging._unsend import _build_request, _parse_response, func, func_sync
+from _messaging._unsend import _build_request, _parse_response, func, _func_blocking
 from conftest import HttpxResponseMock
 
 
@@ -29,7 +29,7 @@ def test_parse_response_error():
 @patch("_messaging._unsend.send_request")
 def test_unsend_func(mock_send, mock_dataFB):
     mock_send.return_value = HttpxResponseMock(200, b'for (;;);{"success": true}')
-    res = func_sync("mid.123", mock_dataFB)
+    res = _func_blocking("mid.123", mock_dataFB)
     assert isinstance(res, dict)
     assert res["success"] == 1
     mock_send.assert_called_once()

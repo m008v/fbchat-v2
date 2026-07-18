@@ -131,7 +131,7 @@ def _build_result(response: httpx.Response, elapsed: float) -> dict[str, Any]:
     }
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any], *, client: httpx.Client | None = None
 ) -> dict[str, Any]:
     started = time.perf_counter()
@@ -147,7 +147,7 @@ async def func(
     return _build_result(response, time.perf_counter() - started)
 
 
-def features_sync(dataGet: str, threadID: str | int, commandUse: str) -> Any:
+def _features_blocking(dataGet: str, threadID: str | int, commandUse: str) -> Any:
     try:
         root = json.loads(dataGet)["o0"]
         get_data = root["data"]["viewer"]["message_threads"]["nodes"]
@@ -219,7 +219,7 @@ def features_sync(dataGet: str, threadID: str | int, commandUse: str) -> Any:
 
 async def features(dataGet: str, threadID: str | int, commandUse: str) -> Any:
     """API đồng nhất cho workflow async; bước này chỉ xử lý dữ liệu trong bộ nhớ."""
-    return features_sync(dataGet, threadID, commandUse)
+    return _features_blocking(dataGet, threadID, commandUse)
 
 # Backwards-compatible aliases for the old `_async` API.
 func_async = func

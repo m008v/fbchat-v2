@@ -50,7 +50,7 @@ def _parse_response(payload: dict[str, Any], enabled: bool) -> dict[str, Any]:
     }
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any], statusBusiness: bool | str | None = None
 ) -> dict[str, Any]:
     try:

@@ -123,7 +123,7 @@ def _validate_2fa_key(key2Fa):
     return token, False
 
 
-def GetToken2FA_sync(key2Fa):
+def _get_token_2fa_local(key2Fa):
     """Tạo OTP ngay trên máy; không gửi TOTP secret cho dịch vụ bên thứ ba."""
     try:
         token, is_direct = _validate_2fa_key(key2Fa)
@@ -137,7 +137,7 @@ def GetToken2FA_sync(key2Fa):
 
 async def GetToken2FA(key2Fa):
     """Biến thể async giữ cùng API; việc tính TOTP là CPU cục bộ và rất nhẹ."""
-    return GetToken2FA_sync(key2Fa)
+    return _get_token_2fa_local(key2Fa)
 
 
 class loginFacebook:
@@ -276,7 +276,7 @@ class loginFacebook:
             )
         )
 
-    def main_sync(self):
+    def main_blocking(self):
         try:
             data_form = self._base_form(self.passwordFacebook, "password", 1)
         except RuntimeError as exc:
@@ -293,7 +293,7 @@ class loginFacebook:
             return jsonResults(dataJson, 0)
 
         try:
-            token_2fa = GetToken2FA_sync(self.twoTokenAccess)
+            token_2fa = _get_token_2fa_local(self.twoTokenAccess)
         except ValueError as err:
             return _error_result("Invalid 2FA key", str(err), error_code=-2)
 
@@ -334,7 +334,7 @@ class loginFacebook:
                 str(self.twoTokenAccess or "").replace(" ", "").strip()
             )
             if not is_direct_otp:
-                retry_token = GetToken2FA_sync(self.twoTokenAccess)
+                retry_token = _get_token_2fa_local(self.twoTokenAccess)
                 if retry_token and retry_token != token_2fa:
                     retry_response = self._run_two_factor(
                         retry_token,
@@ -452,7 +452,7 @@ if __name__ == "__main__":
     if not all([user, pwd]):
         print("Set FBCHAT_USER and FBCHAT_PASS env vars")
         raise SystemExit(1)
-    result = loginFacebook(user, pwd, code).main_sync()
+    result = loginFacebook(user, pwd, code).main_blocking()
     if result.get("success"):
         print("Đăng nhập thành công. Cookie và access token không được in ra terminal.")
     else:

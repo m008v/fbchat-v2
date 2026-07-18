@@ -15,7 +15,7 @@ def test_api_send(mock_dataFB):
         mock_resp.text = 'for (;;);{"payload": {"actions": [{"message_id": "123456", "timestamp": 123456789}], "success": 1}}'
         mock_post.return_value = mock_resp
 
-        result = sender.send_sync(mock_dataFB, "Hello", "123456")
+        result = sender.send_blocking(mock_dataFB, "Hello", "123456")
 
         assert "payload" in result
         assert result["payload"]["messageID"] == "123456"

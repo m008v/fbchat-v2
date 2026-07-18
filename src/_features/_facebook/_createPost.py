@@ -107,7 +107,7 @@ def _parse_result(payload: dict[str, Any]) -> dict[str, Any]:
     return {"success": 1, "messages": "Tạo bài viết thành công!", "urlPost": url}
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any],
     newContents: str,
     attachmentID: str | int | None = None,

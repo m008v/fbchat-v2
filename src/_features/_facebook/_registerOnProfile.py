@@ -40,7 +40,7 @@ def _parse_response(payload: dict[str, Any]) -> dict[str, Any]:
     return {"error": 1, "messages": message or "Tạo trang cá nhân bổ sung thất bại."}
 
 
-def func_sync(dataFB: dict[str, Any], newName: str, newUsername: str) -> dict[str, Any]:
+def _func_blocking(dataFB: dict[str, Any], newName: str, newUsername: str) -> dict[str, Any]:
     try:
         payload = post_form_json(
             GRAPHQL_URL,

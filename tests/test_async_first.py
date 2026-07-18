@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from _core._facebookLogin import GetToken2FA_sync, loginFacebook
+from _core._facebookLogin import _get_token_2fa_local, loginFacebook
 from _features._facebook import _createPost, _marketplace, _professional
 from _features._thread import _addAdmin
 from _messaging._listening import listeningEvent
@@ -67,17 +67,17 @@ def test_login_requires_app_token_without_network(monkeypatch):
     monkeypatch.delenv("FBCHAT_APP_ACCESS_TOKEN", raising=False)
     login = loginFacebook("user@example.com", "secret")
 
-    result = login.main_sync()
+    result = login.main_blocking()
 
     assert result["error"]["error_code"] == -4
     assert "FBCHAT_APP_ACCESS_TOKEN" in result["error"]["description"]
 
 
 def test_totp_is_generated_locally_and_direct_otp_is_preserved():
-    token = GetToken2FA_sync("JBSWY3DPEHPK3PXP")
+    token = _get_token_2fa_local("JBSWY3DPEHPK3PXP")
 
     assert token.isdigit() and len(token) == 6
-    assert GetToken2FA_sync("123456") == "123456"
+    assert _get_token_2fa_local("123456") == "123456"
 
 
 class _LoginResponse:
@@ -113,7 +113,7 @@ def test_login_uses_legacy_fb4a_requests_form(monkeypatch):
         )
 
     with patch("requests.post", side_effect=fake_post):
-        result = loginFacebook("user@example.com", "secret").main_sync()
+        result = loginFacebook("user@example.com", "secret").main_blocking()
 
     assert result["success"]["setCookies"] == "c_user=123; "
     assert calls[0]["url"] == "https://b-graph.facebook.com/auth/login"
@@ -147,7 +147,7 @@ def test_login_two_factor_prefers_legacy_otp_password(monkeypatch):
         return _LoginResponse(two_factor_error if len(calls) == 1 else success)
 
     with patch("requests.post", side_effect=fake_post):
-        result = loginFacebook("user@example.com", "secret", "123456").main_sync()
+        result = loginFacebook("user@example.com", "secret", "123456").main_blocking()
 
     assert result["success"]["setCookies"] == "xs=abc; "
     assert calls[1]["credentials_type"] == "two_factor"

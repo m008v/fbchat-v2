@@ -54,7 +54,7 @@ def _build_request(
     }
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any],
     typeAdded: str,
     messageID: str | int,

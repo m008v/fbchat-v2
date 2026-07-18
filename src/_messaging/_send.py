@@ -177,7 +177,7 @@ class api:
         self.properties = list(_PROPERTIES)
         self.results: dict[str, Any] = {}
 
-    def send_sync(
+    def send_blocking(
         self,
         dataFB: dict[str, Any],
         contentSend: str | int,

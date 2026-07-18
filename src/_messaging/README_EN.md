@@ -16,7 +16,7 @@ This layer sends and receives messages, attachments, reactions, notes, themes, a
 | `_changeTheme.py` | `listThemes`, `findTheme`, `changeTheme` |
 | `_listening.py` | `connect_mqtt`, `get_message`, `disconnect` |
 | `_listening_e2ee.py` | `connect_mqtt`, `send_message`, `send_e2ee_message` |
-| `_bridge_actions.py` | suffix-free async actions, sync variants use `_sync` |
+| `_bridge_actions.py` | suffix-free async actions with explicit blocking helpers |
 
 ## Send and reply
 

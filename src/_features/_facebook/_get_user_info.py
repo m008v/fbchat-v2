@@ -43,7 +43,7 @@ def _parse_response(payload: dict[str, Any], userID: str | int) -> dict[str, Any
     }
 
 
-def func_sync(dataFB: dict[str, Any], userID: str | int) -> dict[str, Any]:
+def _func_blocking(dataFB: dict[str, Any], userID: str | int) -> dict[str, Any]:
     try:
         payload = post_form_json(
             USER_INFO_URL,

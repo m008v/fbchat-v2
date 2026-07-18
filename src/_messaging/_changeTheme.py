@@ -203,7 +203,7 @@ def _normalize_theme(themeData: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def listThemes_sync(dataFB: dict[str, Any]) -> dict[str, Any]:
+def _listThemes_blocking(dataFB: dict[str, Any]) -> dict[str, Any]:
     resData = _post_graphql(
         dataFB,
         THEME_LIST_FRIENDLY_NAME,
@@ -266,7 +266,7 @@ def _match_theme(themes: list[dict[str, Any]], themeName: str) -> dict[str, Any]
     )
 
 
-def findTheme_sync(dataFB: dict[str, Any], themeName: str) -> dict[str, Any]:
+def _findTheme_blocking(dataFB: dict[str, Any], themeName: str) -> dict[str, Any]:
     listed = listThemes(dataFB)
     if listed.get("error"):
         return listed
@@ -331,7 +331,7 @@ def _build_theme_contexts(threadID: str, themeID: str) -> list[dict[str, Any]]:
     return contexts
 
 
-def changeTheme_sync(
+def _changeTheme_blocking(
     dataFB: dict[str, Any],
     threadID: str,
     themeName: str,
@@ -346,7 +346,7 @@ def changeTheme_sync(
         )
 
     if str(themeName).strip().lower() == "list":
-        return listThemes_sync(dataFB)
+        return _listThemes_blocking(dataFB)
 
     themeResult = findTheme(dataFB, themeName)
     if themeResult.get("error"):
@@ -374,7 +374,7 @@ def changeTheme_sync(
     }
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any],
     threadID: str | None = None,
     themeName: str | None = None,
@@ -383,12 +383,12 @@ def func_sync(
 ) -> dict[str, Any]:
     action = (action or "set").lower()
     if str(threadID or "").strip().lower() == "list" and themeName is None:
-        return listThemes_sync(dataFB)
+        return _listThemes_blocking(dataFB)
     if action == "list" or str(themeName or "").strip().lower() == "list":
-        return listThemes_sync(dataFB)
+        return _listThemes_blocking(dataFB)
     if action == "find":
-        return findTheme_sync(dataFB, themeName)
-    return changeTheme_sync(
+        return _findTheme_blocking(dataFB, themeName)
+    return _changeTheme_blocking(
         dataFB,
         threadID,
         themeName,

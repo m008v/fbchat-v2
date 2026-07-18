@@ -48,7 +48,7 @@ def _parse_response(payload: dict[str, Any], new_contents: str) -> dict[str, Any
     }
 
 
-def func_sync(
+def _func_blocking(
     dataFB: dict[str, Any], newContents: str, uploadPost: bool = False
 ) -> dict[str, Any]:
     try:

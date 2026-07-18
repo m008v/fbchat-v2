@@ -36,7 +36,7 @@ def _parse_response(payload: dict[str, Any]) -> dict[str, Any]:
     return {"success": 1, "NotificationResults": results}
 
 
-def func_sync(dataFB: dict[str, Any]) -> dict[str, Any]:
+def _func_blocking(dataFB: dict[str, Any]) -> dict[str, Any]:
     try:
         payload = post_form_json(
             GRAPHQL_URL, _build_request(dataFB), dataFB["cookieFacebook"]

@@ -81,7 +81,7 @@ Never recursively call connection setup from an MQTT callback. Signal an outer r
 
 ## E2EE bridge
 
-Python starts `fbchat-bridge-e2ee(.exe)` and exchanges one JSON object per line over stdin/stdout. `_BridgeProcess.call()` adapts the blocking response queue. `BridgeActions` must provide matching `*_sync` and suffix-free async methods.
+Python starts `fbchat-bridge-e2ee(.exe)` and exchanges one JSON object per line over stdin/stdout. `_BridgeProcess.call()` adapts the blocking response queue. `BridgeActions` must provide blocking helpers and suffix-free async methods.
 
 Auto-download rules:
 
