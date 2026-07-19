@@ -5,7 +5,7 @@
 [![English](https://img.shields.io/badge/English-0b8ecf?style=flat-square)](README_EN.md)
 [![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
 
-## Mục lục
+## 📋 Mục lục
 
 - [Vai trò](#vai-trò)
 - [Cấu trúc thư mục](#cấu-trúc-thư-mục)
@@ -21,7 +21,7 @@
 
 ---
 
-## Vai trò
+## 🎯 Vai trò
 
 `_features` chứa nghiệp vụ ngoài send/listen cơ bản:
 
@@ -37,7 +37,7 @@ Tầng này nhận `dataFB` đã được `_core._session.dataGetHome()` tạo. 
 
 ---
 
-## Cấu trúc thư mục
+## 🏗️ Cấu trúc thư mục
 
 ```text
 src/_features/
@@ -63,7 +63,7 @@ src/_features/
 
 ---
 
-## Public API
+## 🌐 Public API
 
 `_features._facebook.__all__`:
 
@@ -105,7 +105,7 @@ changed = await _changeEmoji.func(data_fb, "thread-id", "🔥")
 
 ---
 
-## Hợp đồng gọi async
+## 📝 Hợp đồng gọi async
 
 Mọi feature mạng trong thư mục này là coroutine. Chữ ký thường có dạng:
 
@@ -129,7 +129,7 @@ Quy tắc:
 
 ---
 
-## Facebook features
+## ✨ Facebook features
 
 ### `_changeBio.py`
 
@@ -311,7 +311,7 @@ Validation trước request:
 
 ---
 
-## Thread features
+## ✨ Thread features
 
 ### `_all_thread_data.py`
 
@@ -419,7 +419,7 @@ removed = await _addAdmin.func(
 
 ---
 
-## Tái sử dụng HTTP client
+## 🌍 Tái sử dụng HTTP client
 
 Một workflow nhiều request nên dùng một client:
 
@@ -444,7 +444,7 @@ Chỉ chạy song song các action độc lập. Không `gather()` hai mutation 
 
 ---
 
-## Kết quả và lỗi
+## 🩺 Kết quả và lỗi
 
 Module cũ chưa dùng một model kết quả thống nhất. Các dạng phổ biến:
 
@@ -469,7 +469,7 @@ Không coi HTTP 200 là success. Facebook thường đặt error trong GraphQL `
 
 ---
 
-## Sơ đồ phụ thuộc
+## 🔗 Sơ đồ phụ thuộc
 
 ```mermaid
 flowchart LR
@@ -486,7 +486,7 @@ flowchart LR
 
 ---
 
-## Quy tắc thêm feature
+## 📏 Quy tắc thêm feature
 
 1. Validate input trước I/O.
 2. Tách `_build_request`, transport call và `_parse_response`.
@@ -501,7 +501,7 @@ flowchart LR
 
 ---
 
-## Khắc phục sự cố
+## 🩺 Khắc phục sự cố
 
 | Hiện tượng | Nguyên nhân | Xử lý |
 |---|---|---|

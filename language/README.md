@@ -11,7 +11,7 @@
 
 [`../DOCS.md`](../DOCS.md) là tài liệu API chi tiết bằng tiếng Việt. [`../FLOWCHART.md`](../FLOWCHART.md) và [`../mindmap-mermaid.md`](../mindmap-mermaid.md) mô tả kiến trúc bằng Mermaid.
 
-## Quy tắc cập nhật
+## 📏 Quy tắc cập nhật
 
 - Khi public API đổi, cập nhật cả bản Việt và Anh trong cùng commit.
 - Ví dụ mạng mới phải dùng `async`/`await` và `httpx.AsyncClient` đúng hợp đồng hiện tại.
@@ -21,7 +21,7 @@
 - Kiểm tra internal link, code fence và Mermaid syntax trước push.
 - Không đưa cookie, token, password, TOTP secret hoặc `dataFB` thật vào ví dụ.
 
-## Kiểm tra encoding
+## 🧪 Kiểm tra encoding
 
 PowerShell có thể hiển thị sai tiếng Việt dù file vẫn là UTF-8. Trước khi sửa hàng loạt, đọc file với encoding rõ ràng hoặc kiểm tra codepoint. Quét tối thiểu:
 

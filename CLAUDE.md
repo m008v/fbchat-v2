@@ -2,7 +2,7 @@
 
 File này cung cấp context triển khai. Tài liệu cho người dùng nằm ở `README.md`, `README_EN.md` và `DOCS.md`.
 
-## Tóm tắt bắt buộc
+## 📌 Tóm tắt bắt buộc
 
 - Repository dùng kiến trúc 3 tầng: `_core`, `_features`, `_messaging`.
 - Public I/O API mới là async-first và không có hậu tố `_async`.
@@ -14,7 +14,7 @@ File này cung cấp context triển khai. Tài liệu cho người dùng nằm 
 - Mọi thay đổi public behavior phải cập nhật cả tài liệu Việt và Anh.
 - Commit dùng Conventional Commits có scope.
 
-## Cấu trúc repository
+## 📂 Cấu trúc repository
 
 ```text
 fbchat-v2/
@@ -56,7 +56,7 @@ fbchat-v2/
 └── pyproject.toml
 ```
 
-## Kiến trúc 3 tầng
+## 🏗️ Kiến trúc 3 tầng
 
 ### Tầng 1: `_core`
 
@@ -91,7 +91,7 @@ Sở hữu:
 
 Phụ thuộc `_core`. Chỉ bot/application mới phối hợp `_features` với `_messaging`.
 
-## Hợp đồng `dataFB`
+## 📋 Hợp đồng `dataFB`
 
 Schema tối thiểu:
 
@@ -121,7 +121,7 @@ missing = [name for name in REQUIRED if not data_fb.get(name)]
 logger.error("Missing dataFB fields: %s", missing)
 ```
 
-## Hợp đồng async
+## ⚡ Hợp đồng async
 
 ### Naming
 
@@ -182,7 +182,7 @@ async def func(
 
 Caller-owned client không được đóng bên trong feature. Owned temporary client phải được context manager đóng.
 
-## HTTP implementation
+## 🌐 HTTP implementation
 
 ### Transport flow
 
@@ -229,7 +229,7 @@ HTTP 200 không đồng nghĩa mutation success.
 - Retry chỉ áp dụng lỗi transient, có backoff và giới hạn.
 - Không retry mutation mù nếu request có thể đã được server áp dụng.
 
-## Session và storage
+## 💾 Session và storage
 
 `dataGetHome()`:
 
@@ -243,7 +243,7 @@ HTTP 200 không đồng nghĩa mutation success.
 
 `src/config.json` không được track. Đừng “tiện tay” commit file này khi test bot.
 
-## Feature conventions
+## 📐 Feature conventions
 
 Mỗi module mới nên tách:
 
@@ -269,7 +269,7 @@ Yêu cầu:
 - Error result giữ message hữu ích nhưng không chứa secret.
 - Parser unit-test được mà không gọi mạng.
 
-## Regular messaging
+## 💬 Regular messaging
 
 `_send.api.send()` build một form mới cho mỗi call. Giữ concurrency safety này. `self.results` chỉ dành cho compatibility/debug snapshot.
 
@@ -286,7 +286,7 @@ Input rules:
 
 `_reactions.func()` trả raw `httpx.Response`, khác với phần lớn module trả dict. Đừng document sai contract này.
 
-## Regular listener lifecycle
+## 🔄 Regular listener lifecycle
 
 `listeningEvent.__init__()` không chạy network. Workflow:
 
@@ -309,7 +309,7 @@ Invariant:
 - Reconnect ở vòng ngoài, không đệ quy trong callback.
 - TLS certificate verification bật.
 
-## E2EE bridge architecture
+## 🔐 E2EE bridge architecture
 
 ```text
 asyncio application
@@ -398,7 +398,7 @@ Public async methods:
 
 Mỗi async method có blocking counterpart rõ hậu tố. Binary bytes được base64 đúng tại RPC boundary, không sớm hơn.
 
-## `src/main.py`
+## 🤖 `src/main.py`
 
 Bot mẫu hiện tại:
 
@@ -422,7 +422,7 @@ async def _cmd_name(self, message: dict[str, Any], argument: str) -> None:
 
 Đăng ký handler trong `self._handlers`. Không chạy CPU-bound work trực tiếp trên loop.
 
-## Login security
+## 🛡️ Login security
 
 - Cookie session là flow khuyến nghị.
 - FB4A key/token built-in là legacy defaults; env chỉ override.
@@ -432,7 +432,7 @@ async def _cmd_name(self, message: dict[str, Any], argument: str) -> None:
 - Giữ xử lý subcode `1348162`, `1348023` trừ khi có evidence server mới.
 - Mocked tests không phải live account validation.
 
-## Config files
+## ⚙️ Config files
 
 `src/config.example.json` được track:
 
@@ -448,7 +448,7 @@ async def _cmd_name(self, message: dict[str, Any], argument: str) -> None:
 
 `src/config.json` phải local và gitignored. Không copy secret vào `.env.example`, README, test hoặc fixture.
 
-## Testing strategy
+## 🧪 Testing strategy
 
 ### Python
 
@@ -490,7 +490,7 @@ Khi đổi RPC:
 4. Thêm Go test và Python mock test.
 5. Cập nhật bridge README và messaging docs.
 
-## Documentation surface
+## 📚 Documentation surface
 
 | File | Audience |
 |---|---|
@@ -507,7 +507,7 @@ Khi đổi RPC:
 
 Không sửa một bản ngôn ngữ rồi bỏ bản còn lại. Internal links và code examples phải được verify.
 
-## UTF-8 và văn bản tiếng Việt
+## 🔤 UTF-8 và văn bản tiếng Việt
 
 - File Markdown và Python lưu UTF-8.
 - Chuỗi tiếng Việt trong code viết đầy đủ dấu.
@@ -516,7 +516,7 @@ Không sửa một bản ngôn ngữ rồi bỏ bản còn lại. Internal links
 - Đọc bằng `encoding="utf-8"` và kiểm tra codepoint trước khi rewrite hàng loạt.
 - Không dùng em dash trong tài liệu của branch này; dùng dấu gạch ngang `-`.
 
-## Git rules
+## 📝 Git rules
 
 - Kiểm tra branch, remote và worktree trước staging.
 - Worktree bẩn thì stage surgical, không `git add -A` mù.
@@ -532,7 +532,7 @@ refactor(core): reuse async http transport
 - Chạy `git diff --check` trước commit.
 - Không force-push trừ khi task yêu cầu rewrite history; khi cần dùng `--force-with-lease`.
 
-## Quy trình thêm một feature
+## 🚀 Quy trình thêm một feature
 
 1. Xác định đúng tầng.
 2. Đọc module tương tự gần nhất.
@@ -545,7 +545,7 @@ refactor(core): reuse async http transport
 9. Cập nhật tài liệu Việt và Anh.
 10. Quét UTF-8 và `git diff --check`.
 
-## Gotcha đã từng xảy ra
+## ⚠️ Gotcha đã từng xảy ra
 
 ### Coroutine không được await
 
@@ -602,7 +602,7 @@ Edit/theme success chỉ xác nhận publish. Đừng đổi message thành “s
 
 Không replace Vietnamese chỉ vì `Get-Content` render sai. Verify bytes/codepoints trước.
 
-## Pre-commit checklist
+## ✅ Pre-commit checklist
 
 - [ ] Đúng tầng và không circular import.
 - [ ] Public I/O async-first.

@@ -1,12 +1,12 @@
 # fbchat-v2 Code of Conduct
 
-## Purpose
+## 🎯 Purpose
 
 `fbchat-v2` is an open-source reverse-engineering project maintained by people with different backgrounds, experience levels, languages, and goals. We want issue discussions, pull requests, reviews, and community channels to remain useful, safe, and technically focused.
 
 By participating, you agree to follow this Code of Conduct and help maintain an environment where people can contribute without harassment or intimidation.
 
-## Scope
+## 🌍 Scope
 
 This Code applies to:
 
@@ -17,7 +17,7 @@ This Code applies to:
 
 It applies to maintainers, contributors, users, reviewers, and anyone else participating in project spaces.
 
-## Expected behavior
+## ✅ Expected behavior
 
 Participants should:
 
@@ -30,7 +30,7 @@ Participants should:
 - Protect cookies, credentials, tokens, TOTP secrets, E2EE keys, and other account data.
 - Use reactions, humor, and informal language in ways that do not target or exclude another participant.
 
-## Unacceptable behavior
+## 🚫 Unacceptable behavior
 
 The following behavior is not allowed:
 
@@ -45,7 +45,7 @@ The following behavior is not allowed:
 - Repeatedly derailing technical discussion after a maintainer asks to return to scope.
 - Impersonating a maintainer or falsely presenting an unofficial build as an official project release.
 
-## Technical feedback
+## 📢 Technical feedback
 
 Strong technical criticism is welcome when it is specific and actionable.
 
@@ -59,7 +59,7 @@ Unhelpful feedback:
 
 Review the change, not the contributor. Explain the failure path, security impact, or maintenance cost and propose a practical next step.
 
-## Handling sensitive data
+## 📌 Handling sensitive data
 
 This project works with account sessions, so accidental disclosure is a serious risk.
 
@@ -72,7 +72,7 @@ If a user posts a secret:
 
 Security vulnerabilities should not be turned into public exploitation guides while users remain exposed. Contact the maintainers privately first when responsible disclosure is appropriate.
 
-## Reporting a violation
+## 📢 Reporting a violation
 
 Report conduct violations to the project team at `minhhuydev@icloud.com`. You may also contact [@mhuydev on Telegram](https://t.me/mhuydev).
 
@@ -85,7 +85,7 @@ Include, when possible:
 
 Do not include unrelated account credentials or private data in the report.
 
-## Enforcement process
+## 👮 Enforcement process
 
 Maintainers will review reports in good faith and may:
 
@@ -100,16 +100,16 @@ The response will be proportional to severity, history, intent, impact, and whet
 
 Maintainers will make reasonable efforts to protect the reporter's privacy. Complete confidentiality cannot be guaranteed when evidence must be shared to investigate or when law requires disclosure.
 
-## Maintainer responsibility
+## 🤖 Maintainer responsibility
 
 Maintainers are expected to apply this Code consistently. A maintainer who is directly involved in a report should recuse themselves when another maintainer can review it.
 
 Project authority must not be used to retaliate against reporters, silence legitimate technical criticism, or favor friends. Enforcement decisions should be based on behavior and evidence.
 
-## Appeals
+## ⚖️ Appeals
 
 A participant may appeal an enforcement decision by contacting the project team once with relevant context or evidence that was not previously considered. Repeated messages, harassment, or attempts to evade restrictions may result in additional action.
 
-## Agreement
+## ⚖️ Agreement
 
 Participation in `fbchat-v2` project spaces means accepting this Code of Conduct. The goal is not to eliminate disagreement; it is to keep disagreement productive, evidence-based, and safe for the people doing the work.

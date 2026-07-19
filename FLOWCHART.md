@@ -4,7 +4,7 @@
 
 Tài liệu này mô tả đường đi của dữ liệu trong runtime hiện tại. Worker thread chỉ xuất hiện ở boundary thư viện blocking; HTTP feature chạy native async qua `httpx`.
 
-## 1. Luồng thư mục và dependency
+## 1. 🛤️ Luồng thư mục và dependency
 
 ```mermaid
 flowchart TD
@@ -28,7 +28,7 @@ flowchart TD
 
 Dependency phải đi một chiều. `_core` không import ngược `_features` hoặc `_messaging`.
 
-## 2. Session bootstrap
+## 2. 💾 Session bootstrap
 
 ```mermaid
 flowchart TD
@@ -48,7 +48,7 @@ flowchart TD
 
 `dataFB` chứa cookie và CSRF token. Mọi nhánh sau đó phải coi object này là secret.
 
-## 3. HTTP feature async
+## 3. 🌍 HTTP feature async
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +77,7 @@ sequenceDiagram
 
 Nếu caller không truyền client, transport tạo client tạm và đóng sau call. Với workflow nhiều request, caller nên sở hữu một `AsyncClient` dùng chung.
 
-## 4. Gửi tin thường
+## 4. 💬 Gửi tin thường
 
 ```mermaid
 flowchart TD
@@ -95,7 +95,7 @@ flowchart TD
 
 Form không được lưu làm mutable state dùng chung. `sender.results` chỉ là snapshot compatibility.
 
-## 5. Upload attachment
+## 5. 📎 Upload attachment
 
 ```mermaid
 flowchart TD
@@ -116,7 +116,7 @@ flowchart TD
 
 `uploadID` và `attachmentID` là hai giá trị khác nhau. Chỉ `attachmentID` hợp lệ mới được đưa vào send.
 
-## 6. Listener MQTT thường
+## 6. 📡 Listener MQTT thường
 
 ```mermaid
 sequenceDiagram
@@ -145,7 +145,7 @@ sequenceDiagram
 
 Reconnect xảy ra ở vòng ngoài của listener. Callback chỉ signal state; không tự gọi đệ quy connection setup.
 
-## 7. E2EE startup
+## 7. 🔐 E2EE startup
 
 ```mermaid
 sequenceDiagram
@@ -179,7 +179,7 @@ sequenceDiagram
 
 Send trước bước readiness là race. `wait_until_connected` là blocking event wait nên application async gọi nó qua `asyncio.to_thread`.
 
-## 8. E2EE event delivery
+## 8. 🔐 E2EE event delivery
 
 ```mermaid
 sequenceDiagram
@@ -206,7 +206,7 @@ sequenceDiagram
 
 Callback không `await` handler. Việc chuyển về event loop là responsibility của application, như pattern trong `src/main.py`.
 
-## 9. E2EE send/action
+## 9. 🔐 E2EE send/action
 
 ```mermaid
 flowchart LR
@@ -230,7 +230,7 @@ flowchart LR
 
 Binary media được base64 tại RPC boundary. JSON-RPC request bị giới hạn 150 MiB.
 
-## 10. Bridge watchdog
+## 10. 🌉 Bridge watchdog
 
 ```mermaid
 flowchart TD
@@ -250,7 +250,7 @@ flowchart TD
 
 Application vẫn phải monitor listener task và `bridge_fatal`; watchdog không biến lỗi credential hoặc binary hỏng thành kết nối khỏe.
 
-## 11. Bot command flow
+## 11. 🤖 Bot command flow
 
 ```mermaid
 flowchart TD
@@ -272,7 +272,7 @@ flowchart TD
     O -- Không --> Q[send_message bằng threadId]
 ```
 
-## 12. Shutdown
+## 12. 📌 Shutdown
 
 ```mermaid
 sequenceDiagram
@@ -295,7 +295,7 @@ sequenceDiagram
 
 Không đóng client trước khi handler đang dùng xong. Không bỏ listener task chạy nền sau khi event loop kết thúc.
 
-## 13. Error boundary
+## 13. 🩺 Error boundary
 
 ```mermaid
 flowchart TD
