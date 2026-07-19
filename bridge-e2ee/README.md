@@ -2,7 +2,9 @@
 
 Bridge Go cho Facebook Messenger thường và chat cá nhân E2EE. Binary chạy như subprocess, nhận JSON-RPC từng dòng qua stdin, trả response/event từng dòng qua stdout.
 
-[README chính](../README.md) | [Messaging API](../src/_messaging/README.md) | [Flowchart](../FLOWCHART.md)
+[![docs](https://img.shields.io/badge/docs-main-3b3b3b?style=flat-square)](../README.md)
+[![Messaging DOCS](https://img.shields.io/badge/Messaging-DOCS-2563eb?style=flat-square)](../src/_messaging/README.md)
+[![Flowchart](https://img.shields.io/badge/Flowchart-runtime-0b8ecf?style=flat-square)](../FLOWCHART.md)
 
 > [!IMPORTANT]
 > Application Python nên dùng `await listeningE2EEEvent.connect_mqtt()`, `await listener.send_e2ee_message()` và các method async của `BridgeActions`. Giao thức stdin/stdout bên dưới dành cho việc tích hợp và debug bridge.

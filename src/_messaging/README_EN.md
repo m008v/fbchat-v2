@@ -2,7 +2,9 @@
 
 > Send, receive, attachments, reactions, unsend, editing, themes, notes, and the Messenger E2EE bridge.
 
-[Main README](../../README_EN.md) | [Tiếng Việt](README.md) | [API guide](../../DOCS.md) | [E2EE bridge](../../bridge-e2ee/README.md)
+[![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-0b8ecf?style=flat-square)](README.md)
+[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
+[![E2EE bridge](https://img.shields.io/badge/E2EE-bridge-ff6b35?style=flat-square)](../../bridge-e2ee/README.md)
 
 ## Contents
 

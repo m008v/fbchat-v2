@@ -2,7 +2,8 @@
 
 > Session, HTTP transport, storage, login credential và utility dùng chung cho toàn bộ `fbchat-v2`.
 
-[README chính](../../README.md) | [English](README_EN.md) | [Tài liệu API](../../DOCS.md)
+[![English](https://img.shields.io/badge/English-0b8ecf?style=flat-square)](README_EN.md)
+[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
 
 ## Mục lục
 

@@ -2,7 +2,8 @@
 
 > Facebook account actions and thread administration built on `_core`'s `dataFB` contract and `httpx` transport.
 
-[Main README](../../README_EN.md) | [Tiếng Việt](README.md) | [API guide](../../DOCS.md)
+[![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-0b8ecf?style=flat-square)](README.md)
+[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
 
 ## Contents
 
