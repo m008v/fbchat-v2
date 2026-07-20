@@ -14,6 +14,8 @@ Cách hoạt động:
 File liên quan:
   - src/main.py và các entrypoint khác.
   - Phụ thuộc vào _core._session, _core._utils để khởi tạo và thao tác HTTP.
+
+Author: @m008v (MinhHuyDev)
 """
 
 from importlib.metadata import version, PackageNotFoundError
