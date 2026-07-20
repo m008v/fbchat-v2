@@ -13,12 +13,18 @@ _DOC_ID = 26146132388368957
 
 
 def _build_form(
-    dataFB: dict[str, Any], postID: str 
+    dataFB: dict[str, Any], postID: str , typePost: str = "my_post"
 ) -> dict[str, Any]:
     if not str(postID).strip():
         raise ValueError("ID bài viết không được để trống.")
-
-    postID_Params = f"S:_I{dataFB.get('FacebookID')}:{postID}:{postID}"
+    """
+        my_post = những bài viết của chính bản thân bạn viết nên (không phải share)
+        others = phần còn lại, những bài viết của người khác, hoặc bài viết share từ người khác
+    """
+    if typePost == "my_post":
+        postID_Params = f"S:_I1054626957723036:{postID}"
+    else:
+        postID_Params = f"S:_I{dataFB['FacebookID']}:{postID}:{postID}"
     PostID_Base64 = base64.b64encode(postID_Params.encode()).decode()
     data_form = formAll(dataFB, "useCometTrashPostMutation", _DOC_ID)
     data_form["variables"] = json.dumps(
@@ -54,11 +60,12 @@ def _parse_result(payload: dict[str, Any]) -> dict[str, Any]:
 async def func(
     dataFB: dict[str, Any],
     postID: str,
+    typePost: str = "my_post",
     client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
     payload = await post_form_json_async(
         _URL,
-        _build_form(dataFB, postID),
+        _build_form(dataFB, postID, typePost),
         dataFB["cookieFacebook"],
         client=client,
     )

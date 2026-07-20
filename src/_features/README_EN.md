@@ -177,11 +177,14 @@ Empty text is rejected. `attachmentID` remains in the signature for planned supp
 result = await _deletePost.func(
     data_fb,
     "1234567890",
+    typePost="my_post",
     client=client,
 )
 ```
 
-Uses `useCometTrashPostMutation` to move a post to the trash bin. Requires the `postID`. Returns `success` if successful.
+Uses `useCometTrashPostMutation` to move a post to the trash bin. 
+- `postID`: The ID of the post.
+- `typePost`: The type of the post (`"my_post"` for your own posts, `"others"` for shared posts or others' posts). Returns `success` if successful.
 
 ### `_professional.py`
 

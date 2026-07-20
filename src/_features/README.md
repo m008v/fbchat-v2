@@ -179,11 +179,14 @@ Success:
 result = await _deletePost.func(
     data_fb,
     "1234567890",
+    typePost="my_post",
     client=client,
 )
 ```
 
-Sử dụng `useCometTrashPostMutation` để chuyển bài viết vào thùng rác. Yêu cầu truyền `postID`. Trả về `success` nếu thành công.
+Sử dụng `useCometTrashPostMutation` để chuyển bài viết vào thùng rác. 
+- `postID`: ID của bài viết cần xoá.
+- `typePost`: Loại bài viết (`"my_post"` cho bài tự đăng, `"others"` cho bài share/bài của người khác). Trả về `success` nếu thành công.
 
 ### `_professional.py`
 
