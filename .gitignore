@@ -48,4 +48,4 @@ src/config.json
 AGENT_MEMORYs.md
 .vbsec-tmp/
 vbsec-reports/
-test.py
+src/test.py
