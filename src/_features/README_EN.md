@@ -42,6 +42,7 @@ The layer receives `dataFB` from `_core._session.dataGetHome()`. It does not rea
 ```text
 src/_features/
 ├── _facebook/
+│   ├── _archivePost.py          # Archive a timeline post
 │   ├── _blocking.py             # Block/unblock a user
 │   ├── _changeBio.py            # Update bio
 │   ├── _createPost.py           # Create a timeline post
@@ -70,6 +71,7 @@ src/_features/
 
 ```python
 [
+    "_archivePost",
     "_changeBio",
     "_createPost",
     "_deletePost",
@@ -170,6 +172,19 @@ Empty text is rejected. `attachmentID` remains in the signature for planned supp
     "urlPost": "https://www.facebook.com/...",
 }
 ```
+
+### `_archivePost.py`
+
+```python
+result = await _archivePost.func(
+    data_fb,
+    "1234567890",
+    typePost="my_post",
+    client=client,
+)
+```
+
+Uses `useCometArchivePostMutation` to archive a post. Works similarly to `_deletePost`.
 
 ### `_deletePost.py`
 

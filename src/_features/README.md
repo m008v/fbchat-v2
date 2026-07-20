@@ -42,6 +42,7 @@ Tầng này nhận `dataFB` đã được `_core._session.dataGetHome()` tạo. 
 ```text
 src/_features/
 ├── _facebook/
+│   ├── _archivePost.py          # Lưu trữ bài timeline
 │   ├── _blocking.py             # Block/unblock user
 │   ├── _changeBio.py            # Đổi bio
 │   ├── _createPost.py           # Tạo bài timeline
@@ -70,6 +71,7 @@ src/_features/
 
 ```python
 [
+    "_archivePost",
     "_changeBio",
     "_createPost",
     "_deletePost",
@@ -172,6 +174,19 @@ Success:
     "urlPost": "https://www.facebook.com/...",
 }
 ```
+
+### `_archivePost.py`
+
+```python
+result = await _archivePost.func(
+    data_fb,
+    "1234567890",
+    typePost="my_post",
+    client=client,
+)
+```
+
+Sử dụng `useCometArchivePostMutation` để lưu trữ bài viết. Cơ chế hoạt động giống `_deletePost`.
 
 ### `_deletePost.py`
 
