@@ -795,6 +795,7 @@ Mọi API trong bảng là coroutine và phần lớn nhận optional keyword-on
 |---|---|---|
 | `_changeBio` | `func(dataFB, newContents, uploadPost=False)` | Đổi bio |
 | `_createPost` | `func(dataFB, newContents, attachmentID=None)` | Tạo bài timeline |
+| `_deletePost` | `func(dataFB, postID)` | Xóa bài viết (vào thùng rác) |
 | `_professional` | `func(dataFB, statusBusiness=None)` | Bật/tắt Professional mode |
 | `_search` | `func(dataFB, keywordSearch)` | Tìm user, tối đa 5 kết quả đã loại trùng |
 | `_blocking` | `func(dataFB, idUser, choiceInteract)` | `block` hoặc `unblock` |
@@ -827,6 +828,8 @@ async with httpx.AsyncClient(timeout=30) as client:
 ```
 
 `_createPost` chưa có schema Composer ổn định cho attachment. Truyền `attachmentID` sẽ raise `NotImplementedError`, tránh trường hợp caller tưởng ảnh đã được đăng trong khi module âm thầm bỏ qua.
+
+`_deletePost` sử dụng `useCometTrashPostMutation` để đẩy bài viết vào thùng rác thay vì xoá vĩnh viễn, an toàn và dễ khôi phục khi cần thiết. Lệnh yêu cầu base64 encode tham số ID của Facebook.
 
 Marketplace validate category, tên, giá không âm, danh sách ảnh và tọa độ seller trước request.
 
