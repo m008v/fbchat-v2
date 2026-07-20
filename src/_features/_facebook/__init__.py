@@ -3,8 +3,7 @@
   src/_features/_facebook/__init__.py
 
 Mục đích:
-  - Cung cấp module cho thư viện fbchat-v2 (phiên bản async).
-  - Comment đầu file giúp developer dễ dàng theo dõi vị trí, luồng xử lý và dữ liệu của tính năng.
+  - Export các chức năng liên quan đến tài khoản Facebook cá nhân.
 
 Cách hoạt động:
   - Nạp dependency/guard cần thiết, thực hiện các async HTTP requests tới API nội bộ hoặc GraphQL của Facebook.

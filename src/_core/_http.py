@@ -3,8 +3,7 @@
   src/_core/_http.py
 
 Mục đích:
-  - Cung cấp module cho thư viện fbchat-v2 (phiên bản async).
-  - Comment đầu file giúp developer dễ dàng theo dõi vị trí, luồng xử lý và dữ liệu của tính năng.
+  - Wrapper bao bọc httpx.AsyncClient để thực hiện các request HTTP cơ bản.
 
 Cách hoạt động:
   - Nạp dependency/guard cần thiết, thực hiện các async HTTP requests tới API nội bộ hoặc GraphQL của Facebook.

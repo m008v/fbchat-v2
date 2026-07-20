@@ -3,8 +3,7 @@
   src/_features/_thread/_all_thread_data.py
 
 Mục đích:
-  - Cung cấp module cho thư viện fbchat-v2 (phiên bản async).
-  - Comment đầu file giúp developer dễ dàng theo dõi vị trí, luồng xử lý và dữ liệu của tính năng.
+  - Lấy thông tin và danh sách các đoạn chat/thread.
 
 Cách hoạt động:
   - Nạp dependency/guard cần thiết, thực hiện các async HTTP requests tới API nội bộ hoặc GraphQL của Facebook.
