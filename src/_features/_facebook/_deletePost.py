@@ -15,19 +15,6 @@ _DOC_ID = 26146132388368957
 def _build_form(
     dataFB: dict[str, Any], postID: str 
 ) -> dict[str, Any]:
-    """
-    Tạo form dữ liệu GraphQL mutation để xoá bài viết.
-
-    Args:
-        dataFB (dict[str, Any]): Dữ liệu phiên đăng nhập Facebook (chứa FacebookID, cookie, v.v.).
-        postID (str): ID của bài viết cần xoá.
-
-    Returns:
-        dict[str, Any]: Payload form đã được format sẵn sàng để gửi lên Facebook.
-
-    Raises:
-        ValueError: Nếu postID trống hoặc không hợp lệ.
-    """
     if not str(postID).strip():
         raise ValueError("ID bài viết không được để trống.")
 
@@ -52,15 +39,6 @@ def _build_form(
 
 
 def _parse_result(payload: dict[str, Any]) -> dict[str, Any]:
-    """
-    Xử lý phản hồi từ Facebook GraphQL sau khi gửi yêu cầu xoá bài.
-
-    Args:
-        payload (dict[str, Any]): JSON response từ Facebook API.
-
-    Returns:
-        dict[str, Any]: Kết quả dạng dictionary chứa trạng thái thành công hoặc lỗi.
-    """
     try:
         status = payload["data"]["move_to_trash_story"]["success"]
     except (KeyError, TypeError):
@@ -80,17 +58,6 @@ async def func(
     postID: str,
     client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
-    """
-    Hàm chính thực thi chức năng xoá bài viết trên Facebook (di chuyển vào thùng rác).
-
-    Args:
-        dataFB (dict[str, Any]): Dữ liệu phiên đăng nhập Facebook.
-        postID (str): ID của bài viết cần xoá.
-        client (httpx.AsyncClient | None, optional): Session HTTP client nếu có. Mặc định None.
-
-    Returns:
-        dict[str, Any]: Kết quả trả về chứa "success" hoặc "error".
-    """
     payload = await post_form_json_async(
         _URL,
         _build_form(dataFB, postID),

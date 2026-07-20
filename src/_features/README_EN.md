@@ -45,6 +45,7 @@ src/_features/
 │   ├── _blocking.py             # Block/unblock a user
 │   ├── _changeBio.py            # Update bio
 │   ├── _createPost.py           # Create a timeline post
+│   ├── _deletePost.py           # Delete a timeline post
 │   ├── _get_user_info.py        # Profile information
 │   ├── _marketplace.py          # Marketplace create/read
 │   ├── _notification.py         # Notifications
@@ -71,6 +72,7 @@ src/_features/
 [
     "_changeBio",
     "_createPost",
+    "_deletePost",
     "_professional",
     "_search",
     "_blocking",
@@ -168,6 +170,18 @@ Empty text is rejected. `attachmentID` remains in the signature for planned supp
     "urlPost": "https://www.facebook.com/...",
 }
 ```
+
+### `_deletePost.py`
+
+```python
+result = await _deletePost.func(
+    data_fb,
+    "1234567890",
+    client=client,
+)
+```
+
+Uses `useCometTrashPostMutation` to move a post to the trash bin. Requires the `postID`. Returns `success` if successful.
 
 ### `_professional.py`
 

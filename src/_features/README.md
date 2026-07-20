@@ -45,6 +45,7 @@ src/_features/
 │   ├── _blocking.py             # Block/unblock user
 │   ├── _changeBio.py            # Đổi bio
 │   ├── _createPost.py           # Tạo bài timeline
+│   ├── _deletePost.py           # Xóa bài timeline
 │   ├── _get_user_info.py        # Profile info
 │   ├── _marketplace.py          # Marketplace create/read
 │   ├── _notification.py         # Notification
@@ -71,6 +72,7 @@ src/_features/
 [
     "_changeBio",
     "_createPost",
+    "_deletePost",
     "_professional",
     "_search",
     "_blocking",
@@ -170,6 +172,18 @@ Success:
     "urlPost": "https://www.facebook.com/...",
 }
 ```
+
+### `_deletePost.py`
+
+```python
+result = await _deletePost.func(
+    data_fb,
+    "1234567890",
+    client=client,
+)
+```
+
+Sử dụng `useCometTrashPostMutation` để chuyển bài viết vào thùng rác. Yêu cầu truyền `postID`. Trả về `success` nếu thành công.
 
 ### `_professional.py`
 
