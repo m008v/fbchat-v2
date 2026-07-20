@@ -17,7 +17,10 @@ def _build_form(
 ) -> dict[str, Any]:
     if not str(postID).strip():
         raise ValueError("ID bài viết không được để trống.")
-
+    """
+        my_post = những bài viết của chính bản thân bạn viết nên (không phải share)
+        others = phần còn lại, những bài viết của người khác, hoặc bài viết share từ người khác
+    """
     if typePost == "my_post":
         postID_Params = f"S:_I1054626957723036:{postID}"
     else:
