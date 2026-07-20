@@ -19,9 +19,7 @@ def _build_form(
         raise ValueError("ID bài viết không được để trống.")
 
     postID_Params = f"S:_I{dataFB.get('FacebookID')}:{postID}:{postID}"
-    print(f"[deletePost] postID_Params: {postID_Params}")
     PostID_Base64 = base64.b64encode(postID_Params.encode()).decode()
-    print(f"[deletePost] PostID_Base64: {PostID_Base64}")
     data_form = formAll(dataFB, "useCometTrashPostMutation", _DOC_ID)
     data_form["variables"] = json.dumps(
         {
