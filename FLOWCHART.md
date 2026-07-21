@@ -188,7 +188,7 @@ sequenceDiagram
     participant Reader as Python reader thread
     participant Poll as bridge poll loop
     participant Callback as on_message callback
-    participant Loop as asyncio loop
+    participant EventLoop as asyncio loop
     participant Queue as asyncio.Queue
     participant Bot
 
@@ -197,8 +197,8 @@ sequenceDiagram
     Go-->>Reader: JSON line with event
     Reader->>Poll: thread-safe event queue
     Poll->>Callback: callback(event)
-    Callback->>Loop: call_soon_threadsafe(enqueue)
-    Loop->>Queue: put_nowait
+    Callback->>EventLoop: call_soon_threadsafe(enqueue)
+    EventLoop->>Queue: put_nowait
     Bot->>Queue: await get()
     Queue-->>Bot: event
     Bot->>Bot: filter, dedupe, dispatch command
