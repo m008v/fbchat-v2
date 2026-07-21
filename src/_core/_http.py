@@ -17,9 +17,9 @@ File liên quan:
 Author: @m008v (MinhHuyDev)
 """
 
-"""HTTP transport dùng chung, ưu tiên async và vẫn giữ tương thích sync."""
-
 from __future__ import annotations
+
+"""HTTP transport dùng chung, ưu tiên async và vẫn giữ tương thích sync."""
 
 from typing import Any
 
