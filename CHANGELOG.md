@@ -9,62 +9,218 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Unreleased]
 
+> Các thay đổi website dưới đây hiện chỉ nằm trong working copy `website/` đang
+> bị Git ignore; chúng chưa thuộc tag hoặc package phát hành nào.
+
+### Added
+
+- Thêm `website/validate_i18n.py` để kiểm tra cấu trúc song ngữ, các cặp VI/EN,
+  tab/panel, liên kết nội bộ và nội dung bị rò giữa hai locale.
+- Thay spinner cũ bằng package-stream preloader dùng lệnh `pip`, tiến trình
+  indeterminate, trạng thái screen reader, hard timeout fail-open 3,5 giây và
+  chế độ giảm chuyển động.
+- Bổ sung tài liệu vận hành và migration v2.3 cho bridge contract, error payload,
+  lifecycle async, privacy flags, năm bridge binary, `SHA256SUMS` và provenance.
+
+### Changed
+
+- Chuẩn hóa website thành giao diện VI/EN dùng chung DOM; metadata, ARIA,
+  placeholder, tìm kiếm, nút sao chép và định dạng số đổi theo locale hiện tại.
+- Khôi phục lấy release và số sao theo thời gian thực từ GitHub API, chuẩn hóa
+  tag legacy về SemVer, dùng mục tiêu 200 sao và canonical URL
+  `https://nqminkhuy.com/fbchat/`.
+- Đặt light theme làm mặc định, giữ action hero nằm ngang trên mobile và trình
+  bày owner/maintainer, super-contributor và contributor theo một hệ visual
+  thống nhất.
+
+### Fixed
+
+- Sửa language/theme toggle, version và star counter bị vô hiệu do literal
+  newline, phần tử locale bị ẩn hoặc skeleton không được gỡ.
+- Sửa bản dịch thiếu/lặp/lồng nhau, chuỗi tiếng Việt bị hỏng, code block và nút
+  copy biến mất khi chuyển sang tiếng Anh.
+- Clip hiệu ứng shine bên trong phần progress thật, sửa đường nối sọc chéo,
+  khoảng trắng thừa đầu hero, CSS variable thiếu, V2 badge bị ẩn và layout
+  contributor/preloader trên màn hình nhỏ.
+
 ## [2.3.1] - 2026-09-07
 
 ### Added
 
-- Module `_features._facebook._reactionPost`: Thả và gỡ cảm xúc bài viết timeline Facebook (`LIKE`, `LOVE`, `CARE`, `HAHA`, `WOW`, `SAD`, `ANGRY`, `UNDO`).
-- Hệ thống tài liệu chuyên biệt cho toàn bộ 13 module Facebook cá nhân tại `src/_features/_facebook/README.md` và `README_EN.md`.
-
-### Fixed
-
-- Chuẩn hóa telemetry attribution dynamic epoch milliseconds, dynamic client mutation ID, actor ID và referrer hợp lệ chống checkpoint Meta.
-- Tự động chuẩn hóa post ID thô sang Base64 `feedback:<postID>`, chống double encoding.
-- Khắc phục lỗi linter F401 và chuẩn hóa format Black/Ruff cho toàn bộ codebase.
-
-## [2.3.0] - 2026-08-29
+- Thêm `_features._facebook._reactionPost.func(...)` để thả hoặc gỡ cảm xúc
+  trên bài viết timeline Facebook.
+- Hỗ trợ `LIKE`, `LOVE`, `CARE`/`SUPPORT`, `HAHA`, `WOW`,
+  `SAD`/`SORRY`, `ANGRY`/`ANGER` và `UNDO`/`UNREACT`/`NONE`;
+  input không phân biệt hoa thường.
+- Thêm tài liệu VI/EN cho toàn bộ 13 module Facebook cá nhân, bảng reaction,
+  alias, chuẩn hóa feedback ID, telemetry và ví dụ sử dụng.
 
 ### Changed
 
-- Chuyển các feature HTTP sang transport `httpx` sync/async dùng chung; legacy adapter chỉ còn ở boundary nội bộ có lý do rõ.
-- Viết lại bot mẫu, listener thường, listener E2EE và bridge actions với lifecycle async rõ ràng.
-- Loại app access token hardcode; TOTP chạy cục bộ bằng `pyotp`; bridge download có size limit, atomic replace và checksum khi khả dụng.
-- Chặn SSRF ở Go `downloadMedia`; nâng Go 1.26.5 và `golang.org/x/net` v0.55.0 để xử lý toàn bộ vulnerability có call path mà `govulncheck` phát hiện.
-- Sửa lỗi gỡ admin báo sai action, `professional` xử lý bool, profile bổ sung dựng header sai, Marketplace khóa nhầm category và post âm thầm bỏ attachment.
-- Viết lại tài liệu hiện hành theo async/await. Các mục release cũ bên dưới là lịch sử và có thể nhắc API sync đã tồn tại tại thời điểm phát hành.
-
-### Security
-
-- Thay RNG tạo `AdvSecretKey` của bridge bằng `crypto/rand` và trả lỗi nếu nguồn
-  ngẫu nhiên an toàn thất bại.
-- Pin bridge tải tự động vào đúng tag của package, bắt buộc SHA-256 được đóng
-  trong wheel, kiểm tra redirect/size và fail closed khi checksum sai.
-- Ghi device state tuần tự bằng temp file, `fsync` và atomic rename; không còn
-  bỏ qua lỗi lưu identity, session hoặc prekey.
-- Mutation E2EE rollback cả RAM khi persistence lỗi; callback `deviceData` chạy
-  ngoài khóa lưu trữ và coalesce snapshot để không chặn Signal ratchet.
-- File config cookie được tạo atomic với quyền riêng tư; plaintext nội dung chat
-  và traceback bị ẩn mặc định.
+- Bổ sung `_reactionPost`, `_archivePost` và `_deletePost` vào
+  `_features._facebook.__all__` để public export phản ánh đúng module hiện có.
+- Sửa `.gitattributes` để GitHub Linguist tính source Go do dự án duy trì,
+  nhưng tiếp tục loại submodule upstream `bridge-e2ee/meta/` khỏi thống kê.
 
 ### Fixed
 
-- Sửa async `disconnect()` không await công việc shutdown.
-- Mutation unfriend/archive/delete không còn báo thành công khi GraphQL trả
-  `data=null`, `success=false` hoặc có `errors`.
-- Hoàn thiện lifecycle identity/session/prekey trong DeviceStore và trả lỗi rõ
-  cho các store operation chưa được bridge hỗ trợ.
-- Lưu đầy đủ LID/account/platform/device metadata, đồng bộ connect/disconnect và
-  không hạ cấp yêu cầu gửi E2EE sang transport thường khi E2EE chưa sẵn sàng.
-- Loại 7 lỗi `from __future__` làm source không compile.
+- Chuẩn hóa `feedback_id`: encode post ID thô thành Base64
+  `feedback:<postID>`, giữ token hợp lệ và không double-encode.
+- Dùng actor ID, `jazoest`, epoch milliseconds, client mutation ID và profile
+  referrer động thay cho attribution/referrer tĩnh bất thường.
+- Trả lỗi có cấu trúc khi reaction type, post ID, session data hoặc async
+  transport không hợp lệ; dọn tracking payload thừa.
+- Khắc phục Ruff F401/F541 và định dạng lại `_reactionPost.py` cùng
+  `_features._facebook.__init__.py` bằng Black.
 
 ### Packaging and CI
 
-- Wheel export đúng `_core`, `_features`, `_messaging` thay vì namespace `src`;
-  thêm smoke test cho wheel và editable install sạch.
-- CI enforce compile, Ruff, Black, mypy, pytest Python 3.10-3.14, Go test/vet,
-  package smoke test và JavaScript syntax.
-- Release tạo `SHA256SUMS`, provenance attestation và nhúng checksum của năm
-  bridge binary vào wheel `2.3.0`.
+- Đồng bộ version `2.3.1` trong metadata Python, runtime fallback, Go bridge,
+  workflow, verifier, test và tài liệu; rebuild bridge với đúng
+  `bridgeVersion` để tag validation không còn đọc nhầm `2.3.0`.
+- Mở rộng distribution verifier để bắt buộc package có `_reactionPost`.
+- Gỡ job tự động publish PyPI khỏi release workflow, nhưng giữ quality gate,
+  verified distributions, provenance, workflow artifact và GitHub Release.
+- Publish distribution `fbchat-v2==2.3.1` lên PyPI từ checkout phân phối riêng
+  sau khi wheel/sdist đạt Twine strict và không chứa file rác/cache.
+- Quality gate xác minh Ruff, Black, 149 pytest, Go test/vet và native bridge
+  RPC theo ma trận nền tảng.
+
+## [2.3.0] - 2026-08-29
+
+### Added
+
+- Thêm `_features._facebook._unFriend.func(...)` để hủy kết bạn theo Facebook
+  ID với validation input và kiểm tra lỗi GraphQL.
+- Thêm JSON-RPC `hello` để xác minh protocol version, bridge version và
+  capability trước khi bridge nhận traffic.
+- Thêm reusable quality gate, release artifact validator và native bridge RPC
+  smoke test cho quy trình phát hành.
+
+### Changed
+
+- Chuyển feature HTTP sang transport `httpx` sync/async dùng chung; legacy
+  adapter chỉ còn ở boundary nội bộ có lý do rõ.
+- Viết lại bot mẫu, listener thường, listener E2EE và bridge actions theo
+  lifecycle async có startup, readiness, cancellation, shutdown và cleanup rõ.
+- Quản lý E2EE bridge theo generation với total deadline, exponential backoff,
+  recovery tuần tự, writer queue riêng và timeout cho process/pipe treo.
+- Chỉ công bố readiness khi socket thường đã kết nối và E2EE đã đăng nhập;
+  listener E2EE trở thành single-use sau khi `stop()`.
+- Viết lại README VI/EN, `DOCS.md` và tài liệu module theo API async/await,
+  error contract, migration cùng quy trình build bridge hiện hành.
+
+### Security
+
+- Thay RNG tạo `AdvSecretKey` bằng `crypto/rand` và trả lỗi nếu nguồn ngẫu
+  nhiên an toàn thất bại.
+- Pin bridge auto-download vào đúng tag/package version, chỉ nhận trusted HTTPS
+  host, kiểm tra redirect, giới hạn 200 MiB và fail closed khi SHA-256 sai.
+- Giới hạn Go media download vào trusted Facebook/Messenger CDN, kiểm soát
+  redirect và hard cap 100 MiB để giảm SSRF cùng tải dữ liệu vô hạn.
+- Sinh mã TOTP cục bộ bằng `pyotp`, không gửi secret 2FA tới dịch vụ trung
+  gian; nâng toolchain Go lên `1.26.5` và `golang.org/x/net` lên `v0.55.0`
+  trong đợt hardening.
+- Ghi device state tuần tự bằng temp file, `fsync` và atomic rename; rollback
+  cả RAM khi persistence lỗi và không chặn Signal ratchet trong callback.
+- Tạo config cookie atomic với quyền riêng tư/ACL phù hợp; ẩn nội dung message,
+  command và traceback mặc định.
+
+### Fixed
+
+- Khôi phục delivery tin nhắn thường và E2EE từ live upsert; lọc typing,
+  read-receipt, reaction cùng event phụ trước queue, giới hạn queue và chống
+  replay/dedupe placeholder.
+- Sửa async `disconnect()` không await shutdown, cleanup startup nằm ngoài
+  `finally`, bridge response sai kiểu, short write, stale generation và race
+  giữa close/reconnect.
+- Mutation unfriend/archive/delete không còn báo thành công khi GraphQL trả
+  `data=null`, `success=false` hoặc có `errors`.
+- Hoàn thiện identity/session/prekey cùng LID/account/platform/device metadata
+  trong DeviceStore; không hạ cấp E2EE sang transport thường khi chưa sẵn sàng.
+- Sửa boundary sync/async trong listener, theme, note và attachment; khôi phục
+  tương thích CPython 3.10 và loại bảy lỗi `from __future__` làm source không
+  compile.
+- Sửa gỡ admin báo sai action, `professional` xử lý bool, profile bổ sung dựng
+  header sai, Marketplace khóa nhầm category và post bỏ attachment.
+- Xử lý socket error của Messagix không có `Err` mà không làm listener crash.
+
+### Packaging and CI
+
+- Wheel export đúng `_core`, `_features`, `_messaging` thay vì namespace
+  `src`; thêm Twine strict, wheel/sdist và fresh-install smoke test.
+- CI enforce compileall, Ruff, Black, full mypy, pytest Python 3.10-3.14,
+  Go test/vet/race, package smoke và native JSON-RPC trên Linux/macOS/Windows.
+- Release build đúng năm bridge binary, tạo `SHA256SUMS`, nhúng checksum vào
+  wheel/sdist và tạo provenance attestation trước khi phát hành.
+- Chuẩn hóa clean-environment test bằng `pythonpath = ["src", "."]` và
+  `python -m pytest` để import `scripts.*` không phụ thuộc máy dev.
+
+### Compatibility
+
+- Yêu cầu Python `>=3.10`; API async phải được `await` và caller phải xử lý
+  payload `{"error": 1, ...}` thay vì chỉ tin HTTP 200.
+- Custom bridge phải cùng package version và hỗ trợ protocol `1`; Windows
+  ARM64 chưa có binary dựng sẵn.
+
+## [2.2.1] - 2026-07-21
+
+### Added
+
+- Thêm `_features._facebook._deletePost` để đưa bài timeline vào thùng rác
+  bằng `useCometTrashPostMutation`.
+- Thêm `_features._facebook._archivePost` để chuyển bài timeline vào kho lưu
+  trữ bằng `useCometArchivePostMutation`.
+- Cả hai module hỗ trợ `typePost="my_post"` và `typePost="others"` để chọn
+  đúng payload theo nguồn bài viết.
+
+### Fixed
+
+- Sửa key parse payload bị copy-paste sai trong `_deletePost.py` và loại debug
+  text còn sót.
+
+### Documentation
+
+- Đồng bộ tài liệu VI/EN, flowchart và module reference cho archive/delete;
+  làm rõ đây là thao tác lưu trữ hoặc chuyển vào thùng rác, không xóa vĩnh viễn.
+
+## [2.2.0] - 2026-07-19
+
+### Changed
+
+- Chuyển public feature/messaging API sang async-first coroutine và thống nhất
+  entry point `func(...)`; loại các alias `func_async`/`func_sync` dư thừa.
+- Gom HTTP runtime về `_core._http` với `httpx.AsyncClient` có thể inject và
+  tái sử dụng connection; `requests` chỉ còn ở compatibility boundary.
+- Viết lại `src/main.py` theo lifecycle `asyncio`, dùng HTTP client chung,
+  chờ E2EE readiness và cleanup listener/client khi dừng.
+- `listeningE2EEEvent.connect_mqtt()` trở thành coroutine; callback bridge có
+  thể chuyển event an toàn vào `asyncio.Queue`.
+
+### Fixed
+
+- Gia cố attachment upload khi Facebook trả payload null/malformed, trả lỗi có
+  cấu trúc và chuẩn hóa `attachmentID`/`typeAttachment` cho send flow.
+- Khôi phục luồng login FB4A/2FA, hỗ trợ override config/env và giữ password
+  gốc trong bước xác minh.
+- Sửa sync path gọi bridge coroutine sai, thêm readiness gate cho E2EE listener
+  và route bot command qua listener E2EE.
+- Sửa test consumer lấy dữ liệu notification/thread từ result dict trước khi
+  slice hoặc index.
+
+### Documentation
+
+- Viết lại README VI/EN, `DOCS.md` và README của `_core`, `_features`,
+  `_messaging` cùng bridge theo API async, `httpx` và E2EE hiện hành.
+- Thêm `src/config.example.json`, hướng dẫn build/discover bridge và biến
+  `FBCHAT_E2EE_BIN`.
+
+### Breaking changes
+
+- Call site dùng API public phải thêm `await`; không lồng `asyncio.run()` khi
+  framework đã có event loop.
+- Import `func_async`/`func_sync` phải đổi về `func`; integration E2EE async
+  nên dùng listener hoặc `BridgeActions`.
 
 ## [2.2.0-beta] - 2026-07-06
 
@@ -79,7 +235,30 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
-## [2.1.3b] - 2026-05-18
+## [2.1.4] - 2026-06-30
+
+### Added
+
+- Tự động chọn và tải E2EE bridge asset theo hệ điều hành/kiến trúc khi binary
+  mặc định chưa có; trả lỗi rõ khi asset hoặc kiến trúc không được hỗ trợ.
+
+### Changed
+
+- Chuyển metadata và dependency sang `pyproject.toml` theo PEP 621; hỗ trợ cài
+  editable bằng `python -m pip install -e .`.
+- Cập nhật CI/CD để cài dependency từ `pyproject.toml`, checkout submodule,
+  đóng gói namespace dưới `src` và lấy nội dung GitHub Release từ release note.
+- Đồng bộ README, `DOCS.md`, `CLAUDE.md`, flowchart và tài liệu bridge theo
+  quy trình cài đặt mới.
+
+### Security
+
+- Loại cookie config và E2EE device state từng bị track khỏi source; giữ chúng
+  ở local/ignored path và không đưa credential vào package.
+- Production có thể pin `FBCHAT_E2EE_BIN` vào binary đã tự xác minh thay vì
+  phụ thuộc auto-download.
+
+## [2.1.3b] - 2026-05-19
 
 ### 🛠 Changed
 
@@ -464,6 +643,17 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
-[2.1.1]: https://github.com/MinhHuyDev/fbchat-v2/releases/tag/v2.1.1
-[2.1.0]: https://github.com/MinhHuyDev/fbchat-v2/releases/tag/v2.1.0
-[2.0.x]: https://github.com/MinhHuyDev/fbchat-v2/releases
+[Unreleased]: https://github.com/m008v/fbchat-v2/compare/v2.3.1...HEAD
+[2.3.1]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.1
+[2.3.0]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.0
+[2.2.1]: https://github.com/m008v/fbchat-v2/releases/tag/v.2.2.1
+[2.2.0]: https://github.com/m008v/fbchat-v2/releases/tag/v2.2.0
+[2.2.0-beta]: https://github.com/m008v/fbchat-v2/tree/beta-async/await
+[2.1.4]: https://github.com/m008v/fbchat-v2/releases/tag/v2.1.4
+[2.1.3b]: https://github.com/m008v/fbchat-v2/releases/tag/v2.1.3b
+[2.1.3]: https://github.com/m008v/fbchat-v2/releases/tag/v.2.1.3
+[2.1.2b]: https://github.com/m008v/fbchat-v2/releases/tag/v2.1.2b
+[2.1.2a]: https://github.com/m008v/fbchat-v2/releases/tag/v2.1.2a
+[2.1.1]: https://github.com/m008v/fbchat-v2/releases/tag/v.2.1.1
+[2.1.0]: https://github.com/m008v/fbchat-v2/releases/tag/v2.1.0
+[2.0.x]: https://github.com/m008v/fbchat-v2/releases
