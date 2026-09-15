@@ -11,6 +11,8 @@
 - Thay artifact lần đầu bị chặn do owner GitHub cũ bằng replacement wheel/sdist đã sửa canonical repository `m008v/fbchat-v2`; regression test khóa exact API và asset URL owner.
 - Cập nhật `PACKAGING.md` để phân biệt build thử cục bộ với hai artifact production; production không rebuild từ checkout này.
 - Sửa bảy ký tự điều khiển tồn tại từ các Windows path bị escape sai trong lịch sử `AGENT_MEMORYs.md`; không thay đổi nội dung kỹ thuật tương ứng.
+- Commit đồng bộ `700890d301c4a697b77cc2bbc7f72f6998333d5b` (`chore(pypi): synchronize v2.3.2 release source`) đã push fast-forward lên `origin/pypi`.
+- Upload đúng replacement wheel và sdist lên PyPI bằng token lấy từ Windows keyring; credential không xuất hiện trong source, command line hoặc log.
 
 ### Quyết định kỹ thuật
 - Lấy verified sdist làm nguồn đồng bộ thay vì copy từ working tree hoặc rebuild tùy hứng, tránh cùng version nhưng khác payload.
@@ -22,9 +24,12 @@
 - Compileall, Ruff, Black in-process 45 file, mypy 45 source file và 5/5 pytest đều đạt; Twine strict và distribution verifier đạt cho wheel/sdist production.
 - Isolated build bằng Hatchling 1.32.0 đạt; wheel build thử có toàn bộ member/content giống wheel production, nhưng không dùng để upload vì archive bytes khác.
 - Replacement wheel SHA-256: `f7ea64c950b646b8c284086cd52b84d0825162f9f7d67b7a1880ca2433477832`; sdist SHA-256: `59f83b05167d4ebd3fa2d8a273817ab513c76faaa6e60ea5b46c41c1732dc8c7`.
+- PyPI JSON trả đúng version `2.3.2`, đúng hai file/hash/kích thước, không bị yanked; public wheel/sdist tải lại khớp byte-for-byte với GitHub Release replacement.
+- Fresh install trực tiếp từ `https://pypi.org/simple` đạt; `pip check`, import/version, canonical owner `m008v/fbchat-v2`, năm bridge checksum và distribution verifier đều đạt.
 
 ### Việc còn lại
-- Commit/push branch `pypi`, upload đúng wheel và sdist của GitHub Release lên PyPI, rồi xác minh hash và fresh install từ registry.
+- Không còn bước phát hành 2.3.2. PyPI hiện không có PEP 740 provenance vì upload cục bộ bằng Twine/token; tính toàn vẹn vẫn được đối chiếu bằng SHA-256 với artifact GitHub đã attest.
+- Chưa chạy smoke bằng tài khoản Facebook thật; cần credential và hoạt động provider được cho phép riêng.
 
 ## 2026-09-07 — Đồng bộ tài liệu Facebook features & _reactionPost.py
 - Viết mới và cập nhật toàn diện hệ thống tài liệu `README.md` liên quan đến `fbchat_v2._features._facebook`.
