@@ -60,7 +60,7 @@ def _prepare_release(
     version = "9.8.7"
     binary_name = "fbchat-bridge-e2ee-windows-amd64.exe"
     download_url = (
-        "https://github.com/MinhHuyDev/fbchat-v2/releases/download/"
+        "https://github.com/m008v/fbchat-v2/releases/download/"
         f"v{version}/{binary_name}"
     )
     expected = hashlib.sha256(content).hexdigest()
@@ -79,7 +79,9 @@ def _prepare_release(
     monkeypatch.setattr("platform.machine", lambda: "AMD64")
 
     def get_release(url: str, **kwargs: Any) -> _ReleaseResponse:
-        assert url.endswith(f"/releases/tags/v{version}")
+        assert url == (
+            "https://api.github.com/repos/m008v/fbchat-v2/releases/tags/" f"v{version}"
+        )
         assert kwargs["follow_redirects"] is True
         return _ReleaseResponse({"tag_name": f"v{version}", "assets": [asset]}, url)
 

@@ -91,6 +91,7 @@ _BRIDGE_REQUIRED_CAPABILITIES = frozenset(
     {"newClient", "connect", "connectE2EE", "isConnected", "events"}
 )
 _BRIDGE_STATE_EVENT = "__bridge_state__"
+_BRIDGE_RELEASE_REPOSITORY = "m008v/fbchat-v2"
 DELIVERY_STATUS_UNKNOWN = "unknown"
 
 
@@ -297,7 +298,8 @@ def _download_bridge(target_path: Path) -> None:
 
     release_tag = f"v{release_version}"
     api_url = (
-        f"https://api.github.com/repos/MinhHuyDev/fbchat-v2/releases/tags/{release_tag}"
+        f"https://api.github.com/repos/{_BRIDGE_RELEASE_REPOSITORY}/releases/tags/"
+        f"{release_tag}"
     )
     temporary_path: Path | None = None
     try:
@@ -327,7 +329,8 @@ def _download_bridge(target_path: Path) -> None:
         if (parsed_url.hostname or "").lower() != "github.com":
             raise RuntimeError("GitHub API trả về asset URL không chính thức.")
         expected_path = (
-            f"/MinhHuyDev/fbchat-v2/releases/download/{release_tag}/{binary_name}"
+            f"/{_BRIDGE_RELEASE_REPOSITORY}/releases/download/"
+            f"{release_tag}/{binary_name}"
         )
         if unquote(parsed_url.path) != expected_path:
             raise RuntimeError("GitHub API trả về asset ngoài release đã pin.")
