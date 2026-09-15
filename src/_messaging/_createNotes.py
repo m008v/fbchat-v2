@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import httpx
 import json
-import random
 from typing import Any
 from _core._utils import (
     formAll,
@@ -42,6 +41,7 @@ PRIVACY_ALIASES = {
 }
 GRAPHQL_TIMEOUT = 45
 GRAPHQL_RETRIES = 2
+GRAPHQL_MUTATION_RETRIES = 0
 
 
 def _normalize_privacy(privacy: str | None) -> str:
@@ -51,10 +51,16 @@ def _normalize_privacy(privacy: str | None) -> str:
 
 
 def _error_response(resData: dict[str, Any]) -> dict[str, Any]:
-    error = (resData.get("errors") or [{}])[0]
+    errors = resData.get("errors")
+    if isinstance(errors, list) and errors and isinstance(errors[0], dict):
+        error = errors[0]
+    elif isinstance(errors, dict):
+        error = errors
+    else:
+        error = {}
     return {
         "error": 1,
-        "messages": error.get("message", str(error)),
+        "messages": error.get("message") or "Facebook trả về lỗi GraphQL không hợp lệ.",
         "details": error,
     }
 
@@ -97,6 +103,82 @@ def _parse_graphql_text(text: str) -> dict[str, Any]:
         return json.loads(text)
     except (ValueError, json.JSONDecodeError):
         return {"errors": [{"message": "Invalid JSON response", "raw": text[:300]}]}
+
+
+def _missing_mutation_response(
+    message: str, response: dict[str, Any]
+) -> dict[str, Any]:
+    return {"error": 1, "messages": message, "raw": response}
+
+
+def _parse_create_response(
+    response: dict[str, Any], success_message: str, *, return_full_data: bool
+) -> dict[str, Any]:
+    if response.get("errors"):
+        return _error_response(response)
+
+    data = response.get("data")
+    node = data.get("xfb_rich_status_create") if isinstance(data, dict) else None
+    status = node.get("status") if isinstance(node, dict) else None
+    if not _is_nonempty_mutation_node(status):
+        return _missing_mutation_response(
+            "Facebook không trả về trạng thái tạo note hợp lệ.", response
+        )
+    return {
+        "success": 1,
+        "messages": success_message,
+        "data": data if return_full_data else status,
+    }
+
+
+def _parse_delete_response(
+    response: dict[str, Any], success_message: str, *, return_full_data: bool
+) -> dict[str, Any]:
+    if response.get("errors"):
+        return _error_response(response)
+
+    data = response.get("data")
+    node = data.get("xfb_rich_status_delete") if isinstance(data, dict) else None
+    if not _is_nonempty_mutation_node(node):
+        return _missing_mutation_response(
+            "Facebook không trả về trạng thái xoá note hợp lệ.", response
+        )
+    return {
+        "success": 1,
+        "messages": success_message,
+        "data": data if return_full_data else node,
+    }
+
+
+def _is_nonempty_mutation_node(value: Any) -> bool:
+    if value is None or value is False:
+        return False
+    if isinstance(value, dict):
+        if not value:
+            return False
+        for field in ("success", "status"):
+            if field in value and not _is_nonempty_mutation_node(value[field]):
+                return False
+        for field in ("error", "error_message"):
+            if field in value and _is_nonempty_mutation_node(value[field]):
+                return False
+        return any(
+            field not in {"__typename", "client_mutation_id", "error", "error_message"}
+            and _is_nonempty_mutation_node(field_value)
+            for field, field_value in value.items()
+        )
+    if isinstance(value, str):
+        return value.strip().casefold() not in {
+            "",
+            "0",
+            "error",
+            "failed",
+            "failure",
+            "false",
+        }
+    if isinstance(value, (list, tuple, set)):
+        return bool(value)
+    return value != 0
 
 
 def _post_graphql(
@@ -224,7 +306,7 @@ def _createNote_blocking(
     """Tạo một note mới (mặc định tồn tại 24 giờ)."""
     variables = {
         "input": {
-            "client_mutation_id": str(random.randint(0, 10)),
+            "client_mutation_id": generate_client_id(),
             "actor_id": str(dataFB["FacebookID"]),
             "description": text,
             "duration": 86400,  # 24 giờ
@@ -238,28 +320,11 @@ def _createNote_blocking(
         "MWInboxTrayNoteCreationDialogCreationStepContentMutation",
         24060573783603122,
         variables,
+        retries=GRAPHQL_MUTATION_RETRIES,
     )
-
-    if resData.get("errors"):
-        return _error_response(resData)
-
-    try:
-        status = resData["data"]["xfb_rich_status_create"]["status"]
-    except (KeyError, TypeError):
-        status = None
-
-    if status is None:
-        return {
-            "error": 1,
-            "messages": "Could not find note status in the server response.",
-            "raw": resData,
-        }
-
-    return {
-        "success": 1,
-        "messages": "Tạo note thành công.",
-        "data": status,
-    }
+    return _parse_create_response(
+        resData, "Tạo note thành công.", return_full_data=False
+    )
 
 
 # ---------------------------------------------------------------------
@@ -272,7 +337,7 @@ def _deleteNote_blocking(
     """Xoá note theo ID."""
     variables = {
         "input": {
-            "client_mutation_id": str(random.randint(0, 10)),
+            "client_mutation_id": generate_client_id(),
             "actor_id": str(dataFB["FacebookID"]),
             "rich_status_id": str(noteID),
         }
@@ -282,28 +347,11 @@ def _deleteNote_blocking(
         "useMWInboxTrayDeleteNoteMutation",
         9532619970198958,
         variables,
+        retries=GRAPHQL_MUTATION_RETRIES,
     )
-
-    if resData.get("errors"):
-        return _error_response(resData)
-
-    try:
-        deletedStatus = resData["data"]["xfb_rich_status_delete"]
-    except (KeyError, TypeError):
-        deletedStatus = None
-
-    if deletedStatus is None:
-        return {
-            "error": 1,
-            "messages": "Could not find deletion status in the server response.",
-            "raw": resData,
-        }
-
-    return {
-        "success": 1,
-        "messages": "Xoá note thành công.",
-        "data": deletedStatus,
-    }
+    return _parse_delete_response(
+        resData, "Xoá note thành công.", return_full_data=False
+    )
 
 
 # ---------------------------------------------------------------------
@@ -368,7 +416,7 @@ async def createNote(
 
     variables = {
         "input": {
-            "client_mutation_id": str(random.randint(0, 10)),
+            "client_mutation_id": generate_client_id(),
             "actor_id": str(dataFB["FacebookID"]),
             "text": str(text),
             "duration": 86400,
@@ -382,16 +430,11 @@ async def createNote(
         "MWInboxTrayNoteCreationDialogCreationStepContentMutation",
         24060573783603122,
         variables,
+        retries=GRAPHQL_MUTATION_RETRIES,
     )
-
-    if resData.get("errors"):
-        return _error_response(resData)
-
-    return {
-        "success": 1,
-        "messages": "Tạo note mới thành công.",
-        "data": resData.get("data"),
-    }
+    return _parse_create_response(
+        resData, "Tạo note mới thành công.", return_full_data=True
+    )
 
 
 async def deleteNote(dataFB: dict[str, Any], noteID: str) -> dict[str, Any]:
@@ -400,7 +443,7 @@ async def deleteNote(dataFB: dict[str, Any], noteID: str) -> dict[str, Any]:
 
     variables = {
         "input": {
-            "client_mutation_id": str(random.randint(0, 10)),
+            "client_mutation_id": generate_client_id(),
             "actor_id": str(dataFB["FacebookID"]),
             "rich_status_id": str(noteID),
         }
@@ -410,16 +453,11 @@ async def deleteNote(dataFB: dict[str, Any], noteID: str) -> dict[str, Any]:
         "useMWInboxTrayDeleteNoteMutation",
         9532619970198958,
         variables,
+        retries=GRAPHQL_MUTATION_RETRIES,
     )
-
-    if resData.get("errors"):
-        return _error_response(resData)
-
-    return {
-        "success": 1,
-        "messages": "Xoá note thành công.",
-        "data": resData.get("data"),
-    }
+    return _parse_delete_response(
+        resData, "Xoá note thành công.", return_full_data=True
+    )
 
 
 async def recreateNote(

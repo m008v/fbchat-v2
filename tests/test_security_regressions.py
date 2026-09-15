@@ -11,6 +11,7 @@ import httpx
 import pytest
 
 import main as sample_main
+from _core._permissions import _private_acl_environment
 from _messaging import _listening_e2ee as e2ee
 
 
@@ -283,8 +284,7 @@ def test_private_config_removes_unrelated_explicit_windows_aces(tmp_path: Path) 
 
     sample_main._set_private_file_permissions(target)
 
-    acl_env = os.environ.copy()
-    acl_env["FBCHAT_PRIVATE_FILE"] = str(target)
+    acl_env = _private_acl_environment(target)
     result = subprocess.run(
         [
             "powershell.exe",

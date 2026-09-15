@@ -2,6 +2,7 @@ package main
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -23,5 +24,15 @@ func TestHelloPayloadDeclaresCompatibleContract(t *testing.T) {
 		if !slices.Contains(capabilities, required) {
 			t.Errorf("capabilities does not contain %q", required)
 		}
+	}
+}
+
+func TestServeRequestsRejectsOversizedLine(t *testing.T) {
+	input := strings.NewReader(strings.Repeat("x", 65) + "\n")
+
+	err := serveRequests(input, 64)
+
+	if err == nil {
+		t.Fatal("serveRequests() accepted a request larger than its hard limit")
 	}
 }

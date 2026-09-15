@@ -7,7 +7,7 @@
 [![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/MinhHuyDev/fbchat-v2)
 [![PyPI](https://img.shields.io/pypi/v/fbchat-v2?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/fbchat-v2/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-2.3.1-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
+[![Version](https://img.shields.io/badge/version-2.3.2-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
 [![Issues](https://img.shields.io/github/issues/MinhHuyDev/fbchat-v2?color=orange)](https://github.com/MinhHuyDev/fbchat-v2/issues)
 [![License](https://img.shields.io/badge/license-See%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
@@ -20,7 +20,7 @@
 
 
 > [!IMPORTANT]
-> This is version `v2.3.1`, which uses *httpx.Client* instead of the old *requests* flow and now ships with **async/await** support. Because of that, code syntax may change or conflict with the version you are currently using. If you still want to use **requests** (*no async/await*), click here: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
+> This is version `v2.3.2`, which uses *httpx.Client* instead of the old *requests* flow and now ships with **async/await** support. Because of that, code syntax may change or conflict with the version you are currently using. If you still want to use **requests** (*no async/await*), click here: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
 
 > [!WARNING]
 > **Disclaimer** - This is **not** an official Facebook product. Facebook already provides an official chatbot API [here](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` is different because it authenticates with a **real Facebook user account / cookie**, which comes with security risks. Think carefully before using it.
@@ -183,7 +183,7 @@ fbchat-v2/
 | Component | Minimum | Recommended | Notes |
 |---|---|---|---|
 | Python | 3.10 | 3.11 / 3.12 | Required |
-| Go (toolchain) | 1.24 | 1.24+ | **Only required for E2EE** - used to build `fbchat-bridge-e2ee` |
+| Go (toolchain) | 1.26.6 | 1.26.6+ | **Only required for E2EE** - used to build `fbchat-bridge-e2ee` |
 | Git | any | latest | Needed for `go mod tidy` to pull `mautrix/meta` |
 | OS | Windows / Linux / macOS | - | - |
 | RAM | 256 MB | 1 GB+ | The E2EE bridge uses about 80-150 MB while running |
@@ -243,12 +243,12 @@ python -m pip install -e .
 Quick check:
 
 ```bash
-python -c "import _core, _features, _messaging; from _features._facebook import _unFriend; print('OK')"
+python -c "import fbchat_v2; from fbchat_v2._features._facebook import _unFriend; print('OK')"
 ```
 
 ### 4. Verify the installed packages
 
-Both editable installs and wheels must expose `_core`, `_features`, and `_messaging` directly:
+Both editable installs and wheels must expose the public `fbchat_v2` namespace:
 
 ```bash
 python scripts/verify_distribution.py
@@ -262,7 +262,7 @@ If you only need to receive group messages, **skip this step**. Personal message
 
 #### 5.1. Install the Go toolchain
 
-- Download it from: <https://go.dev/dl/> (Go >= 1.24).
+- Download it from: <https://go.dev/dl/> (Go >= 1.26.6).
 - After installation, open a new terminal and check:
 
   ```bash
@@ -410,7 +410,7 @@ The bot waits until both the regular connection and E2EE connection are ready be
 ```python
 import asyncio
 
-from _core._session import dataGetHome
+from fbchat_v2._core._session import dataGetHome
 
 
 async def main() -> None:
@@ -428,7 +428,7 @@ In FastAPI, Jupyter, or any bot framework that already has an event loop, call `
 ### Send a regular message
 
 ```python
-from _messaging._send import api as SendAPI
+from fbchat_v2._messaging._send import api as SendAPI
 
 sender = SendAPI()
 result = await sender.send(
@@ -448,7 +448,7 @@ if result.get("error"):
 import asyncio
 import httpx
 
-from _features._facebook import _notification, _search
+from fbchat_v2._features._facebook import _notification, _search
 
 async with httpx.AsyncClient(timeout=30) as client:
     notifications, users = await asyncio.gather(
@@ -462,8 +462,8 @@ If the caller creates the client, the caller is responsible for closing it. Do n
 ### Upload an attachment
 
 ```python
-from _messaging import _attachments
-from _messaging._send import api as SendAPI
+from fbchat_v2._messaging import _attachments
+from fbchat_v2._messaging._send import api as SendAPI
 
 uploaded = await _attachments.func("photo.jpg", data_fb, include_error=True)
 if not uploaded or not uploaded.get("attachmentID"):
@@ -483,7 +483,7 @@ await SendAPI().send(
 ```python
 import asyncio
 
-from _messaging._listening import listeningEvent
+from fbchat_v2._messaging._listening import listeningEvent
 
 listener = listeningEvent(data_fb, message_queue_maxsize=1000)
 listener_task = asyncio.create_task(listener.connect_mqtt())
@@ -508,7 +508,7 @@ Read each event through `get_message()`. `bodyResults` is only a compatibility s
 ```python
 import asyncio
 
-from _messaging._listening_e2ee import listeningE2EEEvent
+from fbchat_v2._messaging._listening_e2ee import listeningE2EEEvent
 
 
 async def run_listener(data_fb: dict) -> None:
@@ -611,7 +611,7 @@ ruff check src tests scripts
 black --check src tests scripts
 mypy
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.1-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.2-py3-none-any.whl
 git diff --check
 ```
 

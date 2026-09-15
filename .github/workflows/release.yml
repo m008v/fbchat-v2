@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Existing compatible tag to rebuild missing assets (never overwrite)
+        description: Existing tag to rebuild missing assets; dispatch this workflow from the same tag ref
         required: true
-        default: v2.3.1
+        default: v2.3.2
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ env:
   PYTHONUTF8: '1'
 
 concurrency:
-  group: release-${{ github.event_name }}-${{ github.ref }}-${{ inputs.tag_name }}
+  group: release-${{ github.repository }}-${{ inputs.tag_name || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -31,6 +31,7 @@ jobs:
     permissions:
       contents: read
     outputs:
+      sha: ${{ steps.source.outputs.sha }}
       tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Resolve release tag
@@ -56,6 +57,25 @@ jobs:
         with:
           ref: ${{ steps.release.outputs.tag }}
           persist-credentials: false
+      - name: Capture immutable release commit
+        id: source
+        shell: bash
+        env:
+          EVENT_REF: ${{ github.ref }}
+          EVENT_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          source_sha="$(git rev-parse HEAD)"
+          expected_ref="refs/tags/${RELEASE_TAG}"
+          if [[ "$EVENT_REF" != "$expected_ref" ]]; then
+            echo "Release workflow must run from $expected_ref; got $EVENT_REF." >&2
+            exit 1
+          fi
+          if [[ "$EVENT_SHA" != "$source_sha" ]]; then
+            echo "Release tag moved after trigger: event=$EVENT_SHA checkout=$source_sha." >&2
+            exit 1
+          fi
+          printf 'sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
@@ -75,7 +95,7 @@ jobs:
     needs: resolve-release
     uses: ./.github/workflows/quality-gate.yml
     with:
-      checkout_ref: ${{ needs.resolve-release.outputs.tag }}
+      checkout_ref: ${{ needs.resolve-release.outputs.sha }}
     permissions:
       contents: read
 
@@ -93,6 +113,7 @@ jobs:
           - goos: windows
             goarch: arm64
     permissions:
+      artifact-metadata: write
       attestations: write
       contents: read
       id-token: write
@@ -100,7 +121,7 @@ jobs:
       - name: Check out release source and submodules
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ needs.resolve-release.outputs.tag }}
+          ref: ${{ needs.resolve-release.outputs.sha }}
           persist-credentials: false
           submodules: recursive
       - name: Set up Go
@@ -143,11 +164,11 @@ jobs:
           python scripts/smoke_bridge_rpc.py "$BRIDGE_BINARY"
           --expected-version "${RELEASE_TAG#v}"
       - name: Attest bridge provenance
-        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: build/fbchat-bridge-e2ee-*
       - name: Upload bridge artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: fbchat-bridge-e2ee-${{ matrix.goos }}-${{ matrix.goarch }}
           path: build/fbchat-bridge-e2ee-*
@@ -160,6 +181,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
+      artifact-metadata: write
       attestations: write
       contents: read
       id-token: write
@@ -167,7 +189,7 @@ jobs:
       - name: Check out release source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ needs.resolve-release.outputs.tag }}
+          ref: ${{ needs.resolve-release.outputs.sha }}
           persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -179,7 +201,7 @@ jobs:
           python -m pip install --disable-pip-version-check
           "build==1.5.0" "hatchling==1.32.0" "twine==7.0.0"
       - name: Download bridge artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: all-binaries
           pattern: fbchat-bridge-e2ee-*
@@ -193,6 +215,8 @@ jobs:
           --binaries-dir all-binaries
           --module src/_messaging/_bridge_checksums.py
           --manifest all-binaries/SHA256SUMS
+      - name: Synchronize canonical package snapshot
+        run: python scripts/sync_canonical_package.py
       - name: Build wheel and sdist
         run: python -m build --no-isolation --outdir dist
       - name: Validate package metadata
@@ -220,20 +244,25 @@ jobs:
 
           python -m venv .venv-release-sdist
           .venv-release-sdist/bin/python -m pip install --disable-pip-version-check "$sdist_path"
-          .venv-release-sdist/bin/python scripts/verify_distribution.py
+          .venv-release-sdist/bin/python scripts/verify_distribution.py "$sdist_path"
+      - name: Record Python distribution checksums
+        shell: bash
+        run: |
+          cd dist
+          sha256sum -- *.whl *.tar.gz > SHA256SUMS-python
       - name: Attest Python distributions
-        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: dist/*
       - name: Upload verified bridge assets
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: verified-bridge-assets
           path: all-binaries/*
           if-no-files-found: error
           retention-days: 7
       - name: Upload verified Python distributions
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: verified-python-distributions
           path: dist/*
@@ -251,17 +280,74 @@ jobs:
       - name: Check out release notes
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: ${{ needs.resolve-release.outputs.tag }}
+          ref: ${{ needs.resolve-release.outputs.sha }}
           persist-credentials: false
       - name: Download verified bridge assets
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: verified-bridge-assets
           path: verified-assets
+      - name: Download verified Python distributions
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: verified-python-distributions
+          path: verified-assets
+      - name: Re-verify downloaded release payload
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.resolve-release.outputs.tag }}
+        run: |
+          test "$(find verified-assets -mindepth 1 -maxdepth 1 -type f | wc -l)" -eq 9
+          test -z "$(find verified-assets -mindepth 1 -maxdepth 1 ! -type f -print -quit)"
+          (
+            cd verified-assets
+            sha256sum --check SHA256SUMS
+            sha256sum --check SHA256SUMS-python
+          )
+          python scripts/release_artifacts.py verify \
+            --release-tag "$RELEASE_TAG" \
+            --binaries-dir verified-assets \
+            --dist-dir verified-assets \
+            --manifest verified-assets/SHA256SUMS
+      - name: Reject stale same-name release assets
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.resolve-release.outputs.tag }}
+        run: |
+          status="$(curl --silent --show-error --location \
+            --output existing-release.json \
+            --write-out '%{http_code}' \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")"
+          if [[ "$status" == '404' ]]; then
+            printf '{"assets":[]}' > existing-release.json
+          elif [[ "$status" != '200' ]]; then
+            echo "GitHub release lookup failed with HTTP $status" >&2
+            exit 1
+          fi
+          python -c "import hashlib,json,pathlib,sys; data=json.load(open('existing-release.json',encoding='utf-8')); local={path.name:'sha256:'+hashlib.sha256(path.read_bytes()).hexdigest() for path in pathlib.Path('verified-assets').iterdir() if path.is_file()}; existing={item['name']:item.get('digest') for item in data.get('assets',[])}; extras=sorted(existing.keys()-local.keys()); collisions=[(name,existing[name],local[name]) for name in sorted(existing.keys()&local.keys()) if existing[name] != local[name]]; print(*('unexpected existing release asset '+name for name in extras),*('stale release asset '+name+': '+str(actual)+' != '+expected for name,actual,expected in collisions),sep='\n',file=sys.stderr); sys.exit(bool(extras or collisions))"
+      - name: Reconfirm immutable release tag before upload
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ needs.resolve-release.outputs.sha }}
+          RELEASE_TAG: ${{ needs.resolve-release.outputs.tag }}
+        run: |
+          verification_ref="refs/codex-release-verification/${RELEASE_TAG}"
+          git fetch --force --no-tags origin \
+            "refs/tags/${RELEASE_TAG}:${verification_ref}"
+          current_sha="$(git rev-parse "${verification_ref}^{commit}")"
+          if [[ "$current_sha" != "$EXPECTED_SHA" ]]; then
+            echo "Release tag moved before upload: expected=$EXPECTED_SHA current=$current_sha" >&2
+            exit 1
+          fi
       - name: Upload assets without overwriting existing files
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ needs.resolve-release.outputs.tag }}
+          target_commitish: ${{ needs.resolve-release.outputs.sha }}
           files: verified-assets/*
           body_path: .github/RELEASE_NOTES_${{ needs.resolve-release.outputs.tag }}.md
           fail_on_unmatched_files: true

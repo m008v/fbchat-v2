@@ -58,9 +58,11 @@ type eventEnvelope struct {
 
 const bridgeProtocolVersion = 1
 
+const maxRPCRequestBytes = 150 * 1024 * 1024
+
 // bridgeVersion is intentionally overridable with -ldflags
 // "-X main.bridgeVersion=<version>" for release builds.
-var bridgeVersion = "2.3.1"
+var bridgeVersion = "2.3.2"
 
 var bridgeCapabilities = []string{
 	"newClient",
@@ -558,28 +560,38 @@ func handle(req *request) {
 	}
 }
 
+func serveRequests(input io.Reader, maxRequestBytes int) error {
+	if maxRequestBytes <= 0 {
+		return fmt.Errorf("max request size must be positive")
+	}
+	initialBufferSize := 64 * 1024
+	if maxRequestBytes < initialBufferSize {
+		initialBufferSize = maxRequestBytes
+	}
+	scanner := bufio.NewScanner(input)
+	scanner.Buffer(make([]byte, initialBufferSize), maxRequestBytes)
+	for scanner.Scan() {
+		var req request
+		if err := json.Unmarshal(scanner.Bytes(), &req); err != nil {
+			fail(0, fmt.Errorf("invalid json: %w", err))
+			continue
+		}
+		handle(&req)
+	}
+	return scanner.Err()
+}
+
+func disconnectClient() {
+	if client == nil {
+		return
+	}
+	client.Disconnect()
+	client = nil
+}
+
 func main() {
-	// Use a large buffer because initial sync data can be substantial.
-	reader := bufio.NewReaderSize(os.Stdin, 1<<20)
-	for {
-		line, err := reader.ReadBytes('\n')
-		if len(line) > 0 {
-			var req request
-			if jerr := json.Unmarshal(line, &req); jerr != nil {
-				fail(0, fmt.Errorf("invalid json: %w", jerr))
-			} else {
-				handle(&req)
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				if client != nil {
-					client.Disconnect()
-				}
-				return
-			}
-			fmt.Fprintln(os.Stderr, "stdin error:", err)
-			return
-		}
+	defer disconnectClient()
+	if err := serveRequests(os.Stdin, maxRPCRequestBytes); err != nil {
+		fail(0, fmt.Errorf("stdin request exceeds the 150 MiB limit or could not be read: %w", err))
 	}
 }

@@ -74,10 +74,69 @@ def _build_request(
 
 def _parse_response(payload: dict[str, Any], choice: str) -> dict[str, Any]:
     label = "Chặn" if choice == "block" else "Bỏ chặn"
-    if payload.get("data"):
-        return {"success": 1, "messages": f"{label} người dùng thành công!"}
-    message = ((payload.get("errors") or [{}])[0]).get("message")
-    return {"error": 1, "messages": message or f"{label} người dùng thất bại!"}
+    errors = payload.get("errors") or []
+    message = (
+        errors[0].get("message")
+        if isinstance(errors, list) and errors and isinstance(errors[0], dict)
+        else None
+    )
+    if errors:
+        return {"error": 1, "messages": message or f"{label} người dùng thất bại!"}
+
+    data = payload.get("data")
+    if isinstance(data, dict):
+        # Tên root có thể đổi theo persisted-doc revision, nhưng phải thuộc đúng
+        # họ mutation block/unblock; field không liên quan không được xác nhận.
+        for node_name, node in data.items():
+            if "block" in str(node_name).casefold() and _is_confirmed_node(node):
+                return {
+                    "success": 1,
+                    "messages": f"{label} người dùng thành công!",
+                }
+
+    return {
+        "error": 1,
+        "messages": f"Facebook không xác nhận thao tác {label.lower()} người dùng.",
+    }
+
+
+def _is_confirmed_node(value: Any) -> bool:
+    if not isinstance(value, dict) or not value:
+        return False
+    for field in ("success", "status"):
+        if field in value and not _is_success_value(value[field]):
+            return False
+    for field in ("error", "error_message"):
+        if field in value and _is_nonempty(value[field]):
+            return False
+    return any(
+        field not in {"__typename", "client_mutation_id", "error", "error_message"}
+        and _is_nonempty(field_value)
+        for field, field_value in value.items()
+    )
+
+
+def _is_nonempty(value: Any) -> bool:
+    if value is None or value is False:
+        return False
+    if isinstance(value, (dict, list, tuple, set, str)):
+        return bool(value)
+    return value != 0
+
+
+def _is_success_value(value: Any) -> bool:
+    if value is None or value is False:
+        return False
+    if isinstance(value, str):
+        return value.strip().casefold() not in {
+            "",
+            "0",
+            "error",
+            "failed",
+            "failure",
+            "false",
+        }
+    return value != 0
 
 
 async def func(

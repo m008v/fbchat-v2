@@ -26,6 +26,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
+from ._permissions import set_private_file_permissions
+
 
 class SessionStorage(ABC):
     @abstractmethod
@@ -75,8 +77,7 @@ class FileSessionStorage(SessionStorage):
                 file_handle.write("\n")
                 file_handle.flush()
                 os.fsync(file_handle.fileno())
-            if os.name != "nt":
-                temporary_path.chmod(0o600)
+            set_private_file_permissions(temporary_path)
             os.replace(temporary_path, self.filepath)
         finally:
             if temporary_path is not None and temporary_path.exists():

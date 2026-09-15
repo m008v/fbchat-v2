@@ -7,7 +7,7 @@
 [![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/MinhHuyDev/fbchat-v2)
 [![PyPI](https://img.shields.io/pypi/v/fbchat-v2?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/fbchat-v2/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-2.3.1-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
+[![Version](https://img.shields.io/badge/version-2.3.2-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
 [![Issues](https://img.shields.io/github/issues/MinhHuyDev/fbchat-v2?color=orange)](https://github.com/MinhHuyDev/fbchat-v2/issues)
 [![License](https://img.shields.io/badge/license-Xem%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
@@ -19,7 +19,7 @@
 ---
 
 > [!IMPORTANT]
-> Đây là phiên bản `v2.3.1` sử dụng *httpx.Client* thay vì *requests* như cũ và đã trang bị **async/await** nên systax code có thể bị thay đổi hoặc xung đột với bản của bạn đang dùng. Nếu bạn vẫn muốn dùng **requests** (*no async/await*), hãy bấm vào đây: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
+> Đây là phiên bản `v2.3.2` sử dụng *httpx.Client* thay vì *requests* như cũ và đã trang bị **async/await** nên syntax code có thể bị thay đổi hoặc xung đột với bản của bạn đang dùng. Nếu bạn vẫn muốn dùng **requests** (*no async/await*), hãy bấm vào đây: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
 
 > [!WARNING]
 > **Tuyên bố miễn trừ trách nhiệm** - Đây **không** phải là sản phẩm chính thức của Facebook. Facebook đã có sẵn API chatbot chính thức [tại đây](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` khác biệt ở chỗ nó xác thực bằng **tài khoản / cookie người dùng Facebook thực**, vốn tiềm ẩn rủi ro. Hãy cân nhắc kỹ trước khi sử dụng.
@@ -177,7 +177,7 @@ fbchat-v2/
 | Thành phần | Tối thiểu | Khuyến nghị | Ghi chú |
 |---|---|---|---|
 | Python | 3.10 | 3.11 / 3.12 | Bắt buộc |
-| Go (toolchain) | 1.24 | 1.24+ | **Chỉ cần cho E2EE** - để build `fbchat-bridge-e2ee` |
+| Go (toolchain) | 1.26.6 | 1.26.6+ | **Chỉ cần cho E2EE** - để build `fbchat-bridge-e2ee` |
 | Git | bất kỳ | latest | Cần cho `go mod tidy` kéo `mautrix/meta` |
 | Hệ điều hành | Windows / Linux / macOS | - | - |
 | RAM | 256 MB | 1 GB+ | Bridge E2EE chiếm ~80–150 MB khi chạy |
@@ -237,12 +237,12 @@ python -m pip install -e .
 Kiểm tra nhanh:
 
 ```bash
-python -c "import _core, _features, _messaging; from _features._facebook import _unFriend; print('OK')"
+python -c "import fbchat_v2; from fbchat_v2._features._facebook import _unFriend; print('OK')"
 ```
 
 ### 4. Xác minh package đã cài
 
-Editable install và wheel đều phải export `_core`, `_features`, `_messaging` trực tiếp:
+Editable install và wheel đều phải export namespace công khai `fbchat_v2`:
 
 ```bash
 python scripts/verify_distribution.py
@@ -256,7 +256,7 @@ Nếu bạn chỉ cần nhận tin nhắn nhóm, **bỏ qua bước này**. Ngư
 
 #### 5.1. Cài Go toolchain
 
-- Tải về: <https://go.dev/dl/> (Go ≥ 1.24).
+- Tải về: <https://go.dev/dl/> (Go ≥ 1.26.6).
 - Sau khi cài, mở terminal mới và kiểm tra:
 
   ```bash
@@ -404,7 +404,7 @@ Bot đợi cả kết nối thường và E2EE sẵn sàng trước khi xử lý
 ```python
 import asyncio
 
-from _core._session import dataGetHome
+from fbchat_v2._core._session import dataGetHome
 
 
 async def main() -> None:
@@ -422,7 +422,7 @@ Trong FastAPI, Jupyter hoặc bot framework đã có event loop, gọi `await da
 ### Gửi tin nhắn thường
 
 ```python
-from _messaging._send import api as SendAPI
+from fbchat_v2._messaging._send import api as SendAPI
 
 sender = SendAPI()
 result = await sender.send(
@@ -442,7 +442,7 @@ if result.get("error"):
 import asyncio
 import httpx
 
-from _features._facebook import _notification, _search
+from fbchat_v2._features._facebook import _notification, _search
 
 async with httpx.AsyncClient(timeout=30) as client:
     notifications, users = await asyncio.gather(
@@ -456,8 +456,8 @@ Client do caller tạo thì caller chịu trách nhiệm đóng. Không dùng ch
 ### Upload attachment
 
 ```python
-from _messaging import _attachments
-from _messaging._send import api as SendAPI
+from fbchat_v2._messaging import _attachments
+from fbchat_v2._messaging._send import api as SendAPI
 
 uploaded = await _attachments.func("photo.jpg", data_fb, include_error=True)
 if not uploaded or not uploaded.get("attachmentID"):
@@ -477,7 +477,7 @@ await SendAPI().send(
 ```python
 import asyncio
 
-from _messaging._listening import listeningEvent
+from fbchat_v2._messaging._listening import listeningEvent
 
 listener = listeningEvent(data_fb, message_queue_maxsize=1000)
 listener_task = asyncio.create_task(listener.connect_mqtt())
@@ -502,7 +502,7 @@ finally:
 ```python
 import asyncio
 
-from _messaging._listening_e2ee import listeningE2EEEvent
+from fbchat_v2._messaging._listening_e2ee import listeningE2EEEvent
 
 
 async def run_listener(data_fb: dict) -> None:
@@ -605,7 +605,7 @@ ruff check src tests scripts
 black --check src tests scripts
 mypy
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.1-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.2-py3-none-any.whl
 git diff --check
 ```
 

@@ -28,7 +28,7 @@ from typing import Any
 
 import httpx
 
-from _core._utils import formAll, post_form_json_async
+from _core._utils import formAll, generate_client_id, post_form_json_async
 
 _URL = "https://www.facebook.com/api/graphql/"
 _DOC_ID = 27646120298312844
@@ -98,7 +98,7 @@ def _build_form(
                 "feedback_referrer": f"/{actor_id}",
                 "session_id": str(uuid.uuid4()),
                 "actor_id": actor_id,
-                "client_mutation_id": "1",
+                "client_mutation_id": generate_client_id(),
             },
             "scale": 1,
             "canUseNicknameOnComet": False,

@@ -37,9 +37,15 @@ type SendMessageOptions struct {
 
 // SendMessageResult result of sending a message
 type SendMessageResult struct {
-	MessageID   string `json:"messageId"`
-	TimestampMs int64  `json:"timestampMs"`
+	MessageID      string `json:"messageId"`
+	TimestampMs    int64  `json:"timestampMs"`
+	DeliveryStatus string `json:"deliveryStatus,omitempty"`
 }
+
+const (
+	DeliveryStatusAcknowledged = "acknowledged"
+	DeliveryStatusUnknown      = "unknown"
+)
 
 // SendMessage sends a text message
 func (c *Client) SendMessage(opts *SendMessageOptions) (*SendMessageResult, error) {
@@ -161,18 +167,24 @@ func (c *Client) sendE2EEMessage(opts *SendMessageOptions) (*SendMessageResult, 
 	resp, err := e2eeClient.SendFBMessage(c.ctx, chatJID, waMsg, metadata, whatsmeow.SendRequestExtra{ID: msgID})
 	if err != nil {
 		if isE2EESendResponseTimeout(err) {
-			return &SendMessageResult{
-				MessageID:   msgID,
-				TimestampMs: time.Now().UnixMilli(),
-			}, nil
+			return newUnknownE2EESendResult(msgID, time.Now()), nil
 		}
 		return nil, err
 	}
 
 	return &SendMessageResult{
-		MessageID:   msgID,
-		TimestampMs: resp.Timestamp.UnixMilli(),
+		MessageID:      msgID,
+		TimestampMs:    resp.Timestamp.UnixMilli(),
+		DeliveryStatus: DeliveryStatusAcknowledged,
 	}, nil
+}
+
+func newUnknownE2EESendResult(messageID string, timestamp time.Time) *SendMessageResult {
+	return &SendMessageResult{
+		MessageID:      messageID,
+		TimestampMs:    timestamp.UnixMilli(),
+		DeliveryStatus: DeliveryStatusUnknown,
+	}
 }
 
 func (c *Client) ensureE2EEDM(chatJID waTypes.JID) error {

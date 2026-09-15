@@ -32,7 +32,11 @@ async def test_add_admin_async_uses_async_http_transport(mock_dataFB):
 
 @pytest.mark.asyncio
 async def test_professional_accepts_boolean_status(mock_dataFB):
-    transport = AsyncMock(return_value={"data": {"ok": True}})
+    transport = AsyncMock(
+        return_value={
+            "data": {"profile_plus_onboarding_dialog_transition": {"success": True}}
+        }
+    )
     with patch.object(_professional, "post_form_json_async", transport):
         result = await _professional.func(mock_dataFB, True)
 

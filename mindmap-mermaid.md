@@ -124,7 +124,7 @@ mindmap
         media actions
       mautrix-meta submodule
       go.mod
-        Go 1.26.5
+        Go 1.26.6
       build output
         Windows exe
         Linux and macOS binary

@@ -235,7 +235,7 @@ result = await _deletePost.func(
 )
 ```
 
-Sử dụng `useCometTrashPostMutation` để chuyển bài viết vào thùng rác. 
+Sử dụng `useCometTrashPostMutation` để chuyển bài viết vào thùng rác.
 - `postID`: ID của bài viết cần xoá.
 - `typePost`: Loại bài viết (`"my_post"` cho bài tự đăng, `"others"` cho bài share/bài của người khác). Trả về `success` nếu thành công.
 

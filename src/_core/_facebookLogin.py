@@ -45,7 +45,7 @@ _DOTENV_LOADED = False
 Written by Nguyen Minh Huy (RainTee)
 Facebook Login V2 - Fixed
 Datetime: 28/12/2022
-Last Update: 10/06/2026 
+Last Update: 10/06/2026
 """
 
 
@@ -267,7 +267,7 @@ class loginFacebook:
         )
 
         """
-          Note: 
+          Note:
                - English: If you don't have two-factor authentication set up, you can skip it.
                - Vietnamese: Nếu bạn không thiết lập xác thực hai yếu tố, bạn có thể bỏ qua nó.
           """

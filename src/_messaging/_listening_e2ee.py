@@ -49,13 +49,14 @@ import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from queue import Empty, Queue
-from typing import Any, Optional
+from queue import Empty, Full, Queue
+from typing import Any, Optional, TypeGuard
 from urllib.parse import unquote, urlparse
 
 import httpx
 
 from _core import __version__ as _PACKAGE_VERSION
+from _core._console import safe_print as _safe_print
 from _core._utils import parse_cookie_string
 from _messaging._bridge_checksums import BRIDGE_RELEASE_VERSION, BRIDGE_SHA256
 
@@ -90,6 +91,24 @@ _BRIDGE_REQUIRED_CAPABILITIES = frozenset(
     {"newClient", "connect", "connectE2EE", "isConnected", "events"}
 )
 _BRIDGE_STATE_EVENT = "__bridge_state__"
+DELIVERY_STATUS_UNKNOWN = "unknown"
+
+
+def _is_valid_bridge_event(event: object) -> TypeGuard[dict[str, Any]]:
+    """Validate the JSON event contract before it reaches user callbacks."""
+    if not isinstance(event, dict):
+        return False
+    event_type = event.get("type")
+    timestamp = event.get("timestamp")
+    data = event.get("data")
+    return (
+        isinstance(event_type, str)
+        and bool(event_type)
+        and "data" in event
+        and (data is None or isinstance(data, dict))
+        and type(timestamp) is int
+        and timestamp >= 0
+    )
 
 
 def _binary_name() -> str:
@@ -278,8 +297,7 @@ def _download_bridge(target_path: Path) -> None:
 
     release_tag = f"v{release_version}"
     api_url = (
-        "https://api.github.com/repos/MinhHuyDev/fbchat-v2/releases/tags/"
-        f"{release_tag}"
+        f"https://api.github.com/repos/MinhHuyDev/fbchat-v2/releases/tags/{release_tag}"
     )
     temporary_path: Path | None = None
     try:
@@ -464,6 +482,7 @@ class _BridgeProcess:
     CLOSE_WRITE_LOCK_TIMEOUT: float = 0.1
     CLOSE_GRACEFUL_TIMEOUT: float = 1.0
     MAX_RPC_REQUEST_BYTES: int = 150 * 1024 * 1024
+    MAX_EVENT_QUEUE_SIZE: int = 1000
 
     def __init__(
         self,
@@ -472,7 +491,9 @@ class _BridgeProcess:
         log_stderr: bool = False,
         command: Sequence[str] | None = None,
     ) -> None:
-        self.events: Queue[dict[str, Any]] = Queue()
+        self.events: Queue[dict[str, Any]] = Queue(maxsize=self.MAX_EVENT_QUEUE_SIZE)
+        self._event_queue_lock = threading.Lock()
+        self._dropped_event_count = 0
         self._next_id = itertools.count(1)
         self._pending: dict[int, tuple[int, Queue[dict[str, Any]]]] = {}
         self._pending_lock = threading.Lock()
@@ -502,6 +523,41 @@ class _BridgeProcess:
         self._enable_e2ee = True
 
         self._spawn()
+
+    @property
+    def dropped_event_count(self) -> int:
+        """Số event cũ đã bị loại để giữ queue bridge có giới hạn."""
+        with self._event_queue_lock:
+            return self._dropped_event_count
+
+    def _enqueue_event(self, event: dict[str, Any]) -> None:
+        """Không block reader RPC; khi đầy, loại event cũ nhất.
+
+        Drop-oldest giữ state/event mới nhất và tránh deadlock response RPC.
+        Counter cùng log lũy thừa hai tạo telemetry mà không lộ payload hoặc
+        tự biến một đợt event storm thành log storm.
+        """
+        dropped = False
+        with self._event_queue_lock:
+            while True:
+                try:
+                    self.events.put_nowait(event)
+                    break
+                except Full:
+                    try:
+                        self.events.get_nowait()
+                    except Empty:
+                        continue
+                    self._dropped_event_count += 1
+                    dropped = True
+            dropped_count = self._dropped_event_count
+
+        if dropped and dropped_count & (dropped_count - 1) == 0:
+            _safe_print(
+                "[bridge] event queue full; dropped "
+                f"{dropped_count} oldest event(s) (payload hidden)",
+                file=sys.stderr,
+            )
 
     def _spawn(self) -> int:
         """Spawn một generation mới và gắn reader vào đúng process đó."""
@@ -571,7 +627,7 @@ class _BridgeProcess:
             except Exception:  # noqa: BLE001
                 continue
             if self._log_stderr:
-                print(f"[bridge stderr] {line}", file=sys.stderr)
+                _safe_print(f"[bridge stderr] {line}", file=sys.stderr)
 
     @staticmethod
     def _fail_queued_writes(
@@ -687,7 +743,7 @@ class _BridgeProcess:
                     detail = (
                         f"{exc} :: {raw!r}" if self._log_stderr else "details hidden"
                     )
-                    print(
+                    _safe_print(
                         f"[bridge] bad json ({len(raw)} bytes): {detail}",
                         file=sys.stderr,
                     )
@@ -695,19 +751,26 @@ class _BridgeProcess:
 
                 if not isinstance(msg, dict):
                     detail = repr(msg) if self._log_stderr else "details hidden"
-                    print(f"[bridge] expected a JSON object: {detail}", file=sys.stderr)
+                    _safe_print(
+                        f"[bridge] expected a JSON object: {detail}", file=sys.stderr
+                    )
                     continue
 
                 if "event" in msg:
                     event = msg.get("event")
-                    if isinstance(event, dict):
-                        with self._state_lock:
-                            if (
-                                self._proc is proc
-                                and self._generation == generation
-                                and not self._stop_event.is_set()
-                            ):
-                                self.events.put(event)
+                    if not _is_valid_bridge_event(event):
+                        detail = repr(event) if self._log_stderr else "details hidden"
+                        _safe_print(
+                            f"[bridge] invalid event shape: {detail}", file=sys.stderr
+                        )
+                        continue
+                    with self._state_lock:
+                        if (
+                            self._proc is proc
+                            and self._generation == generation
+                            and not self._stop_event.is_set()
+                        ):
+                            self._enqueue_event(event)
                     continue
 
                 mid = msg.get("id")
@@ -723,7 +786,7 @@ class _BridgeProcess:
                     pending[1].put(msg)
         except (OSError, ValueError) as exc:
             detail = str(exc) if self._log_stderr else "details hidden"
-            print(f"[bridge] stdout read failed: {detail}", file=sys.stderr)
+            _safe_print(f"[bridge] stdout read failed: {detail}", file=sys.stderr)
         finally:
             self._mark_generation_exited(proc, generation, writer_queue)
 
@@ -744,7 +807,9 @@ class _BridgeProcess:
                 and self._generation == generation
                 and not self._stop_event.is_set()
             ):
-                self.events.put({"type": "closed", "data": {"generation": generation}})
+                self._enqueue_event(
+                    {"type": "closed", "data": {"generation": generation}}
+                )
 
     def _fail_pending_generation(self, generation: int, error: str) -> None:
         failed: list[Queue[dict[str, Any]]] = []
@@ -1083,7 +1148,7 @@ class _BridgeProcess:
                 failed_proc = None
             if failed_proc is not None:
                 self._terminate_process(failed_proc)
-            self.events.put(
+            self._enqueue_event(
                 {
                     "type": _BRIDGE_STATE_EVENT,
                     "data": {"connected": False, "e2eeConnected": False},
@@ -1093,11 +1158,11 @@ class _BridgeProcess:
             while not self._stop_event.is_set():
                 failures += 1
                 if failures > self.MAX_RETRIES:
-                    print(
+                    _safe_print(
                         f"[{datetime.datetime.now()}] Bridge exceeded max retries "
                         f"({self.MAX_RETRIES}). Giving up."
                     )
-                    self.events.put(
+                    self._enqueue_event(
                         {
                             "type": "bridge_fatal",
                             "error": f"max retries exceeded ({self.MAX_RETRIES})",
@@ -1107,7 +1172,7 @@ class _BridgeProcess:
                     return False, failures
 
                 backoff = self.BASE_BACKOFF * (2 ** (failures - 1))
-                print(
+                _safe_print(
                     f"[{datetime.datetime.now()}] Bridge unavailable. "
                     f"Respawning in {backoff:.0f}s "
                     f"(attempt {failures}/{self.MAX_RETRIES})"
@@ -1126,7 +1191,7 @@ class _BridgeProcess:
                         )
                     else:
                         self._validate_contract()
-                    self.events.put(
+                    self._enqueue_event(
                         {
                             "type": _BRIDGE_STATE_EVENT,
                             "data": {
@@ -1138,7 +1203,7 @@ class _BridgeProcess:
                             },
                         }
                     )
-                    print(
+                    _safe_print(
                         f"[{datetime.datetime.now()}] Respawn successful "
                         f"(attempt {failures})"
                     )
@@ -1147,7 +1212,7 @@ class _BridgeProcess:
                     if spawned_proc is not None:
                         self._terminate_process(spawned_proc)
                     detail = str(exc) if self._log_stderr else type(exc).__name__
-                    print(f"[{datetime.datetime.now()}] Respawn failed: {detail}")
+                    _safe_print(f"[{datetime.datetime.now()}] Respawn failed: {detail}")
             return False, failures
         finally:
             self._end_recovery_transaction()
@@ -1318,7 +1383,7 @@ class listeningE2EEEvent:
 
     def get_last_seq_id(self):
         self.lastSeqID = self.fbt.get("last_seq_id")
-        print(f"[{datetime.datetime.now()}] last_seq_id: {self.lastSeqID}")
+        _safe_print(f"[{datetime.datetime.now()}] last_seq_id: {self.lastSeqID}")
         return self.lastSeqID
 
     def wait_until_connected(
@@ -1420,12 +1485,12 @@ class listeningE2EEEvent:
                     self._e2ee_connected.set()
                 self._startup_done.set()
 
-            print(
+            _safe_print(
                 f"[{datetime.datetime.now()}] Logged in as "
                 f"{user.get('name')} ({user.get('id')})"
             )
             if self.enable_e2ee:
-                print(f"[{datetime.datetime.now()}] E2EE connected")
+                _safe_print(f"[{datetime.datetime.now()}] E2EE connected")
 
             self._poll_loop(bridge)
         except BaseException as exc:
@@ -1493,7 +1558,7 @@ class listeningE2EEEvent:
                     self._connected.clear()
                     self._e2ee_connected.clear()
                     detail = evt.get("error") if self.debug_errors else "details hidden"
-                    print(f"[{datetime.datetime.now()}] bridge_fatal: {detail}")
+                    _safe_print(f"[{datetime.datetime.now()}] bridge_fatal: {detail}")
                     raise BridgeError("bridge watchdog exhausted its retry budget")
 
                 if event_type == "closed":
@@ -1529,25 +1594,25 @@ class listeningE2EEEvent:
         elif etype == "e2eeMessage":
             self._populate_e2ee(data)
         elif etype == "ready":
-            print(
+            _safe_print(
                 f"[{datetime.datetime.now()}] ready: "
                 f"isNewSession={data.get('isNewSession')}"
             )
         elif etype == "e2eeConnected":
-            print(f"[{datetime.datetime.now()}] e2eeConnected")
+            _safe_print(f"[{datetime.datetime.now()}] e2eeConnected")
         elif etype == "disconnected":
             detail = f": {data}" if self.debug_errors else ""
-            print(f"[{datetime.datetime.now()}] disconnected{detail}")
+            _safe_print(f"[{datetime.datetime.now()}] disconnected{detail}")
         elif etype == "error":
             detail = str(data) if self.debug_errors else "payload hidden"
-            print(f"[{datetime.datetime.now()}] bridge error ({detail})")
+            _safe_print(f"[{datetime.datetime.now()}] bridge error ({detail})")
 
         if self._on_message:
             try:
                 self._on_message(evt)
             except Exception as exc:  # noqa: BLE001
                 detail = str(exc) if self.debug_errors else "details hidden"
-                print(
+                _safe_print(
                     f"[{datetime.datetime.now()}] handler raised: "
                     f"{type(exc).__name__} ({detail})"
                 )

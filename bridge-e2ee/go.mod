@@ -1,6 +1,6 @@
 module fbchat-bridge-e2ee
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/google/uuid v1.6.0
@@ -8,6 +8,7 @@ require (
 	go.mau.fi/mautrix-meta v0.0.0
 	go.mau.fi/util v0.9.9-0.20260511124621-9241e81bdf25
 	go.mau.fi/whatsmeow v0.0.0-20260416104156-3ff20cd3462a
+	golang.org/x/sys v0.45.0
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -19,7 +20,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/elliotchance/orderedmap/v3 v3.1.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/petermattis/goid v0.0.0-20260330135022-df67b199bc81 // indirect
@@ -35,7 +36,6 @@ require (
 	golang.org/x/crypto v0.51.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

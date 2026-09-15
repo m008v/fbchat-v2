@@ -21,7 +21,10 @@ from _core._session import dataGetHome
 from _core._storage import FileSessionStorage
 from _features._facebook import _search
 from _messaging._bridge_actions import BridgeActions
-from _messaging._listening_e2ee import listeningE2EEEvent
+from _messaging._listening_e2ee import (
+    DELIVERY_STATUS_UNKNOWN,
+    listeningE2EEEvent,
+)
 
 HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.json"
@@ -30,6 +33,11 @@ DEFAULT_HTTP_TIMEOUT = 30.0
 DEFAULT_E2EE_READY_TIMEOUT = 90.0
 EVENT_QUEUE_MAXSIZE = 1000
 RECENT_MESSAGE_IDS_MAXSIZE = 4096
+SEARCH_QUERY_MIN_LENGTH = 2
+SEARCH_QUERY_MAX_LENGTH = 100
+SEARCH_RATE_WINDOW_SECONDS = 60.0
+SEARCH_PER_SENDER_LIMIT = 3
+SEARCH_GLOBAL_LIMIT = 20
 MESSAGE_EVENT_TYPES = frozenset({"message", "e2eeMessage"})
 CONTROL_EVENT_TYPES = frozenset(
     {
@@ -45,6 +53,59 @@ FORWARDED_EVENT_TYPES = MESSAGE_EVENT_TYPES | CONTROL_EVENT_TYPES
 
 _create_private_config = create_private_json_file
 _set_private_file_permissions = set_private_file_permissions
+
+
+class _SearchRateLimiter:
+    """Sliding-window quota for the sample bot's authenticated search API."""
+
+    def __init__(
+        self,
+        *,
+        per_sender_limit: int,
+        global_limit: int,
+        window_seconds: float,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        if per_sender_limit <= 0 or global_limit <= 0 or window_seconds <= 0:
+            raise ValueError("Giới hạn /search phải lớn hơn 0.")
+        self._per_sender_limit = per_sender_limit
+        self._global_limit = global_limit
+        self._window_seconds = window_seconds
+        self._clock = clock
+        self._global_requests: deque[float] = deque()
+        self._sender_requests: dict[str, deque[float]] = {}
+
+    @staticmethod
+    def _prune(requests: deque[float], cutoff: float) -> None:
+        while requests and requests[0] <= cutoff:
+            requests.popleft()
+
+    def check(self, sender_id: str) -> str | None:
+        """Reserve one request, or return the quota scope that rejected it."""
+        now = self._clock()
+        cutoff = now - self._window_seconds
+        self._prune(self._global_requests, cutoff)
+
+        for known_sender, requests in list(self._sender_requests.items()):
+            self._prune(requests, cutoff)
+            if not requests:
+                self._sender_requests.pop(known_sender, None)
+
+        sender_requests = self._sender_requests.get(sender_id)
+        if (
+            sender_requests is not None
+            and len(sender_requests) >= self._per_sender_limit
+        ):
+            return "sender"
+        if len(self._global_requests) >= self._global_limit:
+            return "global"
+
+        if sender_requests is None:
+            sender_requests = deque()
+            self._sender_requests[sender_id] = sender_requests
+        sender_requests.append(now)
+        self._global_requests.append(now)
+        return None
 
 
 def load_config() -> dict[str, Any]:
@@ -127,6 +188,11 @@ class SimpleBot:
         self._recent_message_id_set: set[str] = set()
         self._dropped_message_events = 0
         self._last_bot_message: dict[str, tuple[str, str]] = {}
+        self._search_rate_limiter = _SearchRateLimiter(
+            per_sender_limit=SEARCH_PER_SENDER_LIMIT,
+            global_limit=SEARCH_GLOBAL_LIMIT,
+            window_seconds=SEARCH_RATE_WINDOW_SECONDS,
+        )
         self._handlers: dict[str, Handler] = {
             "ping": self._cmd_ping,
             "help": self._cmd_help,
@@ -348,6 +414,13 @@ class SimpleBot:
                 reply_to_sender_jid=str(message.get("senderJid") or ""),
             )
             message_id = result.get("messageId") or result.get("id")
+            if result.get("deliveryStatus") == DELIVERY_STATUS_UNKNOWN:
+                log(
+                    "send",
+                    f"E2EE UNKNOWN -> {chat_jid}; messageId={message_id or '<missing>'}; "
+                    "không tự retry để tránh gửi trùng.",
+                )
+                return
             if message_id:
                 self._last_bot_message[str(chat_jid)] = (str(chat_jid), str(message_id))
                 content_for_log = (
@@ -421,15 +494,38 @@ class SimpleBot:
         )
 
     async def _cmd_search(self, message: dict[str, Any], argument: str) -> None:
-        if not argument:
+        query = " ".join(argument.split())
+        if not query:
             await self._reply(message, f"Cách dùng: {self.prefix}search <từ khóa>")
             return
-        result = await _search.func(self.dataFB, argument, client=self.http_client)
+        if len(query) < SEARCH_QUERY_MIN_LENGTH:
+            await self._reply(
+                message,
+                f"🔍 Từ khóa phải có ít nhất {SEARCH_QUERY_MIN_LENGTH} ký tự.",
+            )
+            return
+        if len(query) > SEARCH_QUERY_MAX_LENGTH:
+            await self._reply(
+                message,
+                f"🔍 Từ khóa không được vượt quá {SEARCH_QUERY_MAX_LENGTH} ký tự.",
+            )
+            return
+
+        limit_scope = self._search_rate_limiter.check(str(message.get("userID") or ""))
+        if limit_scope is not None:
+            log("rate", f"Từ chối /search do chạm quota {limit_scope}; query đã ẩn.")
+            await self._reply(
+                message,
+                "⏳ /search đang được dùng quá nhanh. Vui lòng thử lại sau.",
+            )
+            return
+
+        result = await _search.func(self.dataFB, query, client=self.http_client)
         users = result.get("searchResultsDict") if isinstance(result, dict) else None
         if not users:
-            await self._reply(message, f"🔍 Không tìm thấy kết quả cho: {argument}")
+            await self._reply(message, f"🔍 Không tìm thấy kết quả cho: {query}")
             return
-        lines = [f"🔍 Kết quả cho “{argument}”:"]
+        lines = [f"🔍 Kết quả cho “{query}”:"]
         lines.extend(
             f"{index}. {user.get('name')} - {user.get('id')}"
             for index, user in enumerate(users[:5], 1)
@@ -438,7 +534,10 @@ class SimpleBot:
 
     async def _cmd_unsend(self, message: dict[str, Any], argument: str) -> None:
         sender_id = str(message.get("userID") or "")
-        if self.admins and sender_id not in self.admins:
+        if not self.admins:
+            await self._reply(message, "⛔ Lệnh này bị khóa vì chưa cấu hình admin.")
+            return
+        if sender_id not in self.admins:
             await self._reply(message, "⛔ Chỉ admin mới được dùng lệnh này.")
             return
         chat_jid = str(message.get("chatJid") or "")

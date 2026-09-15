@@ -26,7 +26,12 @@ from typing import Any
 
 import httpx
 
-from _core._utils import formAll, mainRequests, send_request, send_request_async
+from _core._utils import (
+    formAll,
+    mainRequests,
+    send_request,
+    send_request_async,
+)
 
 GRAPHQLBATCH_TIMEOUT = 60.0
 GRAPHQLBATCH_RETRIES = 2
@@ -148,6 +153,15 @@ def _build_result(response: httpx.Response, elapsed: float) -> dict[str, Any]:
             "countThread": len(thread_ids),
         },
     }
+
+
+def func_blocking(
+    dataFB: dict[str, Any], *, client: httpx.Client | None = None
+) -> dict[str, Any]:
+    """Blocking entrypoint dùng chung request builder và response parser."""
+    started = time.perf_counter()
+    response = _post_graphqlbatch(dataFB, client)
+    return _build_result(response, time.perf_counter() - started)
 
 
 async def func(

@@ -1,42 +1,93 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "fbchat-v2"
-version = "2.3.1"
-description = "Thư viện Python hiện đại cho Facebook Messenger API"
+version = "2.3.2"
+description = "Async-first, account-based Python library for the unofficial Facebook Messenger API with E2EE support."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-authors = [{ name = "MinhHuyDev", email = "z.m008v@gmail.com" }]
+authors = [
+    { name = "MinhHuyDev", email = "minhhuydev@protonmail.com" },
+]
+maintainers = [
+    { name = "MinhHuyDev", email = "minhhuydev@protonmail.com" },
+]
+keywords = [
+    "facebook",
+    "messenger",
+    "fbchat",
+    "messenger-api",
+    "e2ee",
+    "labyrinth",
+    "chatbot",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Communications :: Chat",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "httpx>=0.27.0",
+    "requests>=2.32.0",
     "paho-mqtt>=1.6.1",
     "pyotp>=2.9.0",
-    "requests>=2.32.0"
 ]
 
 [project.urls]
 Homepage = "https://github.com/MinhHuyDev/fbchat-v2"
+Documentation = "https://github.com/MinhHuyDev/fbchat-v2/blob/main/DOCS.md"
 Repository = "https://github.com/MinhHuyDev/fbchat-v2"
 Issues = "https://github.com/MinhHuyDev/fbchat-v2/issues"
+Changelog = "https://github.com/MinhHuyDev/fbchat-v2/blob/main/CHANGELOG.md"
+Telegram = "https://t.me/MinhHuyDev"
 
 [project.optional-dependencies]
+e2ee = []
 dev = [
-    "build>=1.2.2",
-    "pytest>=7.4.0",
-    "pytest-asyncio",
+    "build>=1.2.0",
+    "twine>=5.0.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
     "black",
-    "ruff",
-    "mypy>=1.11.0"
+    "mypy>=1.11.0",
+    "ruff>=0.4.0",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = [
-    "src/_core",
-    "src/_features",
-    "src/_messaging",
+packages = ["src/fbchat_v2"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src/fbchat_v2/**",
+    "/README.md",
+    "/README_EN.md",
+    "/CHANGELOG.md",
+    "/LICENSE",
+    "/pyproject.toml",
+]
+exclude = [
+    "**/__pycache__",
+    "**/*.pyc",
+    "**/config.json",
+    "/build/**",
+    "/dist/**",
+    "/.artifacts/**",
+    "/tests/**",
+    "/.venv*/**",
 ]
 
 [tool.ruff]
@@ -57,7 +108,10 @@ explicit_package_bases = true
 ignore_missing_imports = true
 warn_unused_configs = true
 files = [
-    "src",
+    "src/_core",
+    "src/_features",
+    "src/_messaging",
+    "src/main.py",
     "scripts",
 ]
 

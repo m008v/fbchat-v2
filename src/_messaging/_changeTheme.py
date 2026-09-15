@@ -26,7 +26,12 @@ from typing import Any
 
 import httpx
 
-from _core._utils import formAll, mainRequests, send_request, send_request_async
+from _core._utils import (
+    formAll,
+    mainRequests,
+    send_request,
+    send_request_async,
+)
 from _messaging._editMessage import (
     APP_ID,
     _build_ls_context,

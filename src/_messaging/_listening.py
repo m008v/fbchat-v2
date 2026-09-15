@@ -30,6 +30,7 @@ from urllib.parse import urlparse
 
 import paho.mqtt.client as mqtt
 
+from _core._console import safe_print as _safe_print
 from _core._utils import generate_client_id, generate_session_id, json_minimal
 from _features._thread import _all_thread_data
 
@@ -104,7 +105,7 @@ class listeningEvent:
                 pass
 
         self.droppedMessages += 1
-        print(
+        _safe_print(
             f"[{datetime.datetime.now()}] Hàng đợi đầy "
             f"(max={self.messageQueueMaxSize}); đã bỏ tin cũ nhất; "
             f"tổng số tin bị bỏ={self.droppedMessages}"
@@ -121,7 +122,9 @@ class listeningEvent:
         if not isinstance(metadata, dict):
             return None
 
-        thread_key = metadata.get("threadKey") or {}
+        thread_key = metadata.get("threadKey")
+        if not isinstance(thread_key, dict):
+            return None
         other_user_id = thread_key.get("otherUserFbId")
         body = self._fresh_body_results()
         body.update(
@@ -138,16 +141,19 @@ class listeningEvent:
                 "type": "user" if other_user_id is not None else "thread",
             }
         )
-        attachments = delta.get("attachments") or []
-        if attachments and isinstance(attachments[0], dict):
+        attachments = delta.get("attachments")
+        if (
+            isinstance(attachments, list)
+            and attachments
+            and isinstance(attachments[0], dict)
+        ):
             attachment = attachments[0]
             body["attachments"]["id"] = attachment.get("fbid", 0)
-            body["attachments"]["url"] = (
-                attachment.get("mercury", {})
-                .get("blob_attachment", {})
-                .get("preview", {})
-                .get("uri")
-            )
+            mercury = attachment.get("mercury")
+            blob = mercury.get("blob_attachment") if isinstance(mercury, dict) else None
+            preview = blob.get("preview") if isinstance(blob, dict) else None
+            if isinstance(preview, dict):
+                body["attachments"]["url"] = preview.get("uri")
         return body
 
     @staticmethod
@@ -155,10 +161,12 @@ class listeningEvent:
         try:
             seq_id = int(str(value).strip())
         except (TypeError, ValueError):
-            print(f"[{datetime.datetime.now()}] Bỏ qua {source} không hợp lệ: {value}")
+            _safe_print(
+                f"[{datetime.datetime.now()}] Bỏ qua {source} không hợp lệ: {value}"
+            )
             return None
         if seq_id < 0:
-            print(f"[{datetime.datetime.now()}] Bỏ qua {source} âm: {seq_id}")
+            _safe_print(f"[{datetime.datetime.now()}] Bỏ qua {source} âm: {seq_id}")
             return None
         return seq_id
 
@@ -170,7 +178,7 @@ class listeningEvent:
             return False
         previous = self.lastSeqID
         if previous is not None and seq_id < previous and not allow_reset:
-            print(
+            _safe_print(
                 f"[{datetime.datetime.now()}] Bỏ qua {source} cũ: {seq_id} < {previous}"
             )
             return False
@@ -187,10 +195,14 @@ class listeningEvent:
     def get_last_seq_id_blocking(self) -> int | None:
         previous = self.lastSeqID
         try:
-            self._apply_thread_data(_all_thread_data.func(self.dataFB), previous)
+            self._apply_thread_data(
+                _all_thread_data.func_blocking(self.dataFB), previous
+            )
         except Exception as error:  # lỗi mạng cần giữ sequence cũ để phục hồi
             self.lastSeqID = previous
-            print(f"[{datetime.datetime.now()}] Không thể làm mới last_seq_id: {error}")
+            _safe_print(
+                f"[{datetime.datetime.now()}] Không thể làm mới last_seq_id: {error}"
+            )
         return self.lastSeqID
 
     async def get_last_seq_id(self) -> int | None:
@@ -200,7 +212,9 @@ class listeningEvent:
             self._apply_thread_data(result, previous)
         except Exception as error:  # lỗi mạng cần giữ sequence cũ để phục hồi
             self.lastSeqID = previous
-            print(f"[{datetime.datetime.now()}] Không thể làm mới last_seq_id: {error}")
+            _safe_print(
+                f"[{datetime.datetime.now()}] Không thể làm mới last_seq_id: {error}"
+            )
         return self.lastSeqID
 
     def _publish_pending_queue(self, client: mqtt.Client) -> None:
@@ -209,7 +223,7 @@ class listeningEvent:
                 self.syncToken = None
             self.get_last_seq_id_blocking()
         if self.lastSeqID is None:
-            print(
+            _safe_print(
                 "Không có last_seq_id; hãy làm mới cookie Facebook rồi khởi động lại."
             )
             client.disconnect()
@@ -237,7 +251,7 @@ class listeningEvent:
         self, client: mqtt.Client, userdata: Any, flags: Any, rc: int
     ) -> None:
         if rc != 0:
-            print(f"Kết nối MQTT thất bại với mã {rc}.")
+            _safe_print(f"Kết nối MQTT thất bại với mã {rc}.")
             return
         self._publish_pending_queue(client)
 
@@ -245,16 +259,29 @@ class listeningEvent:
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
-            print("Không thể giải mã dữ liệu MQTT trên /t_ms.")
+            _safe_print("Không thể giải mã dữ liệu MQTT trên /t_ms.")
             return
 
-        for delta in payload.get("deltas") or []:
+        if not isinstance(payload, dict):
+            _safe_print("Bỏ qua dữ liệu MQTT vì payload không phải JSON object.")
+            return
+        deltas = payload.get("deltas")
+        if deltas is not None and not isinstance(deltas, list):
+            _safe_print("Bỏ qua dữ liệu MQTT vì trường deltas không phải danh sách.")
+            return
+        if "syncToken" in payload and "firstDeltaSeqId" in payload:
+            sync_token = payload.get("syncToken")
+            if not isinstance(sync_token, str) or not sync_token:
+                _safe_print("Bỏ qua dữ liệu MQTT vì syncToken không hợp lệ.")
+                return
+
+        for delta in deltas or []:
             body = self._body_from_delta(delta)
             if body is not None:
                 self._publish_body_results(body)
 
         if "syncToken" in payload and "firstDeltaSeqId" in payload:
-            self.syncToken = payload["syncToken"]
+            self.syncToken = sync_token
             self._set_last_seq_id(
                 payload.get("lastIssuedSeqId") or payload.get("firstDeltaSeqId"),
                 "MQTT first/last seq_id",
@@ -275,14 +302,14 @@ class listeningEvent:
                 self._publish_pending_queue(client)
                 return
 
-        print(f"MQTT lỗi {error}; yêu cầu tạo kết nối mới.")
+        _safe_print(f"MQTT lỗi {error}; yêu cầu tạo kết nối mới.")
         self.retry_count = 0
         self._reconnect_requested.set()
         client.disconnect()
 
     @staticmethod
     def _on_disconnect(client: mqtt.Client, userdata: Any, rc: int) -> None:
-        print(f"MQTT đã ngắt kết nối với mã {rc}.")
+        _safe_print(f"MQTT đã ngắt kết nối với mã {rc}.")
 
     def _build_client(self) -> mqtt.Client:
         session_id = generate_session_id()

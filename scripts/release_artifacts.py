@@ -21,7 +21,7 @@ EXPECTED_BINARY_NAMES = frozenset(
         "fbchat-bridge-e2ee-windows-amd64.exe",
     }
 )
-CHECKSUM_MODULE_MEMBER = "_messaging/_bridge_checksums.py"
+CHECKSUM_MODULE_MEMBER = "fbchat_v2/_messaging/_bridge_checksums.py"
 SDIST_CHECKSUM_MODULE_SUFFIX = f"/src/{CHECKSUM_MODULE_MEMBER}"
 _PROJECT_SECTION = re.compile(r"(?ms)^\[project\][ \t]*\r?\n(?P<body>.*?)(?=^\[|\Z)")
 _VERSION = re.compile(r'(?m)^version[ \t]*=[ \t]*["\'](?P<version>[^"\']+)["\'][ \t]*$')

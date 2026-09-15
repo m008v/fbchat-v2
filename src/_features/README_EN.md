@@ -233,7 +233,7 @@ result = await _deletePost.func(
 )
 ```
 
-Uses `useCometTrashPostMutation` to move a post to the trash bin. 
+Uses `useCometTrashPostMutation` to move a post to the trash bin.
 - `postID`: The ID of the post.
 - `typePost`: The type of the post (`"my_post"` for your own posts, `"others"` for shared posts or others' posts). Returns `success` if successful.
 

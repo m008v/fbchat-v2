@@ -81,13 +81,13 @@ python -m pip install -e ".[dev]"
 python scripts/verify_distribution.py
 ```
 
-Editable install làm cho các package `_core`, `_features` và `_messaging` import được từ mọi script trong virtual environment.
+Editable install làm cho namespace `fbchat_v2` import được từ mọi script trong virtual environment.
 Không cần đặt `PYTHONPATH=src` hoặc thêm prefix `src.` vào import.
 
 ```python
-from _core._session import dataGetHome
-from _features._facebook import _search
-from _messaging._send import api as SendAPI
+from fbchat_v2._core._session import dataGetHome
+from fbchat_v2._features._facebook import _search
+from fbchat_v2._messaging._send import api as SendAPI
 ```
 
 Không import private helper bắt đầu bằng `_build_`, `_parse_` hoặc `_BridgeProcess` trong application code. Chúng là implementation detail và có thể đổi giữa các bản.
@@ -109,7 +109,7 @@ async def dataGetHome(
 ### Từ chuỗi cookie
 
 ```python
-from _core._session import dataGetHome
+from fbchat_v2._core._session import dataGetHome
 
 data_fb = await dataGetHome("c_user=...; xs=...; fr=...; datr=...;")
 if data_fb is None:
@@ -163,8 +163,8 @@ Ba class public:
 ### File JSON local
 
 ```python
-from _core._session import dataGetHome
-from _core._storage import FileSessionStorage
+from fbchat_v2._core._session import dataGetHome
+from fbchat_v2._core._storage import FileSessionStorage
 
 storage = FileSessionStorage("src/config.json", key="cookies")
 data_fb = await dataGetHome(storage=storage)
@@ -175,8 +175,8 @@ data_fb = await dataGetHome(storage=storage)
 ### Biến môi trường
 
 ```python
-from _core._session import dataGetHome
-from _core._storage import EnvSessionStorage
+from fbchat_v2._core._session import dataGetHome
+from fbchat_v2._core._storage import EnvSessionStorage
 
 data_fb = await dataGetHome(storage=EnvSessionStorage("FB_COOKIES"))
 ```
@@ -220,7 +220,7 @@ await post_form_json_async(
 import asyncio
 import httpx
 
-from _features._facebook import _notification, _search
+from fbchat_v2._features._facebook import _notification, _search
 
 async with httpx.AsyncClient(
     timeout=httpx.Timeout(30.0, connect=10.0),
@@ -255,7 +255,7 @@ Transport copy request kwargs trước khi loại `url`, `verify`, `timeout`, v�
 Cookie session là luồng khuyến nghị. Credential login dễ gặp checkpoint, rate limit và thay đổi subcode.
 
 ```python
-from _core._facebookLogin import loginFacebook
+from fbchat_v2._core._facebookLogin import loginFacebook
 
 login = loginFacebook(
     "email@example.com",
@@ -312,7 +312,7 @@ await SendAPI().send(
 ### Gửi tới một user
 
 ```python
-from _messaging._send import api as SendAPI
+from fbchat_v2._messaging._send import api as SendAPI
 
 result = await SendAPI().send(
     data_fb,
@@ -394,7 +394,7 @@ await _attachments.func(
 Parser hiện trả metadata của item đầu tiên (`metadata[0]` hoặc `metadata["0"]`), không trả danh sách result. Nếu cần gửi nhiều attachment một cách xác định, hãy upload từng file, kiểm tra từng `attachmentID` rồi truyền list ID vào `_send`.
 
 ```python
-from _messaging import _attachments
+from fbchat_v2._messaging import _attachments
 
 uploaded = await _attachments.func(
     "photo.jpg",
@@ -418,7 +418,7 @@ Success:
 `attachmentType` có thể là MIME hoặc type từ Facebook. Khi gọi `_send`, dùng `typeAttachment` đã được normalize:
 
 ```python
-from _messaging._send import api as SendAPI
+from fbchat_v2._messaging._send import api as SendAPI
 
 if not uploaded or not uploaded.get("attachmentID"):
     raise RuntimeError(f"Upload không có attachment ID: {uploaded}")
@@ -444,7 +444,7 @@ Nếu Facebook trả `metadata: {"0": null}` hoặc error `1357054`, đó là se
 Khởi tạo:
 
 ```python
-from _messaging._listening import listeningEvent
+from fbchat_v2._messaging._listening import listeningEvent
 
 listener = listeningEvent(data_fb, message_queue_maxsize=1000)
 ```
@@ -651,7 +651,7 @@ result = await listener.send_message(
 ### `BridgeActions`
 
 ```python
-from _messaging._bridge_actions import BridgeActions
+from fbchat_v2._messaging._bridge_actions import BridgeActions
 
 if listener._bridge is None:
     raise RuntimeError("Bridge chưa sẵn sàng.")
@@ -697,7 +697,7 @@ Bridge mã hóa bytes thành base64 tại JSON-RPC boundary. Tránh đọc file 
 ## 12. 🔄 Sửa, reaction và thu hồi tin thường
 
 ```python
-from _messaging import _editMessage, _reactions, _unsend
+from fbchat_v2._messaging import _editMessage, _reactions, _unsend
 
 edited = await _editMessage.func(
     data_fb,
@@ -726,7 +726,7 @@ removed = await _unsend.func("mid.$message", data_fb)
 ### Theme
 
 ```python
-from _messaging import _changeTheme
+from fbchat_v2._messaging import _changeTheme
 
 themes = await _changeTheme.listThemes(data_fb)
 match = await _changeTheme.findTheme(data_fb, "love")
@@ -755,7 +755,7 @@ Theme được match theo ID, tên chính xác rồi keyword. `changeTheme()` pu
 ### Messenger Notes
 
 ```python
-from _messaging import _createNotes
+from fbchat_v2._messaging import _createNotes
 
 current = await _createNotes.checkNote(data_fb)
 created = await _createNotes.createNote(
@@ -813,7 +813,7 @@ Ví dụ workflow có connection pool:
 ```python
 import httpx
 
-from _features._facebook import _blocking, _get_user_info, _search
+from fbchat_v2._features._facebook import _blocking, _get_user_info, _search
 
 async with httpx.AsyncClient(timeout=30) as client:
     search = await _search.func(data_fb, "m008v", client=client)
@@ -852,7 +852,7 @@ Marketplace validate category, tên, giá không âm, danh sách ảnh và tọa
 | `_changeNickname` | `await func(dataFB, threadID, idUser, NewNickname, client=...)` |
 
 ```python
-from _features._thread import (
+from fbchat_v2._features._thread import (
     _addAdmin,
     _all_thread_data,
     _changeEmoji,
@@ -1086,11 +1086,12 @@ black --check src tests scripts
 mypy
 python -m compileall -q src tests scripts
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.1-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.2-py3-none-any.whl
 git diff --check
 ```
 
-CI còn cài riêng wheel và editable install vào virtual environment sạch để xác minh `_core`, `_features`, `_messaging` và export `_unFriend`.
+CI còn cài riêng wheel và sdist vào virtual environment sạch để xác minh namespace
+`fbchat_v2`, module lồng sâu và các public export như `_unFriend`.
 
 Bridge:
 

@@ -35,6 +35,8 @@ jobs:
           cache: pip
       - name: Install development dependencies
         run: python -m pip install --disable-pip-version-check -e ".[dev]"
+      - name: Verify canonical package snapshot
+        run: python scripts/sync_canonical_package.py --check
       - name: Compile Python sources
         run: python -m compileall -q src tests scripts
       - name: Run Ruff
@@ -42,10 +44,13 @@ jobs:
       - name: Check Python formatting
         run: black --check src tests scripts
       - name: Type-check source and release tooling
-        run: mypy
+        shell: bash
+        run: |
+          mypy
+          MYPYPATH=src mypy --explicit-package-bases src/fbchat_v2
       - name: Set up Node.js when website source is tracked
         if: ${{ hashFiles('website/script.js') != '' }}
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
       - name: Check website JavaScript syntax
@@ -79,6 +84,26 @@ jobs:
       - name: Run pytest
         run: python -m pytest tests/ -v --tb=short
 
+  python-windows:
+    name: Python 3.11 tests (Windows)
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.checkout_ref }}
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install test dependencies
+        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+      - name: Run pytest on Windows
+        run: python -m pytest tests/ -v --tb=short
+
   package-smoke:
     name: Wheel and sdist smoke test
     runs-on: ubuntu-24.04
@@ -98,6 +123,7 @@ jobs:
         shell: bash
         run: |
           python -m pip install --disable-pip-version-check "build==1.5.0" "hatchling==1.32.0" "twine==7.0.0"
+          python scripts/sync_canonical_package.py --check
           python -m build --no-isolation --outdir dist
           python -m twine check --strict dist/*
 
@@ -112,7 +138,7 @@ jobs:
 
           python -m venv .venv-sdist
           .venv-sdist/bin/python -m pip install --disable-pip-version-check "$sdist_path"
-          .venv-sdist/bin/python scripts/verify_distribution.py
+          .venv-sdist/bin/python scripts/verify_distribution.py "$sdist_path"
 
   go-quality:
     name: Go tests, vet, and race detector
@@ -137,6 +163,9 @@ jobs:
       - name: Run Go vet
         working-directory: bridge-e2ee
         run: go vet ./...
+      - name: Scan reachable Go vulnerabilities
+        working-directory: bridge-e2ee
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
       - name: Run Go race detector
         working-directory: bridge-e2ee
         env:
@@ -192,4 +221,4 @@ jobs:
           BRIDGE_BINARY: build/fbchat-bridge-e2ee${{ matrix.suffix }}
         run: >-
           python scripts/smoke_bridge_rpc.py "$BRIDGE_BINARY"
-          --expected-version "2.3.1"
+          --expected-version "2.3.2"

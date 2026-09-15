@@ -43,6 +43,55 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   khoảng trắng thừa đầu hero, CSS variable thiếu, V2 badge bị ẩn và layout
   contributor/preloader trên màn hình nhỏ.
 
+## [2.3.2] - 2026-09-15
+
+### Added
+
+- Thêm job pytest trên Windows để bắt lỗi ACL/runtime chỉ xuất hiện trên nền
+  tảng này; quality gate Go chạy thêm `govulncheck` đã pin phiên bản.
+- Thêm public namespace `fbchat_v2` có thể tái tạo trực tiếp từ source chính,
+  kèm exact allowlist, kiểm tra `RECORD`/`PKG-INFO`, smoke test wheel/sdist và
+  kiểm tra import module lồng sâu.
+- GitHub Release đính kèm wheel, sdist và `SHA256SUMS-python` đúng từ job đã
+  verify, thay vì để artifact Python trôi sang một quy trình build khác.
+
+### Changed
+
+- Nâng Go lên `1.26.6` và `gorilla/websocket` lên `1.5.3` để loại các call path
+  có lỗ hổng mà `govulncheck` đã phát hiện.
+- E2EE send timeout trả `deliveryStatus="unknown"`; wrapper Python trả
+  `uncertain` với `retryable=false`, không còn giả vờ rằng message đã gửi.
+- Queue event E2EE dùng hard limit 1.000 phần tử, drop-oldest và telemetry đã
+  che payload khi chịu burst.
+
+### Fixed
+
+- Sửa regular MQTT listener gọi coroutine như dữ liệu sync khi lấy
+  `last_seq_id`; sync/async dùng chung parser kết quả và payload MQTT sai schema
+  bị loại trước callback.
+- Các mutation block, Professional mode, register-on-profile và Messenger Notes
+  fail closed khi có GraphQL errors, thiếu đúng operation node hoặc response
+  rỗng; mutation Notes không tự retry request không idempotent.
+- Reaction và Notes tạo client mutation ID mới cho từng request, không tái dùng
+  ID cố định hoặc miền giá trị quá nhỏ dễ đụng nhau.
+- File session tạm được siết quyền trước atomic replace; Windows PowerShell ACL
+  không còn kế thừa `PSModulePath` không tương thích từ PowerShell 7.
+- Standalone E2EE sender dọn bridge ở mọi handshake failure; Go bridge rollback
+  partial E2EE client, giới hạn RPC/media trước full allocation và xóa temp file.
+- Bot không cache/log message timeout như delivered và khóa `/unsend` khi chưa
+- Bot giới hạn độ dài và quota `/search`; console log giữ được Unicode trên
+  Windows nhưng không làm lộ query hoặc payload nhạy cảm.
+- Runtime version không còn bị một distribution cũ trong môi trường local ghi
+  đè lên version `2.3.2` của source checkout.
+
+### Packaging and CI
+
+- Đồng bộ package, bridge, workflow, verifier, tài liệu và test lên `2.3.2`.
+- Wheel/sdist PyPI phải là chính các byte đã được quality gate kiểm tra, ghi
+  checksum và gắn provenance; không rebuild thủ công ở checkout khác.
+- Release workflow khóa immutable commit SHA, recheck tag trước upload, từ chối
+  asset cũ/thừa và pin toàn bộ third-party action bằng commit SHA.
+
 ## [2.3.1] - 2026-09-07
 
 ### Added
@@ -643,7 +692,8 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
-[Unreleased]: https://github.com/m008v/fbchat-v2/compare/v2.3.1...HEAD
+[Unreleased]: https://github.com/m008v/fbchat-v2/compare/v2.3.2...HEAD
+[2.3.2]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.2
 [2.3.1]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.1
 [2.3.0]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.0
 [2.2.1]: https://github.com/m008v/fbchat-v2/releases/tag/v.2.2.1

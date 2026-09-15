@@ -12,6 +12,7 @@ import main as sample_main
 class _FakeListener:
     def __init__(self) -> None:
         self.sent: list[tuple[str, str, str, str]] = []
+        self.send_result: dict[str, str] = {"messageId": "mid.reply"}
 
     async def send_e2ee_message(
         self,
@@ -22,7 +23,7 @@ class _FakeListener:
         reply_to_sender_jid: str,
     ) -> dict[str, str]:
         self.sent.append((chat_jid, content, reply_to_id, reply_to_sender_jid))
-        return {"messageId": "mid.reply"}
+        return dict(self.send_result)
 
 
 class _RecordingLoop:
@@ -258,3 +259,143 @@ async def test_plain_text_is_ignored_but_prefixed_command_runs(
         )
 
     assert handled == [""]
+
+
+@pytest.mark.asyncio
+async def test_unsend_is_denied_when_admin_list_is_empty(
+    monkeypatch: pytest.MonkeyPatch, mock_dataFB: dict[str, Any]
+) -> None:
+    bot = _make_bot(monkeypatch, mock_dataFB, admins=[])
+    replies: list[str] = []
+
+    async def record_reply(message: dict[str, Any], text: str) -> None:
+        replies.append(text)
+
+    monkeypatch.setattr(bot, "_reply", record_reply)
+
+    await bot._cmd_unsend(
+        {"userID": "2000", "chatJid": "2000@msgr"},
+        "",
+    )
+
+    assert replies == ["⛔ Lệnh này bị khóa vì chưa cấu hình admin."]
+
+
+@pytest.mark.asyncio
+async def test_unknown_e2ee_delivery_is_not_cached_or_logged_as_success(
+    monkeypatch: pytest.MonkeyPatch, mock_dataFB: dict[str, Any]
+) -> None:
+    listener = _FakeListener()
+    listener.send_result = {
+        "messageId": "mid-timeout",
+        "deliveryStatus": sample_main.DELIVERY_STATUS_UNKNOWN,
+    }
+    monkeypatch.setattr(
+        sample_main, "listeningE2EEEvent", lambda data, **options: listener
+    )
+    output: list[str] = []
+    monkeypatch.setattr(sample_main, "log", lambda tag, message: output.append(message))
+    bot = sample_main.SimpleBot(mock_dataFB)
+
+    await bot._reply(
+        {
+            "chatJid": "2000@msgr",
+            "messageID": "mid.incoming",
+            "senderJid": "2000:1@msgr",
+        },
+        "PRIVATE_REPLY",
+    )
+
+    assert bot._last_bot_message == {}
+    assert len(output) == 1
+    assert any("E2EE UNKNOWN" in line for line in output)
+    assert any("mid-timeout" in line for line in output)
+    assert all("E2EE ->" not in line for line in output)
+    assert all("PRIVATE_REPLY" not in line for line in output)
+
+
+def test_search_rate_limiter_enforces_sender_and_global_sliding_windows() -> None:
+    now = [100.0]
+    limiter = sample_main._SearchRateLimiter(
+        per_sender_limit=2,
+        global_limit=3,
+        window_seconds=10.0,
+        clock=lambda: now[0],
+    )
+
+    assert limiter.check("sender-a") is None
+    assert limiter.check("sender-a") is None
+    assert limiter.check("sender-a") == "sender"
+    assert limiter.check("sender-b") is None
+    assert limiter.check("sender-c") == "global"
+
+    now[0] = 110.0
+    assert limiter.check("sender-c") is None
+
+
+@pytest.mark.asyncio
+async def test_search_validates_and_normalizes_query_before_provider(
+    monkeypatch: pytest.MonkeyPatch, mock_dataFB: dict[str, Any]
+) -> None:
+    bot = _make_bot(monkeypatch, mock_dataFB)
+    queries: list[str] = []
+    replies: list[str] = []
+
+    async def fake_search(
+        dataFB: dict[str, Any], query: str, **kwargs: Any
+    ) -> dict[str, list[Any]]:
+        queries.append(query)
+        return {"searchResultsDict": []}
+
+    async def record_reply(message: dict[str, Any], text: str) -> None:
+        replies.append(text)
+
+    monkeypatch.setattr(sample_main._search, "func", fake_search)
+    monkeypatch.setattr(bot, "_reply", record_reply)
+    message = {"userID": "sender-a"}
+
+    await bot._cmd_search(message, "x")
+    await bot._cmd_search(message, "x" * (sample_main.SEARCH_QUERY_MAX_LENGTH + 1))
+    await bot._cmd_search(message, "  Alice\n  Bob  ")
+
+    assert queries == ["Alice Bob"]
+    assert "ít nhất 2 ký tự" in replies[0]
+    assert "không được vượt quá 100 ký tự" in replies[1]
+
+
+@pytest.mark.asyncio
+async def test_search_rate_limit_blocks_provider_and_redacts_telemetry(
+    monkeypatch: pytest.MonkeyPatch, mock_dataFB: dict[str, Any]
+) -> None:
+    bot = _make_bot(monkeypatch, mock_dataFB)
+    bot._search_rate_limiter = sample_main._SearchRateLimiter(
+        per_sender_limit=1,
+        global_limit=2,
+        window_seconds=60.0,
+        clock=lambda: 100.0,
+    )
+    queries: list[str] = []
+    replies: list[str] = []
+    logs: list[str] = []
+
+    async def fake_search(
+        dataFB: dict[str, Any], query: str, **kwargs: Any
+    ) -> dict[str, list[Any]]:
+        queries.append(query)
+        return {"searchResultsDict": []}
+
+    async def record_reply(message: dict[str, Any], text: str) -> None:
+        replies.append(text)
+
+    monkeypatch.setattr(sample_main._search, "func", fake_search)
+    monkeypatch.setattr(bot, "_reply", record_reply)
+    monkeypatch.setattr(sample_main, "log", lambda tag, text: logs.append(text))
+    message = {"userID": "sender-a"}
+
+    await bot._cmd_search(message, "PRIVATE_QUERY")
+    await bot._cmd_search(message, "PRIVATE_QUERY")
+
+    assert queries == ["PRIVATE_QUERY"]
+    assert any("thử lại sau" in reply for reply in replies)
+    assert logs == ["Từ chối /search do chạm quota sender; query đã ẩn."]
+    assert all("PRIVATE_QUERY" not in line for line in logs)

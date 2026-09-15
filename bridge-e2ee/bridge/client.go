@@ -87,6 +87,14 @@ type ClientConfig struct {
 	LogLevel       string            `json:"logLevel"`
 }
 
+type e2eeConnectOperations struct {
+	prepare    func() (*whatsmeow.Client, error)
+	register   func() error
+	save       func() error
+	connect    func(*whatsmeow.Client) error
+	disconnect func(*whatsmeow.Client)
+}
+
 // NewClient creates a new messagix client
 func NewClient(cfg *ClientConfig) (*Client, error) {
 	// Parse platform
@@ -244,6 +252,22 @@ func (c *Client) Connect() (*UserInfo, *InitialData, error) {
 
 // ConnectE2EE sets up and connects the E2EE client
 func (c *Client) ConnectE2EE() error {
+	return c.connectE2EE(e2eeConnectOperations{
+		prepare: c.Messagix.PrepareE2EEClient,
+		register: func() error {
+			return c.Messagix.RegisterE2EE(c.ctx, c.FBID)
+		},
+		save: c.DeviceStore.Save,
+		connect: func(e2eeClient *whatsmeow.Client) error {
+			return e2eeClient.ConnectContext(c.ctx)
+		},
+		disconnect: func(e2eeClient *whatsmeow.Client) {
+			e2eeClient.Disconnect()
+		},
+	})
+}
+
+func (c *Client) connectE2EE(operations e2eeConnectOperations) (err error) {
 	c.connectMu.Lock()
 	defer c.connectMu.Unlock()
 	if err := c.lifecycleError(); err != nil {
@@ -251,15 +275,36 @@ func (c *Client) ConnectE2EE() error {
 	}
 
 	currentE2EE := c.snapshotE2EEClient()
-	if currentE2EE != nil && currentE2EE.IsConnected() {
-		return nil
+	if currentE2EE != nil {
+		if isE2EEReady(currentE2EE) {
+			return nil
+		}
+		c.rollbackE2EEClient(currentE2EE, currentE2EE.Disconnect)
 	}
 
 	// Prepare E2EE client
-	e2eeClient, err := c.Messagix.PrepareE2EEClient()
+	e2eeClient, err := operations.prepare()
 	if err != nil {
 		return err
 	}
+	if e2eeClient == nil {
+		return errors.New("prepared E2EE client is nil")
+	}
+	var eventHandlerID uint32
+	eventHandlerRegistered := false
+	defer func() {
+		if err == nil {
+			return
+		}
+		if eventHandlerRegistered {
+			e2eeClient.RemoveEventHandler(eventHandlerID)
+		}
+		var disconnect func()
+		if operations.disconnect != nil {
+			disconnect = func() { operations.disconnect(e2eeClient) }
+		}
+		c.rollbackE2EEClient(e2eeClient, disconnect)
+	}()
 	if err := c.lifecycleError(); err != nil {
 		return err
 	}
@@ -272,30 +317,44 @@ func (c *Client) ConnectE2EE() error {
 	c.lifecycleMu.Unlock()
 
 	// Register E2EE
-	if err := c.Messagix.RegisterE2EE(c.ctx, c.FBID); err != nil {
+	if err = operations.register(); err != nil {
 		return err
 	}
-	if err := c.DeviceStore.Save(); err != nil {
+	if err = operations.save(); err != nil {
 		return fmt.Errorf("failed to persist E2EE device after registration: %w", err)
 	}
-	if err := c.lifecycleError(); err != nil {
+	if err = c.lifecycleError(); err != nil {
 		return err
 	}
 
 	// Register before connecting: ConnectContext may synchronously deliver queued
 	// messages, so registering afterwards creates a message-loss window.
-	e2eeClient.AddEventHandler(c.handleE2EEEvent)
+	eventHandlerID = e2eeClient.AddEventHandler(c.handleE2EEEvent)
+	eventHandlerRegistered = true
 
 	// Connect E2EE
-	if err := e2eeClient.ConnectContext(c.ctx); err != nil {
+	if err = operations.connect(e2eeClient); err != nil {
 		return err
 	}
-	if err := c.lifecycleError(); err != nil {
-		e2eeClient.Disconnect()
+	if err = c.lifecycleError(); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (c *Client) rollbackE2EEClient(e2eeClient *whatsmeow.Client, disconnect func()) {
+	if e2eeClient == nil {
+		return
+	}
+	c.lifecycleMu.Lock()
+	if c.E2EE == e2eeClient {
+		c.E2EE = nil
+	}
+	c.lifecycleMu.Unlock()
+	if disconnect != nil {
+		disconnect()
+	}
 }
 
 // Disconnect disconnects from Messenger
@@ -756,6 +815,9 @@ func newDeviceStore(path string, randomReader io.Reader) (*DeviceStore, error) {
 	created := false
 
 	if data, err := os.ReadFile(path); err == nil {
+		if err := protectPrivateFile(path, 0600); err != nil {
+			return nil, fmt.Errorf("protect existing device store: %w", err)
+		}
 		var deviceJSON DeviceJSON
 		if err := json.Unmarshal(data, &deviceJSON); err != nil {
 			return nil, fmt.Errorf("decode device store: %w", err)
@@ -1001,7 +1063,7 @@ func persistDeviceSnapshot(path string, dataChanges *deviceDataDispatcher, data 
 
 func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
 	directory := filepath.Dir(path)
-	temporaryFile, err := os.CreateTemp(directory, "."+filepath.Base(path)+".tmp-*")
+	temporaryFile, err := createPrivateTempFile(directory, "."+filepath.Base(path)+".tmp-*", mode)
 	if err != nil {
 		return fmt.Errorf("create temporary device store: %w", err)
 	}
@@ -1016,9 +1078,6 @@ func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
 		}
 	}()
 
-	if err := temporaryFile.Chmod(mode); err != nil {
-		return fmt.Errorf("set temporary device store permissions: %w", err)
-	}
 	if written, err := temporaryFile.Write(data); err != nil {
 		return fmt.Errorf("write temporary device store: %w", err)
 	} else if written != len(data) {
