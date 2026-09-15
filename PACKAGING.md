@@ -29,7 +29,8 @@ fbchat-v2-pypi/
 
 ## 🚧 Trạng thái
 
-Nhánh `pypi` đang đóng gói runtime async-first `v2.3.0` từ repo gốc.
+Nhánh `pypi` đang đồng bộ runtime async-first `v2.3.2` từ verified sdist của
+GitHub Release tương ứng.
 Code module đã đổi import sang namespace `fbchat_v2.*` để chạy đúng sau khi cài qua `pip`.
 
 Nguồn: [`../fbchat-v2/CHANGELOG.md`](../fbchat-v2/CHANGELOG.md).
@@ -44,13 +45,13 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install --upgrade pip build twine
 
-# Build sdist + wheel vào thư mục rỗng riêng cho đúng version
-python -m build --outdir .artifacts/v2.3.0
+# Build thử vào thư mục rỗng riêng cho đúng version
+python -m build --outdir .artifacts/v2.3.2-local
 
-# Kết quả nằm ở .artifacts/v2.3.0/
-ls .artifacts/v2.3.0/
-# fbchat_v2-2.3.0-py3-none-any.whl
-# fbchat_v2-2.3.0.tar.gz
+# Kết quả nằm ở .artifacts/v2.3.2-local/
+ls .artifacts/v2.3.2-local/
+# fbchat_v2-2.3.2-py3-none-any.whl
+# fbchat_v2-2.3.2.tar.gz
 ```
 
 ## 🧪 Test cài thử
@@ -59,7 +60,7 @@ ls .artifacts/v2.3.0/
 deactivate
 python -m venv .venv-test
 .venv-test\Scripts\activate
-pip install .artifacts/v2.3.0/fbchat_v2-2.3.0-py3-none-any.whl
+pip install .artifacts/v2.3.2-local/fbchat_v2-2.3.2-py3-none-any.whl
 
 python -c "import fbchat_v2; print(fbchat_v2.__version__)"
 ```
@@ -69,24 +70,26 @@ python -c "import fbchat_v2; print(fbchat_v2.__version__)"
 ### TestPyPI (làm trước cho chắc)
 
 ```powershell
-twine upload --repository testpypi .artifacts/v2.3.0/fbchat_v2-2.3.0-py3-none-any.whl .artifacts/v2.3.0/fbchat_v2-2.3.0.tar.gz
+twine upload --repository testpypi .artifacts/v2.3.2-local/fbchat_v2-2.3.2-py3-none-any.whl .artifacts/v2.3.2-local/fbchat_v2-2.3.2.tar.gz
 pip install --index-url https://test.pypi.org/simple/ fbchat-v2
 ```
 
 ### PyPI thật
 
 ```powershell
-twine upload .artifacts/v2.3.0/fbchat_v2-2.3.0-py3-none-any.whl .artifacts/v2.3.0/fbchat_v2-2.3.0.tar.gz
+twine upload .artifacts/v2.3.2/fbchat_v2-2.3.2-py3-none-any.whl .artifacts/v2.3.2/fbchat_v2-2.3.2.tar.gz
 ```
 
-> Cần token API. Tạo tại <https://pypi.org/manage/account/token/> và lưu vào `~/.pypirc`.
+> Production chỉ upload đúng hai artifact đã tải từ GitHub Release vào
+> `.artifacts/v2.3.2/`; không rebuild từ checkout này. Token API được giữ trong
+> keyring, không ghi vào repository hoặc command log.
 
 ---
 
 ## 🔗 E2EE bridge
 
-Binary Go `fbchat-bridge-e2ee` **không** được đóng gói trong wheel. Bản `v2.3.0`
-nhúng checksum của đúng năm binary từ GitHub Release `v2.3.0` và tự tải asset
+Binary Go `fbchat-bridge-e2ee` **không** được đóng gói trong wheel. Bản `v2.3.2`
+nhúng checksum của đúng năm binary từ GitHub Release `v2.3.2` và tự tải asset
 phù hợp vào cache khi cần. Downloader pin repository, tag, asset path, host,
 redirect, kích thước và SHA-256; trường hợp không khớp sẽ fail-closed. User vẫn
 có thể tự build bridge cùng version và trỏ thủ công qua `FBCHAT_E2EE_BIN`.

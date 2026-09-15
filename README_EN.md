@@ -7,7 +7,7 @@
 [![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/MinhHuyDev/fbchat-v2)
 [![PyPI](https://img.shields.io/pypi/v/fbchat-v2?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/fbchat-v2/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-2.3.0-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
+[![Version](https://img.shields.io/badge/version-2.3.2-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
 [![Issues](https://img.shields.io/github/issues/MinhHuyDev/fbchat-v2?color=orange)](https://github.com/MinhHuyDev/fbchat-v2/issues)
 [![License](https://img.shields.io/badge/license-See%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
@@ -20,7 +20,7 @@
 
 
 > [!IMPORTANT]
-> This is version `v2.3.0`, which uses *httpx.Client* instead of the old *requests* flow and now ships with **async/await** support. Because of that, code syntax may change or conflict with the version you are currently using. If you still want to use **requests** (*no async/await*), click here: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
+> This is version `v2.3.2`, which uses *httpx.Client* instead of the old *requests* flow and now ships with **async/await** support. Because of that, code syntax may change or conflict with the version you are currently using. If you still want to use **requests** (*no async/await*), click here: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
 
 > [!WARNING]
 > **Disclaimer** - This is **not** an official Facebook product. Facebook already provides an official chatbot API [here](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` is different because it authenticates with a **real Facebook user account / cookie**, which comes with security risks. Think carefully before using it.
@@ -31,7 +31,7 @@
 
 Hello, I am **MinhHuyDev** (*m008v*) - the author and maintainer of this project.
 
-The async-first refactor started in `v2.2.0` and is completed in `v2.3.0` with coordinated hardening across the message pipeline, E2EE lifecycle, persistence, packaging, and quality gates.
+First of all, thank you sincerely to all users in Vietnam and abroad who have contributed ideas and reported bugs for this project. In this **major v2.2.0 update**, the codebase has been **fully restructured**, most small legacy bugs have been addressed, and strong *async/await* support has been added.
 
 Of course, there may still be small bugs that are hard to find, or parts of the code that are not fully consistent yet. If you discover a ***problem***, open an issue on [GitHub](https://github.com/MinhHuyDev/fbchat-v2/issues) or message me directly on [Telegram](https://t.me/MinhHuyDev).
 
@@ -84,11 +84,11 @@ Of course, there may still be small bugs that are hard to find, or parts of the 
 
 ### Facebook Features (`_features._facebook`)
 
-- ❤️ **React and unreact to timeline posts** ([`_reactionPost`](src/fbchat_v2/_features/_facebook/README_EN.md#-spotlight-_reactionpostpy-post-reactions): Like, Love, Care, Haha, Wow, Sad, Angry, Undo)
+- ❤️ **React and unreact to timeline posts** ([`_reactionPost`](src/_features/_facebook/README_EN.md#-spotlight-_reactionpostpy-post-reactions): Like, Love, Care, Haha, Wow, Sad, Angry, Undo)
 - 📝 Create posts (`_createPost`), archive posts (`_archivePost`), delete posts (`_deletePost`)
 - 👤 Search users (`_search`), fetch profile info (`_get_user_info`), manage notifications (`_notification`)
 - 🚫 Block / unblock (`_blocking`), unfriend users (`_unFriend`), manage Marketplace and Professional Mode
-- 📖 *See full details in [Facebook Features Documentation](src/fbchat_v2/_features/_facebook/README_EN.md)*
+- 📖 *See full details in [Facebook Features Documentation](src/_features/_facebook/README_EN.md)*
 
 ### Recently Updated
 
@@ -106,9 +106,9 @@ The codebase is split into 3 layers. Feature modules must not manage sessions by
 
 | Layer | Path | Responsibility |
 |---|---|---|
-| Core | `src/fbchat_v2/_core/` | HTTP transport, session, storage, login, and utilities |
-| Features | `src/fbchat_v2/_features/` | Facebook business features and thread administration |
-| Messaging | `src/fbchat_v2/_messaging/` | Send, listen, E2EE, attachment, reaction, theme, and notes |
+| Core | `src/_core/` | HTTP transport, session, storage, login, and utilities |
+| Features | `src/_features/` | Facebook business features and thread administration |
+| Messaging | `src/_messaging/` | Send, listen, E2EE, attachment, reaction, theme, and notes |
 
 ```mermaid
 flowchart LR
@@ -183,7 +183,7 @@ fbchat-v2/
 | Component | Minimum | Recommended | Notes |
 |---|---|---|---|
 | Python | 3.10 | 3.11 / 3.12 | Required |
-| Go (toolchain) | 1.24 | 1.24+ | **Only required for E2EE** - used to build `fbchat-bridge-e2ee` |
+| Go (toolchain) | 1.26.6 | 1.26.6+ | **Only required for E2EE** - used to build `fbchat-bridge-e2ee` |
 | Git | any | latest | Needed for `go mod tidy` to pull `mautrix/meta` |
 | OS | Windows / Linux / macOS | - | - |
 | RAM | 256 MB | 1 GB+ | The E2EE bridge uses about 80-150 MB while running |
@@ -208,13 +208,22 @@ dependencies = [
 
 > Summary: **Steps 1-4 are required** for every user. **Step 5 is only required if you want to receive 1-1 messages (E2EE)**.
 
-### 1. Create a virtual environment *(optional but recommended)*
+### 1. Clone the source
+
+```bash
+git clone https://github.com/MinhHuyDev/fbchat-v2
+cd fbchat-v2
+```
+
+> Alternative: use `Code -> Download ZIP` on GitHub.
+
+### 2. Create a virtual environment *(optional but recommended)*
 
 ```bash
 python -m venv .venv
 ```
 
-### 2. Activate the environment
+Activate the environment:
 
 ```bash
 # Windows (PowerShell)
@@ -224,44 +233,36 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install the package from PyPI
+### 3. Install Python dependencies
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install --upgrade "fbchat-v2==2.3.0"
+python -m pip install -e .
 ```
 
 Quick check:
 
 ```bash
-python -c "import fbchat_v2; from fbchat_v2._features._facebook import _unFriend; print(fbchat_v2.__version__)"
+python -c "import fbchat_v2; from fbchat_v2._features._facebook import _unFriend; print('OK')"
 ```
 
 ### 4. Verify the installed packages
 
-The wheel must preserve the public `fbchat_v2` namespace used by earlier PyPI releases:
+Both editable installs and wheels must expose the public `fbchat_v2` namespace:
 
 ```bash
-python -c "from fbchat_v2._core._session import dataGetHome; from fbchat_v2._messaging._send import api; print('OK')"
+python scripts/verify_distribution.py
 ```
 
-You do not need `PYTHONPATH=src`; all imports start with `fbchat_v2.`.
+You do not need `PYTHONPATH=src`, and imports must not use a `src.` prefix.
 
 ### 5. *(Optional)* Build the E2EE bridge - for 1-1 messages
 
 If you only need to receive group messages, **skip this step**. Personal messages (E2EE) require the Go binary `fbchat-bridge-e2ee`.
 
-Package `2.3.0` embeds checksums for all five binaries in GitHub Release
-`v2.3.0`. On first use, the listener downloads the matching Windows x64, Linux
-x64/ARM64, or macOS x64/ARM64 asset into a dedicated cache and verifies its tag,
-URL, size, and SHA-256 before execution. On unsupported platforms, or when you
-want to manage the binary yourself, build the same version and set
-`FBCHAT_E2EE_BIN`; the package still fails closed if the binary cannot be
-verified.
-
 #### 5.1. Install the Go toolchain
 
-- Download it from: <https://go.dev/dl/> (Go >= 1.24).
+- Download it from: <https://go.dev/dl/> (Go >= 1.26.6).
 - After installation, open a new terminal and check:
 
   ```bash
@@ -559,7 +560,7 @@ Main events:
 | `error` | bridge/transport error | Should be logged and monitored |
 | `bridge_fatal` | retry count | Watchdog gave up |
 
-Advanced actions such as edit, unsend, typing, mark-read, sending images/audio, and downloading media live in `BridgeActions`. See the [messaging documentation](src/fbchat_v2/_messaging/README.md).
+Advanced actions such as edit, unsend, typing, mark-read, sending images/audio, and downloading media live in `BridgeActions`. See the [messaging documentation](src/_messaging/README.md).
 
 ---
 
@@ -585,9 +586,9 @@ The bot queue is limited to 1000 events and drops the oldest event when full. Th
 | Documentation | Content |
 |---|---|
 | [DOCS.md](DOCS.md) | Full API and workflow guide |
-| [Core](src/fbchat_v2/_core/README.md) | Session, HTTP, storage, and login |
-| [Features](src/fbchat_v2/_features/README.md) | Facebook features and threads |
-| [Messaging](src/fbchat_v2/_messaging/README.md) | Send, listener, attachment, and E2EE |
+| [Core](src/_core/README.md) | Session, HTTP, storage, and login |
+| [Features](src/_features/README.md) | Facebook features and threads |
+| [Messaging](src/_messaging/README.md) | Send, listener, attachment, and E2EE |
 | [Bridge E2EE](bridge-e2ee/README.md) | Build, binary discovery, and JSON-RPC |
 | [Flowchart](FLOWCHART.md) | Session, HTTP, MQTT, E2EE, and shutdown flow |
 | [Mindmap](mindmap-mermaid.md) | Codebase-wide module map |
@@ -596,21 +597,27 @@ The bot queue is limited to 1000 events and drops the oldest event when full. Th
 
 ## ✅ Quality Checks
 
-Recommended packaging gates before committing:
+Run the same command as CI:
 
 ```bash
-python -m compileall -q src/fbchat_v2
-ruff check src/fbchat_v2
-black --check src/fbchat_v2
+pytest tests/ -v --tb=short
+```
+
+Recommended gates before committing:
+
+```bash
+python -m compileall -q src tests scripts
+ruff check src tests scripts
+black --check src tests scripts
 mypy
-python -m build
-twine check --strict dist/fbchat_v2-2.3.0-py3-none-any.whl dist/fbchat_v2-2.3.0.tar.gz
+python -m build --wheel
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.2-py3-none-any.whl
 git diff --check
 ```
 
-Install the wheel and sdist in separate clean virtual environments before uploading.
+CI installs the wheel and editable project into separate clean virtual environments before running the import smoke test.
 
-The complete runtime and bridge test suites live in the [source repository](https://github.com/MinhHuyDev/fbchat-v2):
+For the bridge:
 
 ```bash
 cd bridge-e2ee

@@ -1,5 +1,31 @@
 # Agent Memories
 
+## 2026-09-15 — Đồng bộ source đóng gói v2.3.2
+
+### Mục tiêu
+- Đồng bộ toàn bộ package runtime từ release thay thế `fbchat-v2==2.3.2`, giữ branch `pypi` làm checkout đóng gói độc lập và chuẩn bị phát hành đúng artifact đã qua CI.
+
+### Đã thực hiện
+- Thay toàn bộ `src/fbchat_v2` bằng payload từ sdist GitHub Release `v2.3.2` target commit `981d0996db0a01af45526f8270d83559d5a3ef2e`; bổ sung module `_core/_console.py` và đồng bộ metadata, README, changelog, license cùng regression test bridge.
+- Đồng bộ mọi version đang hoạt động sang `2.3.2` và bind năm bridge binary đúng checksum của GitHub Release `v2.3.2`.
+- Thay artifact lần đầu bị chặn do owner GitHub cũ bằng replacement wheel/sdist đã sửa canonical repository `m008v/fbchat-v2`; regression test khóa exact API và asset URL owner.
+- Cập nhật `PACKAGING.md` để phân biệt build thử cục bộ với hai artifact production; production không rebuild từ checkout này.
+- Sửa bảy ký tự điều khiển tồn tại từ các Windows path bị escape sai trong lịch sử `AGENT_MEMORYs.md`; không thay đổi nội dung kỹ thuật tương ứng.
+
+### Quyết định kỹ thuật
+- Lấy verified sdist làm nguồn đồng bộ thay vì copy từ working tree hoặc rebuild tùy hứng, tránh cùng version nhưng khác payload.
+- Giữ cấu hình mypy riêng cho layout package-only `src/fbchat_v2`; metadata và runtime source vẫn tương thích với artifact release.
+- Loại file checksum được release workflow sinh tự động khỏi Black để branch không tự sửa payload đã ký hash.
+
+### Kiểm tra
+- Runtime source khớp byte-for-byte 54 file trong verified sdist; không còn tham chiếu active `2.3.0` hoặc `2.3.1` ngoài changelog/memory lịch sử.
+- Compileall, Ruff, Black in-process 45 file, mypy 45 source file và 5/5 pytest đều đạt; Twine strict và distribution verifier đạt cho wheel/sdist production.
+- Isolated build bằng Hatchling 1.32.0 đạt; wheel build thử có toàn bộ member/content giống wheel production, nhưng không dùng để upload vì archive bytes khác.
+- Replacement wheel SHA-256: `f7ea64c950b646b8c284086cd52b84d0825162f9f7d67b7a1880ca2433477832`; sdist SHA-256: `59f83b05167d4ebd3fa2d8a273817ab513c76faaa6e60ea5b46c41c1732dc8c7`.
+
+### Việc còn lại
+- Commit/push branch `pypi`, upload đúng wheel và sdist của GitHub Release lên PyPI, rồi xác minh hash và fresh install từ registry.
+
 ## 2026-09-07 — Đồng bộ tài liệu Facebook features & _reactionPost.py
 - Viết mới và cập nhật toàn diện hệ thống tài liệu `README.md` liên quan đến `fbchat_v2._features._facebook`.
 - Tạo mới `src/fbchat_v2/_features/_facebook/README.md` và `README_EN.md` tài liệu hóa 13 module cá nhân kèm tiêu điểm `_reactionPost.py` (bảng cảm xúc, alias, telemetry, chuẩn hóa Base64 target ID, code mẫu).
@@ -10,17 +36,17 @@
 ## 2026-09-07 — Phát hành PyPI v2.3.1
 
 ### Mục tiêu
-- Port module _reactionPost.py và cập nhật __init__.py sang checkout đóng gói bchat-v2-pypi, bump version lên 2.3.1, push nhánh pypi và publish lên PyPI.
+- Port module _reactionPost.py và cập nhật __init__.py sang checkout đóng gói fbchat-v2-pypi, bump version lên v2.3.1, push nhánh pypi và publish lên PyPI.
 
 ### Đã thực hiện
-- Sao chép _reactionPost.py sang src/fbchat_v2/_features/_facebook/_reactionPost.py, chuẩn hóa namespace imports sang bchat_v2._core._utils.
+- Sao chép _reactionPost.py sang src/fbchat_v2/_features/_facebook/_reactionPost.py, chuẩn hóa namespace imports sang fbchat_v2._core._utils.
 - Cập nhật export _reactionPost, _archivePost, _deletePost trong src/fbchat_v2/_features/_facebook/__init__.py.
 - Bump version lên 2.3.1 trong pyproject.toml, src/fbchat_v2/_core/__init__.py.
 - Decouple BRIDGE_RELEASE_VERSION trong _listening_e2ee.py để phiên bản bridge (2.3.0) có thể hoạt động độc lập với patch version của Python package mà không bị fail runtime check.
-- Cập nhật CHANGELOG.md và test assertions trong 	ests/test_packaging_regressions.py.
+- Cập nhật CHANGELOG.md và test assertions trong tests/test_packaging_regressions.py.
 - Xác minh: 5/5 pytest pass, Ruff pass, Mypy pass (44 source files), Twine strict pass.
-- Commit eat(facebook): add reactionPost feature and bump to v2.3.1 và push lên origin/pypi.
-- Build và upload hai distribution bchat_v2-2.3.1-py3-none-any.whl và bchat_v2-2.3.1.tar.gz lên PyPI qua Twine với API token trong keyring.
+- Commit feat(facebook): add reactionPost feature and bump to v2.3.1 và push lên origin/pypi.
+- Build và upload hai distribution fbchat_v2-2.3.1-py3-none-any.whl và fbchat_v2-2.3.1.tar.gz lên PyPI qua Twine với API token trong keyring.
 - Xác nhận release live tại https://pypi.org/project/fbchat-v2/2.3.1/.
 
 ## 2026-08-29 — Hoàn tất phát hành PyPI v2.3.0
