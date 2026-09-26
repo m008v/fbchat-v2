@@ -1,0 +1,25 @@
+services:
+  fbchat-provider:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fbchat-v2-provider:local
+    restart: unless-stopped
+    init: true
+    environment:
+      FBCHAT_E2EE_REQUIRED: "true"
+      FBCHAT_STATE_DIR: /var/lib/fbchat
+    ports:
+      - "127.0.0.1:8088:8080"
+    volumes:
+      - fbchat_state:/var/lib/fbchat
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  fbchat_state:

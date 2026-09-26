@@ -623,6 +623,30 @@ Tài liệu tiếng Việt phải là UTF-8 thực. Nếu PowerShell hiển th�
 
 ---
 
+## 🐳 Dịch vụ container
+
+Repository có `Dockerfile` multi-stage hướng production. Image build bridge E2EE bằng Go, cài package Python cùng HTTP service tùy chọn và chạy bằng user không có đặc quyền.
+
+Khởi tạo submodule trước khi build:
+
+```bash
+git submodule update --init --recursive
+docker compose up --build
+```
+
+Compose độc lập bind dịch vụ tại `127.0.0.1:8088`. Service chưa nhận cookie Facebook; các thao tác provider sẽ chỉ được thêm phía sau API nội bộ có xác thực.
+
+| Endpoint | Mục đích |
+|---|---|
+| `GET /healthz` | Kiểm tra process còn sống. Endpoint không kiểm tra hoặc trả session data. |
+| `GET /readyz` | Kiểm tra runtime sẵn sàng, bao gồm binary bridge E2EE đã cấu hình. |
+
+Image mặc định dùng `FBCHAT_E2EE_REQUIRED=true`. Chỉ đặt thành `false` khi chủ động triển khai chế độ chỉ có MQTT thường. Device/session state phải được lưu tại `/var/lib/fbchat`; tuyệt đối không bake state vào image.
+
+Mặc định bảo mật trong `compose.yaml` gồm root filesystem read-only, bỏ toàn bộ Linux capability, bật `no-new-privileges`, volume state riêng và chỉ publish port trên loopback.
+
+---
+
 ## 🌟 Vinh danh người đóng góp
 
 Sau **4 năm** phát triển, dự án sẽ không thể tồn tại nếu thiếu cộng đồng. Cảm ơn từ tận đáy lòng tới mọi người đã đóng góp ý tưởng, báo lỗi và giữ cho `fbchat` còn sống tới ngày hôm nay.

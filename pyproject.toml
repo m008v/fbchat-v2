@@ -57,6 +57,10 @@ Telegram = "https://t.me/MinhHuyDev"
 
 [project.optional-dependencies]
 e2ee = []
+service = [
+    "fastapi>=0.115.0,<1.0.0",
+    "uvicorn>=0.34.0,<1.0.0",
+]
 dev = [
     "build>=1.2.0",
     "twine>=5.0.0",

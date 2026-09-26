@@ -26,6 +26,7 @@ MANUAL_TARGET_FILES = frozenset(
     {
         TARGET_ROOT / "__init__.py",
         TARGET_ROOT / "py.typed",
+        TARGET_ROOT / "service.py",
     }
 )
 GENERATED_HEADER = (

@@ -629,6 +629,30 @@ Vietnamese documentation must be real UTF-8. If PowerShell displays strange char
 
 ---
 
+## 🐳 Container service
+
+The repository includes a production-oriented multi-stage `Dockerfile`. It builds the Go E2EE bridge, installs the Python package with the optional HTTP service, and runs as an unprivileged user.
+
+Initialize submodules before building:
+
+```bash
+git submodule update --init --recursive
+docker compose up --build
+```
+
+The standalone Compose file binds the service to `127.0.0.1:8088`. It does not accept Facebook cookies yet; provider operations will be added behind an authenticated internal API.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /healthz` | Process liveness. It never checks or returns session data. |
+| `GET /readyz` | Runtime readiness, including the configured E2EE bridge executable. |
+
+The image defaults to `FBCHAT_E2EE_REQUIRED=true`. Set it to `false` only for a deliberate regular-MQTT-only deployment. Persistent device/session state belongs in `/var/lib/fbchat`; never bake it into the image.
+
+Security defaults in `compose.yaml` include a read-only root filesystem, all Linux capabilities dropped, `no-new-privileges`, a private state volume, and loopback-only port publishing.
+
+---
+
 ## 🌟 Credits
 
 After **4 years** of development, this project could not exist without the community. Thank you from the bottom of my heart to everyone who contributed ideas, reported bugs, and kept `fbchat` alive until today.

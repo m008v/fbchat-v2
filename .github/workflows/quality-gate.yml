@@ -34,7 +34,7 @@ jobs:
           python-version: '3.11'
           cache: pip
       - name: Install development dependencies
-        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+        run: python -m pip install --disable-pip-version-check -e ".[dev,service]"
       - name: Verify canonical package snapshot
         run: python scripts/sync_canonical_package.py --check
       - name: Compile Python sources
@@ -80,7 +80,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install test dependencies
-        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+        run: python -m pip install --disable-pip-version-check -e ".[dev,service]"
       - name: Run pytest
         run: python -m pytest tests/ -v --tb=short
 
@@ -100,7 +100,7 @@ jobs:
           python-version: '3.11'
           cache: pip
       - name: Install test dependencies
-        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+        run: python -m pip install --disable-pip-version-check -e ".[dev,service]"
       - name: Run pytest on Windows
         run: python -m pytest tests/ -v --tb=short
 
@@ -222,3 +222,51 @@ jobs:
         run: >-
           python scripts/smoke_bridge_rpc.py "$BRIDGE_BINARY"
           --expected-version "2.3.2"
+
+  container-smoke:
+    name: Container build and healthcheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source and submodules
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.checkout_ref }}
+          persist-credentials: false
+          submodules: recursive
+      - name: Build container
+        run: docker build --tag fbchat-v2-provider:test .
+      - name: Start container
+        run: >-
+          docker run --detach --name fbchat-v2-provider-test
+          --publish 127.0.0.1:18080:8080 fbchat-v2-provider:test
+      - name: Wait for readiness
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:18080/readyz; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs fbchat-v2-provider-test
+          exit 1
+      - name: Verify Docker health status
+        shell: bash
+        run: |
+          for attempt in {1..45}; do
+            status="$(docker inspect --format '{{.State.Health.Status}}' fbchat-v2-provider-test)"
+            if [[ "$status" == "healthy" ]]; then
+              exit 0
+            fi
+            if [[ "$status" == "unhealthy" ]]; then
+              docker inspect fbchat-v2-provider-test
+              exit 1
+            fi
+            sleep 1
+          done
+          docker inspect fbchat-v2-provider-test
+          exit 1
+      - name: Stop container
+        if: always()
+        run: docker rm --force fbchat-v2-provider-test

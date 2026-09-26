@@ -1,0 +1,14 @@
+.git
+.github
+.venv*
+__pycache__
+*.py[cod]
+*.log
+.env
+build
+dist
+tests
+language
+src/config.json
+bridge-e2ee/.git
+bridge-e2ee/meta/.git

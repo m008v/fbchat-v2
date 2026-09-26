@@ -14,6 +14,10 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ### Added
 
+- Thêm HTTP service tối thiểu cho container với endpoint liveness `/healthz`
+  và readiness `/readyz`, không trả credential hoặc session data.
+- Thêm Dockerfile multi-stage để build bridge Go và runtime Python non-root,
+  `compose.yaml` hardening mặc định, `.dockerignore` và container smoke test CI.
 - Thêm `website/validate_i18n.py` để kiểm tra cấu trúc song ngữ, các cặp VI/EN,
   tab/panel, liên kết nội bộ và nội dung bị rò giữa hai locale.
 - Thay spinner cũ bằng package-stream preloader dùng lệnh `pip`, tiến trình
