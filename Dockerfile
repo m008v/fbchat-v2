@@ -31,6 +31,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     FBCHAT_E2EE_BIN=/usr/local/bin/fbchat-bridge-e2ee \
     FBCHAT_E2EE_REQUIRED=true \
+    FBCHAT_API_AUTH_REQUIRED=true \
     FBCHAT_STATE_DIR=/var/lib/fbchat
 
 RUN groupadd --gid 10001 fbchat \

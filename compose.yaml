@@ -8,6 +8,9 @@ services:
     init: true
     environment:
       FBCHAT_E2EE_REQUIRED: "true"
+      FBCHAT_API_AUTH_REQUIRED: "true"
+      FBCHAT_API_USERNAME: ${FBCHAT_API_USERNAME:?set FBCHAT_API_USERNAME}
+      FBCHAT_API_PASSWORD: ${FBCHAT_API_PASSWORD:?set FBCHAT_API_PASSWORD}
       FBCHAT_STATE_DIR: /var/lib/fbchat
     ports:
       - "127.0.0.1:8088:8080"

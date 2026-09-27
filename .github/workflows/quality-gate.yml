@@ -239,6 +239,8 @@ jobs:
       - name: Start container
         run: >-
           docker run --detach --name fbchat-v2-provider-test
+          --env FBCHAT_API_USERNAME=ci-health
+          --env FBCHAT_API_PASSWORD=ci-health-secret
           --publish 127.0.0.1:18080:8080 fbchat-v2-provider:test
       - name: Wait for readiness
         shell: bash
