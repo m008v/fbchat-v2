@@ -6,7 +6,7 @@ import os
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Annotated, AsyncIterator
+from typing import Any, Annotated, AsyncIterator, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -21,6 +21,7 @@ from .service_sessions import (
     SessionNotFoundError,
     SessionRegistry,
 )
+from .service_provider import ProviderOperationError, ProviderOperations
 from .service_webhook import WebhookConfigError, WebhookConfigStore
 
 SERVICE_NAME = "fbchat-provider"
@@ -52,6 +53,17 @@ class WebhookConfigInput(BaseModel):
     events: list[str] = Field(default_factory=list, max_length=16)
     secret: SecretStr | None = None
     clear_secret: bool = Field(default=False, alias="clearSecret")
+
+
+class TextMessageInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    thread_id: str = Field(alias="threadId", min_length=1, max_length=128)
+    text: str = Field(min_length=1, max_length=20_000)
+    thread_type: Literal["user", "group"] = Field(default="user", alias="threadType")
+    reply_to_message_id: str | None = Field(
+        default=None, alias="replyToMessageId", min_length=1, max_length=256
+    )
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -122,9 +134,11 @@ def _error(code: str, message: str, status_code: int) -> JSONResponse:
 def create_app(
     registry: SessionRegistry | None = None,
     webhook_store: WebhookConfigStore | None = None,
+    provider_operations: ProviderOperations | None = None,
 ) -> FastAPI:
     session_registry = registry or SessionRegistry()
     global_webhook_store = webhook_store or WebhookConfigStore()
+    operations = provider_operations or ProviderOperations()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -145,6 +159,7 @@ def create_app(
     )
     application.state.session_registry = session_registry
     application.state.webhook_store = global_webhook_store
+    application.state.provider_operations = operations
 
     async def require_auth(
         credentials: Annotated[HTTPBasicCredentials | None, Depends(_basic_security)],
@@ -244,6 +259,8 @@ def create_app(
                     "sessions",
                     "session-validation",
                     "global-webhook-config",
+                    "threads",
+                    "text-messages",
                 ],
             },
         )
@@ -303,6 +320,49 @@ def create_app(
         except SessionNotFoundError:
             return _error("NOT_FOUND", "Provider session not found.", 404)
         return _success("Provider session disconnected.")
+
+    @application.get(
+        "/api/v1/sessions/{session_id}/threads",
+        dependencies=protected,
+        tags=["threads"],
+    )
+    async def list_threads(session_id: str) -> JSONResponse:
+        try:
+            provider_data = await session_registry.get_provider_data(session_id)
+            threads = await operations.list_threads(provider_data)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+        except ProviderOperationError:
+            return _error("PROVIDER_ERROR", "Facebook thread listing failed.", 502)
+        return _success(
+            "Facebook threads.",
+            {"items": threads, "count": len(threads), "limit": 50},
+        )
+
+    @application.post(
+        "/api/v1/sessions/{session_id}/messages/text",
+        dependencies=protected,
+        tags=["messages"],
+    )
+    async def send_text_message(
+        session_id: str, payload: TextMessageInput
+    ) -> JSONResponse:
+        try:
+            provider_data = await session_registry.get_provider_data(session_id)
+            message = await operations.send_text(
+                provider_data,
+                thread_id=payload.thread_id,
+                text=payload.text,
+                thread_type=payload.thread_type,
+                reply_to_message_id=payload.reply_to_message_id,
+            )
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+        except ProviderOperationError:
+            return _error(
+                "PROVIDER_ERROR", "Facebook did not confirm message delivery.", 502
+            )
+        return _success("Text message sent.", message)
 
     @application.get("/api/v1/webhook", dependencies=protected, tags=["webhook"])
     async def get_webhook_config() -> JSONResponse:

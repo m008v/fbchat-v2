@@ -198,3 +198,75 @@ def test_global_webhook_api_persists_and_redacts_secret(monkeypatch, tmp_path) -
     cleared = client.delete("/api/v1/webhook", auth=credentials)
     assert cleared.status_code == 200
     assert cleared.json()["results"]["enabled"] is False
+
+
+def test_threads_and_text_message_endpoints_use_private_session_data(
+    monkeypatch,
+) -> None:
+    credentials = _configure_auth(monkeypatch)
+
+    async def authenticate(cookie_header: str) -> dict[str, Any] | None:
+        return {"cookieFacebook": cookie_header, "FacebookID": "private-account-id"}
+
+    class FakeOperations:
+        async def list_threads(
+            self, provider_data: dict[str, Any]
+        ) -> list[dict[str, Any]]:
+            assert provider_data["FacebookID"] == "private-account-id"
+            return [
+                {
+                    "threadId": "thread-1",
+                    "type": "one_to_one",
+                    "name": "Test",
+                    "unreadCount": 0,
+                    "updatedAt": None,
+                    "archived": False,
+                    "marketplace": False,
+                }
+            ]
+
+        async def send_text(
+            self, provider_data: dict[str, Any], **kwargs
+        ) -> dict[str, Any]:
+            assert provider_data["cookieFacebook"]
+            assert kwargs == {
+                "thread_id": "thread-1",
+                "text": "Hello",
+                "thread_type": "user",
+                "reply_to_message_id": None,
+            }
+            return {
+                "messageId": "message-1",
+                "threadId": "thread-1",
+                "status": "sent",
+                "timestamp": "1",
+            }
+
+    registry = SessionRegistry(authenticate)
+    client = TestClient(create_app(registry, provider_operations=FakeOperations()))
+    connected = client.post(
+        "/api/v1/sessions",
+        auth=credentials,
+        json={
+            "label": "REST account",
+            "cookies": [
+                {"name": "c_user", "value": "1"},
+                {"name": "xs", "value": "secret"},
+            ],
+        },
+    )
+    session_id = connected.json()["results"]["sessionId"]
+
+    threads = client.get(f"/api/v1/sessions/{session_id}/threads", auth=credentials)
+    message = client.post(
+        f"/api/v1/sessions/{session_id}/messages/text",
+        auth=credentials,
+        json={"threadId": "thread-1", "text": "Hello", "threadType": "user"},
+    )
+
+    assert threads.status_code == 200
+    assert threads.json()["results"]["count"] == 1
+    assert message.status_code == 200
+    assert message.json()["results"]["status"] == "sent"
+    assert "private-account-id" not in threads.text + message.text
+    assert "secret" not in threads.text + message.text

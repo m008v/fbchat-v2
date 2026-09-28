@@ -650,6 +650,8 @@ The standalone Compose file binds the service to `127.0.0.1:8088`. Set `FBCHAT_A
 | `GET, POST /api/v1/sessions` | List or authenticate process-local Facebook sessions. Requires Basic Auth. |
 | `POST /api/v1/sessions/{sessionId}/validate` | Revalidate a connected session without exposing credentials. |
 | `DELETE /api/v1/sessions/{sessionId}` | Disconnect and clear a session from memory. |
+| `GET /api/v1/sessions/{sessionId}/threads` | List sanitized conversations without provider media URLs or raw metadata. |
+| `POST /api/v1/sessions/{sessionId}/messages/text` | Send text to a user or group thread. |
 | `GET, PUT, DELETE /api/v1/webhook` | Manage one persisted webhook configuration shared by every session. |
 
 See [`REST_API.md`](REST_API.md) for the contract and security model. Sessions are memory-only until encrypted persistence and key rotation are implemented.

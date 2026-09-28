@@ -46,7 +46,7 @@ Successful responses follow the GOWA-style envelope:
 Errors return a stable `code` and a sanitized `message`. Validation responses
 never echo rejected request values because those values can contain cookies.
 
-## Initial endpoints
+## Available endpoints
 
 | Method | Path | Authentication | Purpose |
 |---|---|---|---|
@@ -59,6 +59,8 @@ never echo rejected request values because those values can contain cookies.
 | `POST` | `/api/v1/sessions` | Basic | Authenticate Facebook cookies |
 | `POST` | `/api/v1/sessions/{sessionId}/validate` | Basic | Revalidate a session |
 | `DELETE` | `/api/v1/sessions/{sessionId}` | Basic | Disconnect and clear a session |
+| `GET` | `/api/v1/sessions/{sessionId}/threads` | Basic | List sanitized conversations |
+| `POST` | `/api/v1/sessions/{sessionId}/messages/text` | Basic | Send a text message |
 | `GET` | `/api/v1/webhook` | Basic | Read the global webhook configuration |
 | `PUT` | `/api/v1/webhook` | Basic | Persist the global webhook configuration |
 | `DELETE` | `/api/v1/webhook` | Basic | Clear the global webhook configuration |
@@ -78,6 +80,31 @@ Create-session input:
 The response contains a generated `sessionId`, label, status, and timestamps.
 It never contains cookie values, Facebook account IDs, provider URLs, or the
 private `dataFB` object.
+
+List conversations:
+
+```http
+GET /api/v1/sessions/{sessionId}/threads
+```
+
+The response is intentionally reduced to stable conversation fields:
+`threadId`, `type`, `name`, `unreadCount`, `updatedAt`, `archived`, and
+`marketplace`. Provider image URLs and raw Facebook metadata are omitted.
+
+Send a text message:
+
+```json
+{
+  "threadId": "1234567890",
+  "threadType": "user",
+  "text": "Hello from SocialManager",
+  "replyToMessageId": null
+}
+```
+
+`threadType` accepts `user` or `group`. A successful response includes the
+provider message ID, destination thread ID, status, and timestamp. Provider
+failures are mapped to a sanitized `502 PROVIDER_ERROR` response.
 
 ## Current persistence model
 

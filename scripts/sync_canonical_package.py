@@ -28,6 +28,7 @@ MANUAL_TARGET_FILES = frozenset(
         TARGET_ROOT / "py.typed",
         TARGET_ROOT / "portal.html",
         TARGET_ROOT / "service.py",
+        TARGET_ROOT / "service_provider.py",
         TARGET_ROOT / "service_sessions.py",
         TARGET_ROOT / "service_webhook.py",
     }

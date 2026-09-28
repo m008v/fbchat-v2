@@ -143,6 +143,15 @@ class SessionRegistry:
         async with self._lock:
             return len(self._sessions)
 
+    async def get_provider_data(self, session_id: str) -> dict[str, Any]:
+        """Return a private copy for an in-process provider operation."""
+
+        async with self._lock:
+            record = self._sessions.get(session_id)
+            if record is None:
+                raise SessionNotFoundError(session_id)
+            return dict(record.provider_data)
+
     async def close(self) -> None:
         async with self._lock:
             records = list(self._sessions.values())
