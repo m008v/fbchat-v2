@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from fbchat_v2.service import create_app, readiness_report
 from fbchat_v2.service_sessions import SessionRegistry
+from fbchat_v2.service_webhook import WebhookConfigStore
 
 
 def _configure_auth(monkeypatch) -> tuple[str, str]:
@@ -94,6 +95,7 @@ def test_portal_and_api_require_basic_auth(monkeypatch) -> None:
     assert authorized.json()["results"]["apiVersion"] == "v1"
     assert portal.status_code == 200
     assert "Provider Portal" in portal.text
+    assert "Webhook global" in portal.text
 
 
 def test_session_lifecycle_never_returns_cookie_or_provider_id(monkeypatch) -> None:
@@ -166,3 +168,33 @@ def test_validation_error_redacts_cookie_input(monkeypatch) -> None:
     assert response.status_code == 422
     assert secret_cookie not in response.text
     assert '"unexpected":true' not in response.text
+
+
+def test_global_webhook_api_persists_and_redacts_secret(monkeypatch, tmp_path) -> None:
+    credentials = _configure_auth(monkeypatch)
+    secret = "webhook-secret-that-must-not-leak"
+    store = WebhookConfigStore(tmp_path)
+    client = TestClient(create_app(webhook_store=store))
+
+    updated = client.put(
+        "/api/v1/webhook",
+        auth=credentials,
+        json={
+            "enabled": True,
+            "url": "https://socialmanager.example.com/hooks/facebook",
+            "events": ["message.received", "session.status"],
+            "secret": secret,
+        },
+    )
+    fetched = client.get("/api/v1/webhook", auth=credentials)
+
+    assert updated.status_code == 200
+    assert fetched.status_code == 200
+    assert fetched.json()["results"]["scope"] == "all-sessions"
+    assert fetched.json()["results"]["secretConfigured"] is True
+    assert secret not in updated.text
+    assert secret not in fetched.text
+
+    cleared = client.delete("/api/v1/webhook", auth=credentials)
+    assert cleared.status_code == 200
+    assert cleared.json()["results"]["enabled"] is False

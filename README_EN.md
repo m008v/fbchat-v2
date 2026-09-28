@@ -640,14 +640,25 @@ git submodule update --init --recursive
 docker compose up --build
 ```
 
-The standalone Compose file binds the service to `127.0.0.1:8088`. It does not accept Facebook cookies yet; provider operations will be added behind an authenticated internal API.
+The standalone Compose file binds the service to `127.0.0.1:8088`. Set `FBCHAT_API_USERNAME` and `FBCHAT_API_PASSWORD` before starting it. The administration portal is served at `/`, authenticated OpenAPI documentation at `/docs`, and the provider contract under `/api/v1`.
 
 | Endpoint | Purpose |
 |---|---|
 | `GET /healthz` | Process liveness. It never checks or returns session data. |
-| `GET /readyz` | Runtime readiness, including the configured E2EE bridge executable. |
+| `GET /readyz` | Runtime readiness, including the E2EE bridge, API credentials, and portal asset. |
+| `GET /api/v1/app/info` | Service version and capabilities. Requires Basic Auth. |
+| `GET, POST /api/v1/sessions` | List or authenticate process-local Facebook sessions. Requires Basic Auth. |
+| `POST /api/v1/sessions/{sessionId}/validate` | Revalidate a connected session without exposing credentials. |
+| `DELETE /api/v1/sessions/{sessionId}` | Disconnect and clear a session from memory. |
+| `GET, PUT, DELETE /api/v1/webhook` | Manage one persisted webhook configuration shared by every session. |
 
-The image defaults to `FBCHAT_E2EE_REQUIRED=true`. Set it to `false` only for a deliberate regular-MQTT-only deployment. Persistent device/session state belongs in `/var/lib/fbchat`; never bake it into the image.
+See [`REST_API.md`](REST_API.md) for the contract and security model. Sessions are memory-only until encrypted persistence and key rotation are implemented.
+
+Webhook settings are managed in the portal, not environment variables. They
+are persisted in the private state volume and the optional signing secret is
+encrypted before it is written to disk.
+
+The image defaults to `FBCHAT_E2EE_REQUIRED=true` and `FBCHAT_API_AUTH_REQUIRED=true`. Set E2EE to `false` only for a deliberate regular-MQTT-only deployment. Persistent device/session state belongs in `/var/lib/fbchat`; never bake it into the image.
 
 Security defaults in `compose.yaml` include a read-only root filesystem, all Linux capabilities dropped, `no-new-privileges`, a private state volume, and loopback-only port publishing.
 

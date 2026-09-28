@@ -634,6 +634,14 @@ git submodule update --init --recursive
 docker compose up --build
 ```
 
+Cổng quản trị được phục vụ tại `/`, OpenAPI tại `/docs`, và REST API tại
+`/api/v1`. Đặt `FBCHAT_API_USERNAME` và `FBCHAT_API_PASSWORD` trước khi khởi
+động. Xem [`REST_API.md`](REST_API.md) để biết hợp đồng và mô hình bảo mật.
+
+Cấu hình webhook toàn cục được quản lý trong cổng quản trị và áp dụng cho mọi
+phiên. Cấu hình này được lưu trong volume trạng thái, không lấy từ biến môi
+trường; khóa bí mật tùy chọn được mã hóa trước khi ghi xuống đĩa.
+
 Compose độc lập bind dịch vụ tại `127.0.0.1:8088`. Service chưa nhận cookie Facebook; các thao tác provider sẽ chỉ được thêm phía sau API nội bộ có xác thực.
 
 | Endpoint | Mục đích |

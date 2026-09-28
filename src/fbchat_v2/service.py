@@ -21,6 +21,7 @@ from .service_sessions import (
     SessionNotFoundError,
     SessionRegistry,
 )
+from .service_webhook import WebhookConfigError, WebhookConfigStore
 
 SERVICE_NAME = "fbchat-provider"
 API_VERSION = "v1"
@@ -41,6 +42,16 @@ class SessionCreateInput(BaseModel):
 
     label: str = Field(default="Facebook account", min_length=1, max_length=80)
     cookies: list[CookieInput] = Field(min_length=2, max_length=64)
+
+
+class WebhookConfigInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    enabled: bool = False
+    url: str = Field(default="", max_length=2048)
+    events: list[str] = Field(default_factory=list, max_length=16)
+    secret: SecretStr | None = None
+    clear_secret: bool = Field(default=False, alias="clearSecret")
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -108,8 +119,12 @@ def _error(code: str, message: str, status_code: int) -> JSONResponse:
     return JSONResponse({"code": code, "message": message}, status_code=status_code)
 
 
-def create_app(registry: SessionRegistry | None = None) -> FastAPI:
+def create_app(
+    registry: SessionRegistry | None = None,
+    webhook_store: WebhookConfigStore | None = None,
+) -> FastAPI:
     session_registry = registry or SessionRegistry()
+    global_webhook_store = webhook_store or WebhookConfigStore()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -129,6 +144,7 @@ def create_app(registry: SessionRegistry | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     application.state.session_registry = session_registry
+    application.state.webhook_store = global_webhook_store
 
     async def require_auth(
         credentials: Annotated[HTTPBasicCredentials | None, Depends(_basic_security)],
@@ -188,7 +204,7 @@ def create_app(registry: SessionRegistry | None = None) -> FastAPI:
                 "message": "The request payload is invalid.",
                 "details": details,
             },
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
         )
 
     @application.get("/healthz", include_in_schema=False)
@@ -224,7 +240,11 @@ def create_app(registry: SessionRegistry | None = None) -> FastAPI:
                 "version": __version__,
                 "apiVersion": API_VERSION,
                 "sessionStorage": "memory",
-                "capabilities": ["sessions", "session-validation"],
+                "capabilities": [
+                    "sessions",
+                    "session-validation",
+                    "global-webhook-config",
+                ],
             },
         )
 
@@ -283,6 +303,51 @@ def create_app(registry: SessionRegistry | None = None) -> FastAPI:
         except SessionNotFoundError:
             return _error("NOT_FOUND", "Provider session not found.", 404)
         return _success("Provider session disconnected.")
+
+    @application.get("/api/v1/webhook", dependencies=protected, tags=["webhook"])
+    async def get_webhook_config() -> JSONResponse:
+        try:
+            webhook = await global_webhook_store.get_public()
+        except WebhookConfigError:
+            return _error(
+                "CONFIGURATION_ERROR",
+                "Stored webhook configuration could not be read.",
+                500,
+            )
+        return _success("Global webhook configuration.", webhook)
+
+    @application.put("/api/v1/webhook", dependencies=protected, tags=["webhook"])
+    async def update_webhook_config(payload: WebhookConfigInput) -> JSONResponse:
+        secret = payload.secret.get_secret_value() if payload.secret else None
+        try:
+            webhook = await global_webhook_store.update(
+                enabled=payload.enabled,
+                url=payload.url,
+                events=payload.events,
+                secret=secret,
+                clear_secret=payload.clear_secret,
+            )
+        except ValueError as error:
+            return _error("INVALID_REQUEST", str(error), 400)
+        except WebhookConfigError:
+            return _error(
+                "CONFIGURATION_ERROR",
+                "Webhook configuration could not be persisted.",
+                500,
+            )
+        return _success("Global webhook configuration updated.", webhook)
+
+    @application.delete("/api/v1/webhook", dependencies=protected, tags=["webhook"])
+    async def clear_webhook_config() -> JSONResponse:
+        try:
+            webhook = await global_webhook_store.clear()
+        except OSError:
+            return _error(
+                "CONFIGURATION_ERROR",
+                "Webhook configuration could not be removed.",
+                500,
+            )
+        return _success("Global webhook configuration cleared.", webhook)
 
     return application
 
