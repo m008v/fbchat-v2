@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import os
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Annotated, AsyncIterator, Literal
+from typing import Annotated, Any, AsyncIterator, Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse, JSONResponse
@@ -16,12 +26,20 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from ._core import __version__
+from .service_dispatcher import WebhookDispatcher
+from .service_events import RealtimeEventHub, SessionListenerManager
+from .service_media import (
+    MediaNotFoundError,
+    MediaStorage,
+    MediaValidationError,
+)
+from .service_provider import ProviderOperationError, ProviderOperations
 from .service_sessions import (
+    EncryptedSessionStore,
     SessionAuthenticationError,
     SessionNotFoundError,
     SessionRegistry,
 )
-from .service_provider import ProviderOperationError, ProviderOperations
 from .service_webhook import WebhookConfigError, WebhookConfigStore
 
 SERVICE_NAME = "fbchat-provider"
@@ -39,9 +57,12 @@ class CookieInput(BaseModel):
 
 
 class SessionCreateInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     label: str = Field(default="Facebook account", min_length=1, max_length=80)
+    tenant_id: str = Field(
+        default="default", alias="tenantId", min_length=1, max_length=64
+    )
     cookies: list[CookieInput] = Field(min_length=2, max_length=64)
 
 
@@ -55,6 +76,13 @@ class WebhookConfigInput(BaseModel):
     clear_secret: bool = Field(default=False, alias="clearSecret")
 
 
+class WebhookTestInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    url: str | None = Field(default=None, max_length=2048)
+    secret: SecretStr | None = None
+
+
 class TextMessageInput(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -64,6 +92,44 @@ class TextMessageInput(BaseModel):
     reply_to_message_id: str | None = Field(
         default=None, alias="replyToMessageId", min_length=1, max_length=256
     )
+
+
+class ReactionInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    message_id: str = Field(alias="messageId", min_length=1, max_length=256)
+    emoji: str = Field(min_length=1, max_length=16)
+    action: Literal["add", "remove"] = "add"
+
+
+class UnsendInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    message_id: str = Field(alias="messageId", min_length=1, max_length=256)
+
+
+class BlockInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    user_id: str = Field(alias="userId", min_length=1, max_length=128)
+    action: Literal["block", "unblock"] = "block"
+
+
+class MediaUploadInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    file_name: str = Field(alias="fileName", min_length=1, max_length=255)
+    mime_type: str | None = Field(default=None, alias="mimeType", max_length=128)
+    content_base64: str = Field(alias="contentBase64", min_length=1)
+
+
+class MediaMessageInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    thread_id: str = Field(alias="threadId", min_length=1, max_length=128)
+    media_ids: list[str] = Field(alias="mediaIds", min_length=1, max_length=10)
+    thread_type: Literal["user", "group"] = Field(default="user", alias="threadType")
+    text: str | None = Field(default=None, max_length=20_000)
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -135,14 +201,46 @@ def create_app(
     registry: SessionRegistry | None = None,
     webhook_store: WebhookConfigStore | None = None,
     provider_operations: ProviderOperations | None = None,
+    dispatcher: WebhookDispatcher | None = None,
+    media_store: MediaStorage | None = None,
+    event_hub: RealtimeEventHub | None = None,
+    listener_mgr: SessionListenerManager | None = None,
 ) -> FastAPI:
-    session_registry = registry or SessionRegistry()
+    session_storage = (
+        EncryptedSessionStore() if os.environ.get("FBCHAT_PERSIST_SESSIONS") else None
+    )
+    session_registry = registry or SessionRegistry(storage=session_storage)
     global_webhook_store = webhook_store or WebhookConfigStore()
     operations = provider_operations or ProviderOperations()
+    webhook_dispatcher = dispatcher or WebhookDispatcher(global_webhook_store)
+    media_storage = media_store or MediaStorage()
+    realtime_events = event_hub or RealtimeEventHub(webhook_dispatcher)
+    session_listeners = listener_mgr or SessionListenerManager(realtime_events)
+
+    audit_logs: list[dict[str, Any]] = []
+
+    def record_audit(
+        event_type: str, details: str, session_id: str | None = None
+    ) -> None:
+        audit_logs.append(
+            {
+                "timestamp": os.environ.get("_TEST_TIMESTAMP")
+                or readiness_report()["service"]
+                and "now",
+                "type": event_type,
+                "details": details,
+                "sessionId": session_id,
+            }
+        )
+        if len(audit_logs) > 100:
+            del audit_logs[:-100]
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        await webhook_dispatcher.start()
         yield
+        await session_listeners.stop_all()
+        await webhook_dispatcher.stop()
         await session_registry.close()
 
     application = FastAPI(
@@ -160,6 +258,10 @@ def create_app(
     application.state.session_registry = session_registry
     application.state.webhook_store = global_webhook_store
     application.state.provider_operations = operations
+    application.state.webhook_dispatcher = webhook_dispatcher
+    application.state.media_storage = media_storage
+    application.state.event_hub = realtime_events
+    application.state.listener_manager = session_listeners
 
     async def require_auth(
         credentials: Annotated[HTTPBasicCredentials | None, Depends(_basic_security)],
@@ -204,8 +306,6 @@ def create_app(
     async def validation_exception_handler(
         _: Request, error: RequestValidationError
     ) -> JSONResponse:
-        # FastAPI's default error body includes rejected input. That can leak a
-        # cookie value, so only field locations and generic messages are returned.
         details = [
             {
                 "field": ".".join(str(part) for part in item["loc"] if part != "body"),
@@ -246,28 +346,238 @@ def create_app(
             openapi_url="/openapi.json", title="fbchat-v2 Provider API"
         )
 
+    @application.websocket("/ws")
+    async def websocket_stream(
+        websocket: WebSocket,
+        sessionId: str | None = None,
+        authorization: str | None = None,
+        token: str | None = None,
+    ) -> None:
+        auth_report = _api_auth_report()
+        if auth_report["required"]:
+            if not auth_report["configured"]:
+                await websocket.close(
+                    code=status.WS_1008_POLICY_VIOLATION,
+                    reason="Auth not configured",
+                )
+                return
+
+            authenticated = False
+            expected_username = os.environ.get("FBCHAT_API_USERNAME", "").encode(
+                "utf-8"
+            )
+            expected_password = os.environ.get("FBCHAT_API_PASSWORD", "").encode(
+                "utf-8"
+            )
+
+            if token and secrets.compare_digest(
+                token.encode("utf-8"), expected_password
+            ):
+                authenticated = True
+            elif authorization:
+                try:
+                    decoded = base64.b64decode(authorization).decode("utf-8")
+                    if ":" in decoded:
+                        u, p = decoded.split(":", 1)
+                        if secrets.compare_digest(
+                            u.encode("utf-8"), expected_username
+                        ) and secrets.compare_digest(
+                            p.encode("utf-8"), expected_password
+                        ):
+                            authenticated = True
+                except Exception:
+                    pass
+            elif "authorization" in websocket.headers:
+                hdr = websocket.headers.get("authorization", "")
+                if hdr.lower().startswith("basic "):
+                    try:
+                        decoded = base64.b64decode(hdr[6:].strip()).decode("utf-8")
+                        if ":" in decoded:
+                            u, p = decoded.split(":", 1)
+                            if secrets.compare_digest(
+                                u.encode("utf-8"), expected_username
+                            ) and secrets.compare_digest(
+                                p.encode("utf-8"), expected_password
+                            ):
+                                authenticated = True
+                    except Exception:
+                        pass
+
+            if not authenticated:
+                await websocket.close(
+                    code=status.WS_1008_POLICY_VIOLATION,
+                    reason="Unauthorized",
+                )
+                return
+
+        await websocket.accept()
+        await realtime_events.register(websocket, session_id=sessionId)
+        try:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "event": "system.connected",
+                        "sessionId": sessionId,
+                        "service": SERVICE_NAME,
+                        "version": __version__,
+                    }
+                )
+            )
+            while True:
+                data = await websocket.receive_text()
+                if data == "ping":
+                    await websocket.send_text("pong")
+        except WebSocketDisconnect:
+            pass
+        finally:
+            await realtime_events.unregister(websocket)
+
     @application.get("/api/v1/app/info", dependencies=protected, tags=["app"])
     async def app_info() -> JSONResponse:
+        bridge_report = _bridge_check()
         return _success(
             "Provider service information.",
             {
                 "service": SERVICE_NAME,
                 "version": __version__,
                 "apiVersion": API_VERSION,
-                "sessionStorage": "memory",
+                "sessionStorage": "encrypted" if session_storage else "memory",
                 "capabilities": [
                     "sessions",
                     "session-validation",
+                    "session-listeners",
                     "global-webhook-config",
+                    "webhook-dispatcher",
+                    "websocket-events",
+                    "media-upload",
+                    "media-send",
                     "threads",
                     "text-messages",
+                    "reactions",
+                    "unsend",
+                    "user-info",
+                    "search",
+                    "blocking",
+                    "marketplace-read",
                 ],
+                "capabilityMatrix": {
+                    "messenger.send": {
+                        "status": "supported",
+                        "description": "Send text & replies to users and groups",
+                    },
+                    "messenger.receive": {
+                        "status": "supported",
+                        "description": "Webhook ingestion for messages & sessions",
+                    },
+                    "messenger.threads": {
+                        "status": "supported",
+                        "description": "Sanitized conversation listing",
+                    },
+                    "messenger.reactions": {
+                        "status": "supported",
+                        "description": "Add and remove emoji reactions",
+                    },
+                    "messenger.unsend": {
+                        "status": "supported",
+                        "description": "Revoke sent messages",
+                    },
+                    "messenger.users": {
+                        "status": "supported",
+                        "description": "Lookup sanitized profile",
+                    },
+                    "messenger.blocking": {
+                        "status": "supported",
+                        "description": "Block and unblock Facebook contacts",
+                    },
+                    "messenger.attachments": {
+                        "status": "supported",
+                        "description": "Mercury attachment upload & send",
+                    },
+                    "messenger.e2ee": {
+                        "status": (
+                            "supported" if bridge_report["executable"] else "degraded"
+                        ),
+                        "description": "E2EE bridge integration",
+                    },
+                    "events.websocket": {
+                        "status": "supported",
+                        "description": "Realtime event streaming via /ws with query and basic auth",
+                    },
+                    "sessions.listen": {
+                        "status": "supported",
+                        "description": "Background listener for session inbound messages and status",
+                    },
+                    "media.upload": {
+                        "status": "supported",
+                        "description": "Stage attachments with opaque mediaId and MIME validation",
+                    },
+                    "media.send": {
+                        "status": "supported",
+                        "description": "Send media messages referencing staged mediaId",
+                    },
+                    "marketplace.search": {
+                        "status": "unsupported",
+                        "description": "Not available via private Facebook API",
+                    },
+                    "marketplace.read": {
+                        "status": "experimental",
+                        "description": "Read listing item detail",
+                    },
+                    "marketplace.create": {
+                        "status": "experimental",
+                        "description": "Create listing item",
+                    },
+                    "marketplace.update": {
+                        "status": "unsupported",
+                        "description": "Not supported upstream",
+                    },
+                    "marketplace.delete": {
+                        "status": "unsupported",
+                        "description": "Not supported upstream",
+                    },
+                },
+            },
+        )
+
+    @application.get("/api/v1/app/status", dependencies=protected, tags=["app"])
+    async def app_status() -> JSONResponse:
+        total_sessions = await session_registry.count()
+        return _success(
+            "Application connection status.",
+            {
+                "status": "connected" if total_sessions > 0 else "idle",
+                "service": SERVICE_NAME,
+                "version": __version__,
+                "activeSessions": total_sessions,
+                "dispatcher": webhook_dispatcher.stats(),
+                "eventHub": realtime_events.metrics,
+                "readiness": readiness_report()["status"],
+            },
+        )
+
+    @application.get("/api/v1/diagnostics", dependencies=protected, tags=["app"])
+    async def diagnostics() -> JSONResponse:
+        return _success(
+            "Service diagnostics and operational telemetry.",
+            {
+                "service": SERVICE_NAME,
+                "version": __version__,
+                "readiness": readiness_report(),
+                "sessionsCount": await session_registry.count(),
+                "dispatcherStats": webhook_dispatcher.stats(),
+                "eventHub": realtime_events.metrics,
+                "auditLogs": audit_logs[-25:],
             },
         )
 
     @application.get("/api/v1/sessions", dependencies=protected, tags=["sessions"])
-    async def list_sessions() -> JSONResponse:
-        return _success("Provider sessions.", await session_registry.list_public())
+    async def list_sessions(
+        tenantId: str | None = None, details: bool = False
+    ) -> JSONResponse:
+        return _success(
+            "Provider sessions.",
+            await session_registry.list_public(tenant_id=tenantId, detailed=details),
+        )
 
     @application.post(
         "/api/v1/sessions",
@@ -281,7 +591,18 @@ def create_app(
         ]
         try:
             public_session = await session_registry.create(
-                label=payload.label, cookies=cookies
+                label=payload.label,
+                cookies=cookies,
+                tenant_id=payload.tenant_id,
+            )
+            record_audit(
+                "session.created",
+                f"Created session '{payload.label}'",
+                public_session["sessionId"],
+            )
+            webhook_dispatcher.enqueue(
+                "session.status",
+                {"sessionId": public_session["sessionId"], "status": "connected"},
             )
         except ValueError as error:
             return _error("INVALID_REQUEST", str(error), 400)
@@ -293,6 +614,19 @@ def create_app(
             )
         return _success("Facebook session connected.", public_session, 201)
 
+    @application.get(
+        "/api/v1/sessions/{session_id}/status",
+        dependencies=protected,
+        tags=["sessions"],
+    )
+    async def get_session_status(session_id: str) -> JSONResponse:
+        try:
+            status_data = await session_registry.get_session_status(session_id)
+            status_data["listenerStatus"] = session_listeners.get_status(session_id)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+        return _success("Session status.", status_data)
+
     @application.post(
         "/api/v1/sessions/{session_id}/validate",
         dependencies=protected,
@@ -301,9 +635,17 @@ def create_app(
     async def validate_session(session_id: str) -> JSONResponse:
         try:
             public_session = await session_registry.validate(session_id)
+            record_audit(
+                "session.validated", "Session validated successfully", session_id
+            )
         except SessionNotFoundError:
             return _error("NOT_FOUND", "Provider session not found.", 404)
         except SessionAuthenticationError:
+            record_audit("session.expired", "Session validation failed", session_id)
+            webhook_dispatcher.enqueue(
+                "session.status",
+                {"sessionId": session_id, "status": "expired"},
+            )
             return _error(
                 "AUTHENTICATION_FAILED", "The Facebook session is no longer valid.", 401
             )
@@ -316,10 +658,81 @@ def create_app(
     )
     async def delete_session(session_id: str) -> JSONResponse:
         try:
+            await session_listeners.stop_listening(session_id)
             await session_registry.delete(session_id)
+            record_audit(
+                "session.deleted", "Session disconnected and removed", session_id
+            )
+            webhook_dispatcher.enqueue(
+                "session.status",
+                {"sessionId": session_id, "status": "disconnected"},
+            )
         except SessionNotFoundError:
             return _error("NOT_FOUND", "Provider session not found.", 404)
         return _success("Provider session disconnected.")
+
+    @application.post(
+        "/api/v1/sessions/{session_id}/listen/start",
+        dependencies=protected,
+        tags=["sessions"],
+    )
+    async def start_session_listener(session_id: str) -> JSONResponse:
+        try:
+            await session_registry.get(session_id)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+
+        await session_listeners.start_listening(session_id)
+        record_audit(
+            "listener.started",
+            f"Listener started for session {session_id}",
+            session_id=session_id,
+        )
+        return _success(
+            "Session listener started.",
+            {"sessionId": session_id, "status": "listening"},
+        )
+
+    @application.post(
+        "/api/v1/sessions/{session_id}/listen/stop",
+        dependencies=protected,
+        tags=["sessions"],
+    )
+    async def stop_session_listener(session_id: str) -> JSONResponse:
+        try:
+            await session_registry.get(session_id)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+
+        await session_listeners.stop_listening(session_id)
+        record_audit(
+            "listener.stopped",
+            f"Listener stopped for session {session_id}",
+            session_id=session_id,
+        )
+        return _success(
+            "Session listener stopped.",
+            {"sessionId": session_id, "status": "idle"},
+        )
+
+    @application.get(
+        "/api/v1/sessions/{session_id}/listen/status",
+        dependencies=protected,
+        tags=["sessions"],
+    )
+    async def session_listener_status(session_id: str) -> JSONResponse:
+        try:
+            await session_registry.get(session_id)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+
+        return _success(
+            "Session listener status.",
+            {
+                "sessionId": session_id,
+                "status": session_listeners.get_status(session_id),
+            },
+        )
 
     @application.get(
         "/api/v1/sessions/{session_id}/threads",
@@ -330,6 +743,7 @@ def create_app(
         try:
             provider_data = await session_registry.get_provider_data(session_id)
             threads = await operations.list_threads(provider_data)
+            await session_registry.record_activity(session_id)
         except SessionNotFoundError:
             return _error("NOT_FOUND", "Provider session not found.", 404)
         except ProviderOperationError:
@@ -356,13 +770,218 @@ def create_app(
                 thread_type=payload.thread_type,
                 reply_to_message_id=payload.reply_to_message_id,
             )
+            await session_registry.record_activity(session_id)
+            record_audit(
+                "message.sent", f"Sent text message to {payload.thread_id}", session_id
+            )
+            webhook_dispatcher.enqueue(
+                "message.sent",
+                {"sessionId": session_id, **message},
+            )
         except SessionNotFoundError:
             return _error("NOT_FOUND", "Provider session not found.", 404)
-        except ProviderOperationError:
+        except ProviderOperationError as err:
+            await session_registry.record_error(session_id, str(err))
             return _error(
                 "PROVIDER_ERROR", "Facebook did not confirm message delivery.", 502
             )
         return _success("Text message sent.", message)
+
+    @application.post(
+        "/api/v1/sessions/{session_id}/messages/reaction",
+        dependencies=protected,
+        tags=["messages"],
+    )
+    async def react_message(session_id: str, payload: ReactionInput) -> JSONResponse:
+        try:
+            provider_data = await session_registry.get_provider_data(session_id)
+            result = await operations.react_message(
+                provider_data,
+                message_id=payload.message_id,
+                emoji=payload.emoji,
+                action=payload.action,
+            )
+            await session_registry.record_activity(session_id)
+            record_audit(
+                "message.reaction",
+                f"Reaction {payload.emoji} on {payload.message_id}",
+                session_id,
+            )
+            webhook_dispatcher.enqueue(
+                "message.updated",
+                {"sessionId": session_id, **result},
+            )
+            return _success("Reaction confirmed.", result)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+        except ProviderOperationError as err:
+            await session_registry.record_error(session_id, str(err))
+            return _error("PROVIDER_ERROR", "Facebook reaction failed.", 502)
+
+    @application.post(
+        "/api/v1/sessions/{session_id}/messages/unsend",
+        dependencies=protected,
+        tags=["messages"],
+    )
+    async def unsend_message(session_id: str, payload: UnsendInput) -> JSONResponse:
+        try:
+            provider_data = await session_registry.get_provider_data(session_id)
+            result = await operations.unsend_message(
+                provider_data, message_id=payload.message_id
+            )
+            await session_registry.record_activity(session_id)
+            record_audit(
+                "message.deleted", f"Message revoked {payload.message_id}", session_id
+            )
+            webhook_dispatcher.enqueue(
+                "message.deleted",
+                {"sessionId": session_id, **result},
+            )
+            return _success("Message revoked.", result)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+        except ProviderOperationError as err:
+            await session_registry.record_error(session_id, str(err))
+            return _error("PROVIDER_ERROR", "Facebook message revoke failed.", 502)
+
+    @application.post(
+        "/api/v1/sessions/{session_id}/messages/media",
+        dependencies=protected,
+        tags=["messages"],
+    )
+    async def send_media_message(
+        session_id: str, payload: MediaMessageInput
+    ) -> JSONResponse:
+        try:
+            provider_data = await session_registry.get_provider_data(session_id)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+
+        file_paths: list[str] = []
+        for media_id in payload.media_ids:
+            try:
+                _, file_path = media_storage.get(media_id)
+                file_paths.append(str(file_path))
+            except MediaNotFoundError:
+                return _error("NOT_FOUND", f"Media item '{media_id}' not found.", 404)
+
+        try:
+            result = await operations.send_attachment(
+                provider_data,
+                thread_id=payload.thread_id,
+                thread_type=payload.thread_type,
+                file_paths=file_paths,
+                text=payload.text,
+            )
+            await session_registry.record_activity(session_id)
+            record_audit(
+                "message.media_sent",
+                f"Sent media message to {payload.thread_id} ({len(payload.media_ids)} attachments)",
+                session_id,
+            )
+            response_payload = {
+                "messageId": result.get("messageId", ""),
+                "threadId": payload.thread_id,
+                "threadType": payload.thread_type,
+                "status": "sent",
+                "mediaIds": payload.media_ids,
+            }
+            webhook_dispatcher.enqueue(
+                "message.sent",
+                {"sessionId": session_id, **response_payload},
+            )
+            await realtime_events.emit_message_received(
+                session_id=session_id,
+                thread_id=payload.thread_id,
+                thread_type=payload.thread_type,
+                message_id=result.get("messageId", ""),
+                sender_id="self",
+                text=payload.text,
+                attachments=[{"mediaId": mid} for mid in payload.media_ids],
+            )
+            return _success("Media message sent successfully.", response_payload)
+        except ProviderOperationError as err:
+            await session_registry.record_error(session_id, str(err))
+            return _error("PROVIDER_ERROR", "Facebook media delivery failed.", 502)
+
+    @application.get(
+        "/api/v1/sessions/{session_id}/users/{user_id}",
+        dependencies=protected,
+        tags=["users"],
+    )
+    async def get_user_info(session_id: str, user_id: str) -> JSONResponse:
+        try:
+            provider_data = await session_registry.get_provider_data(session_id)
+            result = await operations.get_user_info(provider_data, user_id=user_id)
+            await session_registry.record_activity(session_id)
+            return _success("User information.", result)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+        except ProviderOperationError:
+            return _error("PROVIDER_ERROR", "Facebook user lookup failed.", 502)
+
+    @application.get(
+        "/api/v1/sessions/{session_id}/search",
+        dependencies=protected,
+        tags=["users"],
+    )
+    async def search_users(session_id: str, q: str) -> JSONResponse:
+        if not q.strip():
+            return _error("INVALID_REQUEST", "Search query cannot be empty.", 400)
+        try:
+            provider_data = await session_registry.get_provider_data(session_id)
+            items = await operations.search_users(provider_data, query=q)
+            await session_registry.record_activity(session_id)
+            return _success("Search results.", {"items": items, "count": len(items)})
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+        except ProviderOperationError:
+            return _error("PROVIDER_ERROR", "Facebook search failed.", 502)
+
+    @application.post(
+        "/api/v1/sessions/{session_id}/privacy/block",
+        dependencies=protected,
+        tags=["privacy"],
+    )
+    async def block_user(session_id: str, payload: BlockInput) -> JSONResponse:
+        try:
+            provider_data = await session_registry.get_provider_data(session_id)
+            result = await operations.block_user(
+                provider_data, user_id=payload.user_id, action=payload.action
+            )
+            await session_registry.record_activity(session_id)
+            record_audit(
+                f"user.{payload.action}",
+                f"User {payload.user_id} {payload.action}ed",
+                session_id,
+            )
+            return _success(f"User {payload.action} confirmed.", result)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+        except ProviderOperationError:
+            return _error(
+                "PROVIDER_ERROR", f"Facebook user {payload.action} failed.", 502
+            )
+
+    @application.get(
+        "/api/v1/sessions/{session_id}/marketplace/{item_id}",
+        dependencies=protected,
+        tags=["marketplace"],
+    )
+    async def get_marketplace_item(session_id: str, item_id: str) -> JSONResponse:
+        try:
+            provider_data = await session_registry.get_provider_data(session_id)
+            result = await operations.get_marketplace_item(
+                provider_data, item_id=item_id
+            )
+            await session_registry.record_activity(session_id)
+            return _success("Marketplace item detail.", result)
+        except SessionNotFoundError:
+            return _error("NOT_FOUND", "Provider session not found.", 404)
+        except ProviderOperationError:
+            return _error(
+                "PROVIDER_ERROR", "Facebook marketplace item lookup failed.", 502
+            )
 
     @application.get("/api/v1/webhook", dependencies=protected, tags=["webhook"])
     async def get_webhook_config() -> JSONResponse:
@@ -387,6 +1006,9 @@ def create_app(
                 secret=secret,
                 clear_secret=payload.clear_secret,
             )
+            record_audit(
+                "webhook.updated", f"Webhook updated (enabled={payload.enabled})"
+            )
         except ValueError as error:
             return _error("INVALID_REQUEST", str(error), 400)
         except WebhookConfigError:
@@ -401,6 +1023,7 @@ def create_app(
     async def clear_webhook_config() -> JSONResponse:
         try:
             webhook = await global_webhook_store.clear()
+            record_audit("webhook.cleared", "Webhook configuration cleared")
         except OSError:
             return _error(
                 "CONFIGURATION_ERROR",
@@ -408,6 +1031,92 @@ def create_app(
                 500,
             )
         return _success("Global webhook configuration cleared.", webhook)
+
+    @application.post("/api/v1/webhook/test", dependencies=protected, tags=["webhook"])
+    async def test_webhook(payload: WebhookTestInput | None = None) -> JSONResponse:
+        url = payload.url if payload else None
+        secret = (
+            payload.secret.get_secret_value() if payload and payload.secret else None
+        )
+        report = await webhook_dispatcher.test_probe(
+            target_url=url, target_secret=secret
+        )
+        record_audit(
+            "webhook.test",
+            f"Webhook probe: {'success' if report['success'] else 'failed'}",
+        )
+        return _success("Webhook probe result.", report)
+
+    @application.post("/api/v1/media/upload", dependencies=protected, tags=["media"])
+    async def upload_media(request: Request) -> JSONResponse:
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            try:
+                body_json = await request.json()
+                upload_input = MediaUploadInput.model_validate(body_json)
+                content = base64.b64decode(upload_input.content_base64)
+                file_name = upload_input.file_name
+                mime_type = upload_input.mime_type
+            except Exception as exc:
+                return _error("INVALID_REQUEST", f"Invalid media payload: {exc}", 400)
+        else:
+            content = await request.body()
+            file_name = request.headers.get("x-file-name") or "upload.bin"
+            mime_type = content_type or "application/octet-stream"
+
+        try:
+            record = media_storage.store(
+                content, filename=file_name, mime_type=mime_type
+            )
+            record_audit(
+                "media.uploaded",
+                f"Media staged: {record.media_id} ({record.file_name})",
+            )
+            return _success(
+                "Media uploaded successfully.", record.public(), status_code=201
+            )
+        except MediaValidationError as val_err:
+            return _error("VALIDATION_ERROR", str(val_err), 400)
+        except Exception as exc:
+            return _error("MEDIA_ERROR", f"Failed to store media: {exc}", 500)
+
+    @application.get("/api/v1/media", dependencies=protected, tags=["media"])
+    async def list_media() -> JSONResponse:
+        items = media_storage.list_all(limit=50)
+        return _success("Staged media list.", [item.public() for item in items])
+
+    @application.get("/api/v1/media/{media_id}", dependencies=protected, tags=["media"])
+    async def get_media_file(media_id: str) -> Any:
+        try:
+            record, file_path = media_storage.get(media_id)
+            return FileResponse(
+                file_path,
+                media_type=record.mime_type,
+                filename=record.file_name,
+                headers={"Cache-Control": "private, max-age=3600"},
+            )
+        except MediaNotFoundError:
+            return _error("NOT_FOUND", "Media item not found.", 404)
+
+    @application.get(
+        "/api/v1/media/{media_id}/info", dependencies=protected, tags=["media"]
+    )
+    async def get_media_info(media_id: str) -> JSONResponse:
+        try:
+            record = media_storage.get_info(media_id)
+            return _success("Media information.", record.public())
+        except MediaNotFoundError:
+            return _error("NOT_FOUND", "Media item not found.", 404)
+
+    @application.delete(
+        "/api/v1/media/{media_id}", dependencies=protected, tags=["media"]
+    )
+    async def delete_media(media_id: str) -> JSONResponse:
+        deleted = media_storage.delete(media_id)
+        if not deleted:
+            return _error("NOT_FOUND", "Media item not found.", 404)
+        record_audit("media.deleted", f"Media deleted: {media_id}")
+        return _success("Media deleted.", {"mediaId": media_id, "deleted": True})
 
     return application
 

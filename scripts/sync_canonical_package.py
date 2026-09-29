@@ -31,6 +31,9 @@ MANUAL_TARGET_FILES = frozenset(
         TARGET_ROOT / "service_provider.py",
         TARGET_ROOT / "service_sessions.py",
         TARGET_ROOT / "service_webhook.py",
+        TARGET_ROOT / "service_dispatcher.py",
+        TARGET_ROOT / "service_media.py",
+        TARGET_ROOT / "service_events.py",
     }
 )
 GENERATED_HEADER = (

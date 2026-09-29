@@ -5,74 +5,1663 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>fbchat-v2 Provider Portal</title>
   <style>
-    :root{color-scheme:dark;--bg:#080b12;--panel:#111724;--panel2:#171f30;--line:#263249;--text:#f4f7fb;--muted:#9ba9bd;--blue:#4f8cff;--cyan:#43d5c5;--red:#ff6b7a;--green:#51d88a}
-    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#172448 0,transparent 35%),var(--bg);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;min-height:100vh}
-    button,input,textarea{font:inherit}.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}.side{border-right:1px solid var(--line);padding:28px 20px;background:#0b101bde}.brand{font-size:19px;font-weight:800;letter-spacing:-.03em}.brand span{color:var(--cyan)}.tag{color:var(--muted);font-size:12px;margin-top:4px}.nav{margin-top:34px}.nav a{display:block;color:var(--muted);text-decoration:none;padding:11px 12px;border-radius:10px;margin:3px 0}.nav a.active,.nav a:hover{color:var(--text);background:var(--panel2)}.main{padding:34px;max-width:1200px;width:100%;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:20px}.top h1{margin:0;font-size:28px;letter-spacing:-.04em}.pill{border:1px solid var(--line);background:var(--panel);padding:7px 12px;border-radius:999px;color:var(--muted)}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:7px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:26px 0}.card{background:linear-gradient(145deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 18px 45px #0003}.metric{font-size:28px;font-weight:800;margin-top:10px}.muted{color:var(--muted)}.section{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}.section+.section{margin-top:18px}.section-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}.section-head h2{font-size:16px;margin:0}.btn{border:0;border-radius:10px;padding:9px 13px;background:var(--blue);color:white;font-weight:700;cursor:pointer}.btn.secondary{background:var(--panel2);border:1px solid var(--line)}.btn.danger{background:#48202a;color:#ffb2ba}.btn:disabled{opacity:.5;cursor:not-allowed}.empty{padding:48px 20px;text-align:center;color:var(--muted)}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:13px 20px;border-bottom:1px solid var(--line)}th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.status{color:var(--green)}.webhook-body{padding:20px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.full{grid-column:1/-1}.toggle{display:flex;align-items:center;gap:9px;font-weight:700}.toggle input,.event-grid input{width:auto}.event-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:7px}.event-grid label{display:flex;align-items:center;gap:7px;margin:0;padding:9px;border:1px solid var(--line);border-radius:9px;background:#0c121e;font-weight:500}.form-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}.secret-state{color:var(--muted);font-size:12px}dialog{width:min(580px,calc(100% - 30px));border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text);padding:0;box-shadow:0 30px 90px #000b}dialog::backdrop{background:#02040aaa}.dialog-head,.dialog-body,.dialog-actions{padding:18px 20px}.dialog-head{border-bottom:1px solid var(--line);font-size:17px;font-weight:800}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line)}label{display:block;font-weight:700;margin:10px 0 6px}input,textarea{width:100%;color:var(--text);background:#090e18;border:1px solid var(--line);border-radius:10px;padding:11px}textarea{height:190px;resize:vertical;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px}.notice{margin-top:10px;color:var(--muted);font-size:12px}.toast{position:fixed;right:22px;bottom:22px;max-width:420px;padding:13px 16px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);display:none}.toast.error{border-color:#80313d;color:#ffc2c8}.actions{display:flex;gap:7px}@media(max-width:760px){.shell{display:block}.side{border-right:0;border-bottom:1px solid var(--line)}.nav{display:none}.main{padding:22px 14px}.grid,.form-grid,.event-grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}th:nth-child(3),td:nth-child(3){display:none}}
+    :root {
+      color-scheme: dark;
+      --bg: #070a12;
+      --panel: #0d1322;
+      --panel2: #131c30;
+      --panel3: #1a2742;
+      --line: #202d47;
+      --line-subtle: #172238;
+      --text: #f3f6fc;
+      --muted: #8e9fb5;
+      --blue: #3b82f6;
+      --blue-hover: #2563eb;
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --rose: #ef4444;
+      --purple: #8b5cf6;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 10% 0, #132247 0, transparent 40%), var(--bg);
+      color: var(--text);
+      font: 14px/1.5 Inter, system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+    button, input, select, textarea { font: inherit; }
+    .shell {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      min-height: 100vh;
+    }
+    .side {
+      border-right: 1px solid var(--line);
+      padding: 24px 18px;
+      background: #090e1aee;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .brand-group {
+      padding: 0 6px;
+    }
+    .brand {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .brand span { color: var(--cyan); }
+    .brand .badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #1e3a8a;
+      color: #93c5fd;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .tag {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .nav a:hover {
+      color: var(--text);
+      background: var(--panel2);
+    }
+    .nav a.active {
+      color: #fff;
+      background: #172545;
+      box-shadow: inset 0 0 0 1px #2b467a;
+    }
+    .side-footer {
+      margin-top: auto;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      font-size: 12px;
+    }
+    .main {
+      padding: 30px 40px;
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line-subtle);
+    }
+    .top h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pill {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 6px 14px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+      box-shadow: 0 0 10px var(--green);
+    }
+    .dot.amber { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+    .dot.rose { background: var(--rose); box-shadow: 0 0 10px var(--rose); }
+
+    /* Views */
+    .view-content { display: none; }
+    .view-content.active { display: block; }
+
+    /* Metrics Grid */
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .card {
+      background: linear-gradient(155deg, var(--panel2), var(--panel));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 15px 35px #00000030;
+      position: relative;
+    }
+    .card-title {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .metric {
+      font-size: 28px;
+      font-weight: 800;
+      margin: 10px 0 4px;
+      letter-spacing: -0.03em;
+    }
+    .card-desc {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Sections */
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--line);
+      background: #0d1424;
+    }
+    .section-head h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+    }
+    .section-body { padding: 22px; }
+
+    /* Buttons */
+    .btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 14px;
+      background: var(--blue);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+    }
+    .btn:hover { background: var(--blue-hover); }
+    .btn.secondary {
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+    .btn.secondary:hover { background: var(--panel3); }
+    .btn.danger { background: #5a1924; color: #fecdd3; border: 1px solid #882234; }
+    .btn.danger:hover { background: #712130; }
+    .btn.cyan { background: var(--cyan); color: #082f49; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 13px 20px; border-bottom: 1px solid var(--line); }
+    th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    tbody tr:hover { background: #131c3050; }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .status-badge.connected, .status-badge.supported, .status-badge.ready {
+      background: #064e3b;
+      color: #6ee7b7;
+      border: 1px solid #059669;
+    }
+    .status-badge.experimental, .status-badge.degraded {
+      background: #4c1d95;
+      color: #c4b5fd;
+      border: 1px solid #7c3aed;
+    }
+    .status-badge.unsupported, .status-badge.expired, .status-badge.error {
+      background: #4c0519;
+      color: #fda4af;
+      border: 1px solid #e11d48;
+    }
+    .status-badge.idle { background: #1e293b; color: #94a3b8; }
+
+    /* Form & Inputs */
+    label { display: block; font-weight: 600; font-size: 13px; margin: 10px 0 6px; }
+    input, select, textarea {
+      width: 100%;
+      color: var(--text);
+      background: #070c16;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      transition: border 0.15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+    textarea { height: 110px; resize: vertical; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .full { grid-column: 1 / -1; }
+    .toggle { display: flex; align-items: center; gap: 9px; font-weight: 600; cursor: pointer; }
+    .toggle input { width: auto; }
+    .notice {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      padding: 10px 14px;
+      background: #0c1220;
+      border-radius: 8px;
+      border-left: 3px solid var(--cyan);
+    }
+
+    /* Capabilities Matrix */
+    .cap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .cap-card {
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .cap-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cap-name { font-weight: 700; font-size: 13px; font-family: monospace; }
+    .cap-desc { font-size: 12px; color: var(--muted); }
+
+    /* Modals & Dialogs */
+    dialog {
+      width: min(600px, calc(100% - 30px));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      color: var(--text);
+      padding: 0;
+      box-shadow: 0 30px 90px #000000dd;
+    }
+    dialog::backdrop { background: #02040ae0; backdrop-filter: blur(4px); }
+    .dialog-head {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+      font-size: 17px;
+      font-weight: 800;
+    }
+    .dialog-body { padding: 18px 22px; }
+    .dialog-actions {
+      padding: 14px 22px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      border-top: 1px solid var(--line);
+      background: #0a0f1d;
+    }
+
+    /* Toasts */
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      max-width: 440px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 40px #00000088;
+      display: none;
+      z-index: 999;
+      font-size: 13px;
+    }
+    .toast.error { border-color: var(--rose); color: #fecdd3; }
+    .toast.success { border-color: var(--green); color: #a7f3d0; }
+
+    /* Quick Action Buttons list */
+    .actions-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .empty-state { padding: 40px 20px; text-align: center; color: var(--muted); }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .shell { display: block; }
+      .side { border-right: 0; border-bottom: 1px solid var(--line); }
+      .grid-4, .grid-3, .form-grid { grid-template-columns: 1fr; }
+      .main { padding: 20px 16px; }
+    }
   </style>
 </head>
 <body>
 <div class="shell">
-  <aside class="side"><div class="brand">fbchat<span>-v2</span></div><div class="tag">Provider Portal</div><nav class="nav"><a class="active" href="#">Overview</a><a href="#webhook">Webhook</a><a href="/docs">API Docs</a></nav></aside>
+  <aside class="side">
+    <div class="brand-group">
+      <div class="brand">fbchat<span>-v2</span> <span class="badge">Sidecar</span></div>
+      <div class="tag">Provider Portal</div>
+    </div>
+    <nav class="nav">
+      <a class="active" href="#overview" data-view="overview">⚡ Overview</a>
+      <a href="#sessions" data-view="sessions">🔑 Sesiones</a>
+      <a href="#threads" data-view="threads">💬 Threads & Chat</a>
+      <a href="#media" data-view="media">📁 Media & Archivos</a>
+      <a href="#contacts" data-view="contacts">👥 Contactos & Buscar</a>
+      <a href="#webhook" data-view="webhook">🔔 Webhook & Dispatcher</a>
+      <a href="#diagnostics" data-view="diagnostics">🩺 Diagnóstico & Logs</a>
+      <a href="/docs" target="_blank">📖 OpenAPI Explorer ↗</a>
+    </nav>
+    <div class="side-footer">
+      <div style="font-weight:700; margin-bottom:4px;">Estado del Runtime</div>
+      <div id="sideStatusText" style="color:var(--muted);"><span class="dot"></span> Comprobando…</div>
+    </div>
+  </aside>
+
   <main class="main">
-    <div class="top"><div><h1>Facebook Provider</h1><div class="muted">Administración segura de sesiones del sidecar</div></div><div class="pill"><span class="dot"></span><span id="serviceStatus">Consultando…</span></div></div>
-    <section class="grid">
-      <article class="card"><div class="muted">Servicio</div><div class="metric" id="serviceVersion">—</div><div class="muted">Versión instalada</div></article>
-      <article class="card"><div class="muted">Sesiones activas</div><div class="metric" id="sessionCount">0</div><div class="muted">Credenciales solo en memoria</div></article>
-      <article class="card"><div class="muted">API</div><div class="metric">v1</div><div class="muted">Contrato REST interno</div></article>
-    </section>
-    <section class="section">
-      <div class="section-head"><div><h2>Sesiones</h2><div class="muted">Cada cuenta recibe un sessionId interno.</div></div><button class="btn" id="newSession">Nueva sesión</button></div>
-      <div id="sessionContent" class="empty">Cargando sesiones…</div>
-    </section>
-    <section class="section" id="webhook">
-      <div class="section-head"><div><h2>Webhook global</h2><div class="muted">Una configuración persistente para todas las sesiones.</div></div><span class="pill" id="webhookScope">all-sessions</span></div>
-      <form class="webhook-body" id="webhookForm">
-        <div class="form-grid">
-          <label class="toggle full"><input type="checkbox" id="webhookEnabled"> Activar webhook</label>
-          <div class="full"><label for="webhookUrl">URL de destino</label><input type="url" id="webhookUrl" maxlength="2048" placeholder="https://socialmanager.example.com/hooks/facebook"></div>
-          <div><label for="webhookSecret">Secreto de firma</label><input type="password" id="webhookSecret" autocomplete="new-password" placeholder="Dejar vacío para conservar"></div>
-          <div><label>Estado del secreto</label><div class="secret-state" id="webhookSecretState">No configurado</div><label class="toggle"><input type="checkbox" id="webhookClearSecret"> Eliminar secreto guardado</label></div>
-          <div class="full"><label>Eventos</label><div class="event-grid">
-            <label><input type="checkbox" name="webhookEvent" value="message.received"> Recibido</label>
-            <label><input type="checkbox" name="webhookEvent" value="message.sent"> Enviado</label>
-            <label><input type="checkbox" name="webhookEvent" value="message.updated"> Editado</label>
-            <label><input type="checkbox" name="webhookEvent" value="message.deleted"> Eliminado</label>
-            <label><input type="checkbox" name="webhookEvent" value="session.status"> Estado de sesión</label>
-          </div></div>
+    <div class="top">
+      <div>
+        <h1 id="viewTitle">Overview del Provider</h1>
+        <div class="tag" id="viewSubtitle">Supervisión operativa, capabilities activas y salud de la integración.</div>
+      </div>
+      <div class="top-actions" style="display:flex; align-items:center; gap:8px;">
+        <span class="pill" id="wsStatusBadge"><span class="dot"></span> WS: Conectando…</span>
+        <button class="btn secondary" id="refreshBtn">🔄 Actualizar</button>
+        <button class="btn" id="quickNewSessionBtn">+ Conectar Cuenta</button>
+      </div>
+    </div>
+
+    <!-- VIEW 1: OVERVIEW -->
+    <div id="view-overview" class="view-content active">
+      <section class="grid-4" style="margin-bottom: 20px;">
+        <article class="card">
+          <div class="card-title">Servicio Provider</div>
+          <div class="metric" id="overviewVersion">v2.3.2</div>
+          <div class="card-desc" id="overviewService">fbchat-provider</div>
+        </article>
+        <article class="card">
+          <div class="card-title">Sesiones Activas</div>
+          <div class="metric" id="overviewSessionCount">0</div>
+          <div class="card-desc" id="overviewStorage">Almacenamiento seguro</div>
+        </article>
+        <article class="card">
+          <div class="card-title">Dispatcher Webhook</div>
+          <div class="metric" id="overviewDispatcherDelivered">0</div>
+          <div class="card-desc" id="overviewDispatcherStatus">Estado: idle</div>
+        </article>
+        <article class="card">
+          <div class="card-title">E2EE Bridge & Auth</div>
+          <div class="metric" id="overviewBridgeStatus">—</div>
+          <div class="card-desc">Liveness & Readiness</div>
+        </article>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>Matriz de Capabilities</h2>
+            <div class="tag">Capacidades técnicas reales de Facebook Messenger expuestas mediante el adapter.</div>
+          </div>
+          <span class="pill"><span class="dot"></span> Capability-Driven</span>
         </div>
-        <div class="notice">La configuración se guarda en el volumen privado. La entrega de eventos se habilitará en el siguiente corte con cola y reintentos.</div>
-        <div class="form-actions"><button type="button" class="btn danger" id="clearWebhook">Borrar configuración</button><button type="submit" class="btn" id="saveWebhook">Guardar webhook</button></div>
-      </form>
-    </section>
+        <div class="section-body">
+          <div class="cap-grid" id="capabilitiesGrid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2>Acciones Rápidas</h2>
+          <div class="tag">Operaciones administrativas frecuentes</div>
+        </div>
+        <div class="section-body actions-row">
+          <button class="btn" onclick="switchView('sessions'); el('newSessionBtn').click();">+ Nueva Sesión</button>
+          <button class="btn secondary" onclick="switchView('threads')">💬 Explorar Conversaciones</button>
+          <button class="btn secondary" onclick="switchView('webhook')">🔔 Configurar Webhook</button>
+          <button class="btn secondary" onclick="testProbeWebhook()">⚡ Probar Ping de Webhook</button>
+          <button class="btn secondary" onclick="switchView('diagnostics')">🩺 Ver Telemetría & Logs</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- VIEW 2: SESIONES -->
+    <div id="view-sessions" class="view-content">
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>Cuentas y Sesiones de Facebook</h2>
+            <div class="tag">Aislamiento por tenant y credenciales cifradas en reposo.</div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <input type="text" id="tenantFilter" placeholder="Filtrar por tenant…" style="width:160px; padding:6px 10px; font-size:12px;">
+            <button class="btn" id="newSessionBtn">+ Conectar Cuenta</button>
+          </div>
+        </div>
+        <div class="section-body" style="padding:0;">
+          <div id="sessionsTableContainer" class="empty-state">Cargando sesiones…</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- VIEW 3: THREADS & CHAT -->
+    <div id="view-threads" class="view-content">
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px;">
+        <label style="margin:0; font-weight:700;">Sesión Activa:</label>
+        <select id="threadsSessionSelect" style="max-width:320px;">
+          <option value="">Cargando sesiones…</option>
+        </select>
+        <button class="btn secondary" id="loadThreadsBtn">Listar Threads</button>
+      </div>
+
+      <div class="grid-2">
+        <!-- Thread list -->
+        <section class="section" style="margin:0;">
+          <div class="section-head">
+            <h2>Conversaciones Recientes</h2>
+            <span class="pill" id="threadsCountPill">0 threads</span>
+          </div>
+          <div class="section-body" style="padding:0; max-height:550px; overflow-y:auto;" id="threadsListContainer">
+            <div class="empty-state">Selecciona una sesión y pulsa "Listar Threads".</div>
+          </div>
+        </section>
+
+        <!-- Message & Reaction actions -->
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Send text message -->
+          <section class="section" style="margin:0;">
+            <div class="section-head">
+              <h2>Enviar Mensaje de Prueba</h2>
+              <span class="status-badge connected">messenger.send</span>
+            </div>
+            <form class="section-body" id="sendMessageForm">
+              <label for="msgThreadId">Destino Thread ID</label>
+              <input id="msgThreadId" placeholder="100012345678" required>
+
+              <div class="form-grid">
+                <div>
+                  <label for="msgType">Tipo de Chat</label>
+                  <select id="msgType">
+                    <option value="user">Usuario Directo (User)</option>
+                    <option value="group">Grupo (Group)</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="msgReplyId">Citar Mensaje ID (Opcional)</label>
+                  <input id="msgReplyId" placeholder="mid.$cAA...">
+                </div>
+              </div>
+
+              <label for="msgText">Contenido del Mensaje</label>
+              <textarea id="msgText" placeholder="Escribe el mensaje de prueba..." style="height:80px;"></textarea>
+
+              <label for="msgMediaId" style="margin-top:10px;">Media ID Adjunto (Opcional — ej: med_...)</label>
+              <input id="msgMediaId" placeholder="med_...">
+
+              <div style="margin-top:14px; display:flex; justify-content:flex-end;">
+                <button type="submit" class="btn" id="sendMsgBtn">Enviar Mensaje</button>
+              </div>
+            </form>
+          </section>
+
+          <!-- Reactions & Unsend -->
+          <section class="section" style="margin:0;">
+            <div class="section-head">
+              <h2>Reacciones & Revocación</h2>
+              <div style="display:flex; gap:6px;">
+                <span class="status-badge connected">reactions</span>
+                <span class="status-badge connected">unsend</span>
+              </div>
+            </div>
+            <div class="section-body">
+              <div class="form-grid">
+                <!-- React form -->
+                <form id="reactForm">
+                  <label for="reactMsgId">Mensaje ID</label>
+                  <input id="reactMsgId" placeholder="mid.$..." required>
+                  <label for="reactEmoji">Emoji</label>
+                  <div style="display:flex; gap:6px; margin-bottom:8px;">
+                    <button type="button" class="btn secondary" style="padding:4px 8px;" onclick="el('reactEmoji').value='👍'">👍</button>
+                    <button type="button" class="btn secondary" style="padding:4px 8px;" onclick="el('reactEmoji').value='❤️'">❤️</button>
+                    <button type="button" class="btn secondary" style="padding:4px 8px;" onclick="el('reactEmoji').value='😂'">😂</button>
+                    <button type="button" class="btn secondary" style="padding:4px 8px;" onclick="el('reactEmoji').value='😮'">😮</button>
+                    <button type="button" class="btn secondary" style="padding:4px 8px;" onclick="el('reactEmoji').value='😢'">😢</button>
+                    <button type="button" class="btn secondary" style="padding:4px 8px;" onclick="el('reactEmoji').value='😡'">😡</button>
+                  </div>
+                  <input id="reactEmoji" value="👍" maxlength="8" required>
+                  <div style="margin-top:10px; display:flex; gap:8px;">
+                    <button type="button" class="btn" onclick="submitReaction('add')">Reaccionar</button>
+                    <button type="button" class="btn secondary" onclick="submitReaction('remove')">Quitar</button>
+                  </div>
+                </form>
+
+                <!-- Unsend form -->
+                <form id="unsendForm" onsubmit="submitUnsend(event)">
+                  <label for="unsendMsgId">Mensaje ID a Revocar</label>
+                  <input id="unsendMsgId" placeholder="mid.$..." required>
+                  <div class="notice" style="margin:10px 0;">Solo se pueden revocar mensajes propios enviados por la cuenta.</div>
+                  <button type="submit" class="btn danger">Revocar (Unsend)</button>
+                </form>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 4: CONTACTOS & BUSCAR -->
+    <div id="view-contacts" class="view-content">
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px;">
+        <label style="margin:0; font-weight:700;">Sesión Activa:</label>
+        <select id="contactsSessionSelect" style="max-width:320px;">
+          <option value="">Cargando sesiones…</option>
+        </select>
+      </div>
+
+      <div class="grid-2">
+        <!-- User lookup -->
+        <section class="section" style="margin:0;">
+          <div class="section-head">
+            <h2>Consultar Perfil de Usuario</h2>
+            <span class="status-badge connected">messenger.users</span>
+          </div>
+          <form class="section-body" id="userInfoForm" onsubmit="lookupUserInfo(event)">
+            <label for="lookupUserId">Facebook User ID</label>
+            <input id="lookupUserId" placeholder="42" required>
+            <div style="margin-top:12px;">
+              <button type="submit" class="btn">Consultar Perfil</button>
+            </div>
+            <div id="userInfoResult" style="margin-top:16px;"></div>
+          </form>
+        </section>
+
+        <!-- User search -->
+        <section class="section" style="margin:0;">
+          <div class="section-head">
+            <h2>Búsqueda de Personas en Facebook</h2>
+            <span class="status-badge connected">search</span>
+          </div>
+          <form class="section-body" id="userSearchForm" onsubmit="searchFacebookUsers(event)">
+            <label for="searchQuery">Nombre o término de búsqueda</label>
+            <input id="searchQuery" placeholder="Nombre a buscar…" required>
+            <div style="margin-top:12px;">
+              <button type="submit" class="btn">Buscar Personas</button>
+            </div>
+            <div id="userSearchResults" style="margin-top:16px;"></div>
+          </form>
+        </section>
+
+        <!-- Block / Unblock -->
+        <section class="section full" style="margin-top:16px;">
+          <div class="section-head">
+            <h2>Gestión de Privacidad & Bloqueos</h2>
+            <span class="status-badge connected">messenger.blocking</span>
+          </div>
+          <form class="section-body form-grid" onsubmit="handleBlockUser(event)">
+            <div>
+              <label for="blockUserId">User ID</label>
+              <input id="blockUserId" placeholder="1000..." required>
+            </div>
+            <div>
+              <label for="blockActionSelect">Acción</label>
+              <select id="blockActionSelect">
+                <option value="block">Bloquear Usuario</option>
+                <option value="unblock">Desbloquear Usuario</option>
+              </select>
+            </div>
+            <div class="full" style="display:flex; justify-content:flex-end;">
+              <button type="submit" class="btn secondary">Ejecutar Acción</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+
+    <!-- VIEW: MEDIA & ARCHIVOS -->
+    <div id="view-media" class="view-content">
+      <div class="grid-2">
+        <section class="section" style="margin:0;">
+          <div class="section-head">
+            <div>
+              <h2>Cargar Archivo Multimedia</h2>
+              <div class="tag">Imágenes, audios, videos y documentos con validación y asignación de mediaId.</div>
+            </div>
+            <span class="pill">SocialManager Media Boundary</span>
+          </div>
+          <div class="section-body">
+            <div style="border:2px dashed var(--line); border-radius:var(--radius); padding:24px; text-align:center; background:#070a12;" id="dropZone">
+              <div style="font-size:28px; margin-bottom:8px;">📤</div>
+              <div style="font-weight:600; margin-bottom:4px;">Selecciona o arrastra un archivo aquí</div>
+              <div class="tag" style="margin-bottom:16px;">Máximo 25 MB (JPG, PNG, GIF, MP4, MP3, PDF, TXT, ZIP)</div>
+              <input type="file" id="mediaFileInput" style="display:none;" onchange="handleFileSelect(event)">
+              <button type="button" class="btn" onclick="el('mediaFileInput').click()">Explorar Archivo…</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" style="margin:0;">
+          <div class="section-head">
+            <h2>Uso de Media ID en Mensajería</h2>
+            <span class="status-badge connected">media.send</span>
+          </div>
+          <div class="section-body" style="font-size:13px; color:var(--muted); line-height:1.6;">
+            <p style="margin-top:0;">
+              En cumplimiento del estándar de SocialManager, este proveedor nunca expone URLs directas de Facebook CDN ni rutas del sistema de archivos local.
+            </p>
+            <p>
+              Al cargar un archivo, se le asigna un identificador opaco <code>mediaId</code> (ej. <code>med_8a3f91...</code>) que se referencia en el endpoint de envío de medios:
+            </p>
+            <pre style="background:#070a12; padding:10px; border-radius:8px; border:1px solid var(--line); color:#93c5fd; overflow-x:auto;">POST /api/v1/sessions/{id}/messages/media
+{
+  "threadId": "123456789",
+  "mediaIds": ["med_..."],
+  "text": "Comentario opcional"
+}</pre>
+          </div>
+        </section>
+      </div>
+
+      <section class="section" style="margin-top:20px;">
+        <div class="section-head">
+          <div>
+            <h2>Archivos en Almacenamiento Local Staging</h2>
+            <div class="tag">Archivos preparados en el volumen privado para envíos y descargas seguras.</div>
+          </div>
+          <button class="btn secondary" onclick="loadMediaList()">🔄 Refrescar Lista</button>
+        </div>
+        <div class="section-body" style="padding:0;">
+          <table>
+            <thead>
+              <tr>
+                <th>Media ID</th>
+                <th>Nombre del Archivo</th>
+                <th>Tipo MIME</th>
+                <th>Tamaño</th>
+                <th>Fecha de Carga</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="mediaTableBody">
+              <tr><td colspan="6" class="empty-state">Cargando archivos…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- VIEW 5: WEBHOOK & DISPATCHER -->
+    <div id="view-webhook" class="view-content">
+      <div class="grid-2">
+        <section class="section" style="margin:0;">
+          <div class="section-head">
+            <div>
+              <h2>Webhook global</h2>
+              <div class="tag">Una configuración persistente para todas las sesiones.</div>
+            </div>
+            <span class="pill">all-sessions</span>
+          </div>
+          <form class="section-body" id="webhookForm">
+            <div class="form-grid">
+              <label class="toggle full"><input type="checkbox" id="webhookEnabled"> Activar entrega de webhook</label>
+              <div class="full">
+                <label for="webhookUrl">URL de Destino</label>
+                <input type="url" id="webhookUrl" placeholder="https://socialmanager.example.com/hooks/facebook">
+              </div>
+              <div>
+                <label for="webhookSecret">Secreto de Firma (HMAC-SHA256)</label>
+                <input type="password" id="webhookSecret" autocomplete="new-password" placeholder="Dejar vacío para conservar">
+              </div>
+              <div>
+                <label>Estado del Secreto</label>
+                <div style="font-size:13px; color:var(--muted); margin-top:6px;" id="webhookSecretState">Consultando…</div>
+                <label class="toggle" style="margin-top:8px;"><input type="checkbox" id="webhookClearSecret"> Eliminar secreto guardado</label>
+              </div>
+              <div class="full">
+                <label>Eventos Suscritos</label>
+                <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
+                  <label><input type="checkbox" name="webhookEvent" value="message.received"> message.received</label>
+                  <label><input type="checkbox" name="webhookEvent" value="message.sent"> message.sent</label>
+                  <label><input type="checkbox" name="webhookEvent" value="message.updated"> message.updated</label>
+                  <label><input type="checkbox" name="webhookEvent" value="message.deleted"> message.deleted</label>
+                  <label><input type="checkbox" name="webhookEvent" value="session.status"> session.status</label>
+                </div>
+              </div>
+            </div>
+            <div class="notice">
+              Los eventos se firman con la cabecera <code>X-Hub-Signature-256</code> y pasan por validación anti-SSRF para proteger hosts internos.
+            </div>
+            <div style="margin-top:18px; display:flex; justify-content:space-between;">
+              <button type="button" class="btn danger" id="clearWebhookBtn">Borrar Configuración</button>
+              <button type="submit" class="btn" id="saveWebhookBtn">Guardar Configuración</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="section" style="margin:0;">
+          <div class="section-head">
+            <h2>Telemetría del Dispatcher</h2>
+            <button class="btn secondary" onclick="testProbeWebhook()">⚡ Enviar Evento de Prueba</button>
+          </div>
+          <div class="section-body">
+            <div class="grid-2" style="margin-bottom:16px;">
+              <div class="card" style="padding:14px;">
+                <div class="card-title">Despachados</div>
+                <div class="metric" style="font-size:22px;" id="dispDispatched">0</div>
+              </div>
+              <div class="card" style="padding:14px;">
+                <div class="card-title">Entregados OK</div>
+                <div class="metric" style="font-size:22px; color:var(--green);" id="dispDelivered">0</div>
+              </div>
+              <div class="card" style="padding:14px;">
+                <div class="card-title">Fallidos</div>
+                <div class="metric" style="font-size:22px; color:var(--rose);" id="dispFailed">0</div>
+              </div>
+              <div class="card" style="padding:14px;">
+                <div class="card-title">Descartados (Overflow)</div>
+                <div class="metric" style="font-size:22px; color:var(--amber);" id="dispDropped">0</div>
+              </div>
+            </div>
+
+            <div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span class="card-title">Uso de Cola Acotada (Max: 1000)</span>
+                <span id="dispQueueText" style="font-size:12px; color:var(--muted);">0 / 1000</span>
+              </div>
+              <div style="background:#090e18; border-radius:999px; height:8px; overflow:hidden; border:1px solid var(--line);">
+                <div id="dispQueueBar" style="background:var(--cyan); height:100%; width:0%; transition:width 0.2s;"></div>
+              </div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <label>Último Estado:</label>
+              <div id="dispLastStatus" style="font-family:monospace; font-size:13px;">idle</div>
+              <label>Último Error:</label>
+              <div id="dispLastError" style="font-family:monospace; font-size:12px; color:var(--rose);">Ninguno</div>
+            </div>
+
+            <div id="probeResultBox" style="margin-top:16px;"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- VIEW 6: DIAGNOSTICS & LOGS -->
+    <div id="view-diagnostics" class="view-content">
+      <section class="section">
+        <div class="section-head">
+          <h2>Health & Readiness Checklist</h2>
+          <span class="status-badge ready" id="diagReadinessPill">READY</span>
+        </div>
+        <div class="section-body">
+          <table id="readinessTable">
+            <thead><tr><th>Componente</th><th>Estado</th><th>Detalles</th></tr></thead>
+            <tbody id="readinessTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>Feed de Auditoría y Eventos Sanitizados</h2>
+            <div class="tag">Registro en memoria de operaciones recientes (los secretos permanecen redactados).</div>
+          </div>
+          <button class="btn secondary" onclick="loadDiagnostics()">🔄 Refrescar Logs</button>
+        </div>
+        <div class="section-body" style="padding:0;">
+          <div id="auditLogContainer" style="max-height:400px; overflow-y:auto; font-family:monospace; font-size:12px; padding:12px 18px;">
+            Cargando logs...
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>Realtime WebSocket Stream (/ws)</h2>
+            <div class="tag">Transmisión bidireccional en vivo de eventos entrantes y cambios de estado.</div>
+          </div>
+          <span class="pill" id="diagWsPill"><span class="dot"></span> Conectando…</span>
+        </div>
+        <div class="section-body" style="padding:0;">
+          <div id="wsEventsContainer" style="max-height:260px; overflow-y:auto; font-family:monospace; font-size:12px; padding:12px 18px; background:#070a12; color:#a7f3d0;">
+            Esperando eventos WebSocket en tiempo real...
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
 </div>
+
+<!-- Modal: New Session -->
 <dialog id="sessionDialog">
   <form id="sessionForm">
-    <div class="dialog-head">Conectar cuenta de Facebook</div>
+    <div class="dialog-head">Conectar Nueva Sesión de Facebook</div>
     <div class="dialog-body">
-      <label for="label">Nombre interno</label><input id="label" maxlength="80" placeholder="Cuenta Marketplace" required>
-      <label for="cookies">Cookies JSON</label><textarea id="cookies" placeholder='[{"name":"c_user","value":"…"},{"name":"xs","value":"…"}]' required></textarea>
-      <div class="notice">Las cookies se envían al sidecar, nunca se devuelven en respuestas y este primer corte las mantiene solo en memoria.</div>
+      <div class="form-grid">
+        <div>
+          <label for="sessionLabel">Nombre / Etiqueta</label>
+          <input id="sessionLabel" maxlength="80" placeholder="Cuenta Ventas 1" required>
+        </div>
+        <div>
+          <label for="sessionTenantId">Tenant ID</label>
+          <input id="sessionTenantId" maxlength="64" value="default" placeholder="default" required>
+        </div>
+      </div>
+      <label for="sessionCookies">Cookies JSON (Requiere mínimo c_user y xs)</label>
+      <textarea id="sessionCookies" placeholder='[{"name":"c_user","value":"1000..."},{"name":"xs","value":"..."}]' required></textarea>
+      <div class="notice">
+        Las cookies se envían al sidecar cifradas en reposo con rotación de claves privada. Nunca se exponen al frontend ni a logs.
+      </div>
     </div>
-    <div class="dialog-actions"><button type="button" class="btn secondary" id="cancelDialog">Cancelar</button><button type="submit" class="btn" id="connectButton">Conectar</button></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn secondary" onclick="el('sessionDialog').close()">Cancelar</button>
+      <button type="submit" class="btn" id="connectSessionBtn">Conectar Cuenta</button>
+    </div>
   </form>
 </dialog>
+
 <div class="toast" id="toast"></div>
+
 <script>
-const api='/api/v1';
-const el=id=>document.getElementById(id);
-function toast(message,error=false){const node=el('toast');node.textContent=message;node.className='toast'+(error?' error':'');node.style.display='block';setTimeout(()=>node.style.display='none',4200)}
-async function request(path,options={}){const response=await fetch(api+path,{headers:{'Content-Type':'application/json',...(options.headers||{})},...options});const body=await response.json().catch(()=>({message:'Respuesta inválida'}));if(!response.ok)throw new Error(body.message||'La solicitud falló');return body.results}
-function escapeText(value){const node=document.createElement('span');node.textContent=value;return node.innerHTML}
-async function load(){try{const [info,sessions,webhook]=await Promise.all([request('/app/info'),request('/sessions'),request('/webhook')]);el('serviceStatus').textContent='Operativo';el('serviceVersion').textContent='v'+info.version;el('sessionCount').textContent=String(sessions.length);renderSessions(sessions);renderWebhook(webhook)}catch(error){el('serviceStatus').textContent='No disponible';toast(error.message,true)}}
-function renderSessions(sessions){const root=el('sessionContent');if(!sessions.length){root.className='empty';root.textContent='No hay sesiones conectadas.';return}root.className='';root.innerHTML='<table><thead><tr><th>Nombre</th><th>Estado</th><th>Validada</th><th>Acciones</th></tr></thead><tbody>'+sessions.map(session=>`<tr><td>${escapeText(session.label)}</td><td class="status">${escapeText(session.status)}</td><td>${new Date(session.validatedAt).toLocaleString()}</td><td><div class="actions"><button class="btn secondary" data-validate="${session.sessionId}">Validar</button><button class="btn danger" data-delete="${session.sessionId}">Eliminar</button></div></td></tr>`).join('')+'</tbody></table>'}
-function renderWebhook(webhook){el('webhookEnabled').checked=webhook.enabled;el('webhookUrl').value=webhook.url||'';el('webhookSecret').value='';el('webhookClearSecret').checked=false;el('webhookSecretState').textContent=webhook.secretConfigured?'Configurado y cifrado':'No configurado';document.querySelectorAll('[name="webhookEvent"]').forEach(input=>input.checked=webhook.events.includes(input.value))}
-el('newSession').onclick=()=>el('sessionDialog').showModal();el('cancelDialog').onclick=()=>el('sessionDialog').close();
-el('sessionForm').onsubmit=async event=>{event.preventDefault();const button=el('connectButton');button.disabled=true;try{const parsed=JSON.parse(el('cookies').value);if(!Array.isArray(parsed))throw new Error('Las cookies deben ser un arreglo JSON.');await request('/sessions',{method:'POST',body:JSON.stringify({label:el('label').value,cookies:parsed})});el('sessionDialog').close();event.target.reset();toast('Sesión conectada.');await load()}catch(error){toast(error.message,true)}finally{button.disabled=false}};
-el('sessionContent').onclick=async event=>{const validateId=event.target.dataset.validate,deleteId=event.target.dataset.delete;try{if(validateId){await request('/sessions/'+encodeURIComponent(validateId)+'/validate',{method:'POST'});toast('Sesión validada.')}if(deleteId&&confirm('¿Eliminar esta sesión del sidecar?')){await request('/sessions/'+encodeURIComponent(deleteId),{method:'DELETE'});toast('Sesión eliminada.')}await load()}catch(error){toast(error.message,true)}};
-el('webhookForm').onsubmit=async event=>{event.preventDefault();const button=el('saveWebhook');button.disabled=true;try{const secret=el('webhookSecret').value;const payload={enabled:el('webhookEnabled').checked,url:el('webhookUrl').value,events:[...document.querySelectorAll('[name="webhookEvent"]:checked')].map(input=>input.value),clearSecret:el('webhookClearSecret').checked};if(secret)payload.secret=secret;await request('/webhook',{method:'PUT',body:JSON.stringify(payload)});toast('Webhook guardado para todas las sesiones.');await load()}catch(error){toast(error.message,true)}finally{button.disabled=false}};
-el('clearWebhook').onclick=async()=>{if(!confirm('¿Borrar la configuración global del webhook?'))return;try{await request('/webhook',{method:'DELETE'});toast('Configuración del webhook eliminada.');await load()}catch(error){toast(error.message,true)}};
-load();
+const api = '/api/v1';
+const el = id => document.getElementById(id);
+
+function toast(message, type = 'info') {
+  const node = el('toast');
+  node.textContent = message;
+  node.className = 'toast' + (type === 'error' ? ' error' : type === 'success' ? ' success' : '');
+  node.style.display = 'block';
+  setTimeout(() => { node.style.display = 'none'; }, 4000);
+}
+
+async function request(path, options = {}) {
+  const response = await fetch(api + path, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options
+  });
+  const body = await response.json().catch(() => ({ message: 'Respuesta inválida del servidor' }));
+  if (!response.ok) {
+    throw new Error(body.message || 'Error en la petición');
+  }
+  return body.results;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Navigation handling
+function switchView(viewName) {
+  document.querySelectorAll('.nav a').forEach(a => {
+    a.classList.toggle('active', a.dataset.view === viewName);
+  });
+  document.querySelectorAll('.view-content').forEach(view => {
+    view.classList.toggle('active', view.id === 'view-' + viewName);
+  });
+
+  const titles = {
+    overview: ['Overview del Provider', 'Supervisión operativa, capabilities activas y salud de la integración.'],
+    sessions: ['Gestión de Sesiones', 'Cuentas activas, aislamiento multi-tenant y ciclo de vida.'],
+    threads: ['Explorador de Conversaciones & Chat', 'Inspección de hilos, envío interactivo de texto, citas y reacciones.'],
+    media: ['Almacenamiento de Medios', 'Carga de archivos locales, asignación de mediaId y límites de tamaño.'],
+    contacts: ['Contactos & Búsqueda', 'Búsqueda de perfiles y administración de bloqueos.'],
+    webhook: ['Webhook Global & Dispatcher', 'Configuración de entrega HTTP con firma HMAC y cola acotada.'],
+    diagnostics: ['Diagnósticos & Auditoría', 'Inspección de salud en tiempo real y logs sanitizados.']
+  };
+  if (titles[viewName]) {
+    el('viewTitle').textContent = titles[viewName][0];
+    el('viewSubtitle').textContent = titles[viewName][1];
+  }
+
+  if (viewName === 'threads' || viewName === 'contacts') {
+    populateSessionDropdowns();
+  } else if (viewName === 'diagnostics') {
+    loadDiagnostics();
+  } else if (viewName === 'media') {
+    loadMediaList();
+  }
+}
+
+document.querySelectorAll('.nav a[data-view]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    switchView(a.dataset.view);
+  });
+});
+
+let cachedSessions = [];
+let cachedInfo = null;
+
+async function loadAllData() {
+  try {
+    const [info, status, sessions, webhook] = await Promise.all([
+      request('/app/info'),
+      request('/app/status'),
+      request('/sessions?details=true'),
+      request('/webhook')
+    ]);
+
+    cachedInfo = info;
+    cachedSessions = sessions;
+
+    // Overview metrics
+    el('overviewVersion').textContent = 'v' + info.version;
+    el('overviewService').textContent = info.service;
+    el('overviewSessionCount').textContent = String(sessions.length);
+    el('overviewStorage').textContent = info.sessionStorage === 'encrypted' ? 'Cifrado en reposo' : 'Memoria volátil';
+    el('sideStatusText').innerHTML = `<span class="dot ${status.status === 'connected' ? '' : 'amber'}"></span> ${status.status}`;
+
+    // Bridge status
+    const bridgeOk = status.readiness === 'ready';
+    el('overviewBridgeStatus').innerHTML = `<span class="status-badge ${bridgeOk ? 'ready' : 'degraded'}">${status.readiness}</span>`;
+
+    // Capabilities matrix
+    renderCapabilities(info.capabilityMatrix || {});
+
+    // Sessions table
+    renderSessions(sessions);
+
+    // Webhook form & dispatcher
+    renderWebhook(webhook, status.dispatcher);
+
+    populateSessionDropdowns();
+  } catch (err) {
+    toast(err.message, 'error');
+    el('sideStatusText').innerHTML = '<span class="dot rose"></span> Desconectado';
+  }
+}
+
+function renderCapabilities(matrix) {
+  const container = el('capabilitiesGrid');
+  const keys = Object.keys(matrix);
+  if (!keys.length) {
+    container.innerHTML = '<div class="empty-state">No hay capabilities reportadas.</div>';
+    return;
+  }
+  container.innerHTML = keys.map(key => {
+    const item = matrix[key];
+    const badgeClass = item.status === 'supported' ? 'supported' : item.status === 'experimental' ? 'experimental' : 'unsupported';
+    return `
+      <div class="cap-card">
+        <div class="cap-head">
+          <span class="cap-name">${escapeHtml(key)}</span>
+          <span class="status-badge ${badgeClass}">${escapeHtml(item.status)}</span>
+        </div>
+        <div class="cap-desc">${escapeHtml(item.description)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSessions(sessions) {
+  const container = el('sessionsTableContainer');
+  if (!sessions.length) {
+    container.innerHTML = '<div class="empty-state">No hay sesiones de Facebook conectadas. Pulsa "+ Conectar Cuenta" para agregar una.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Tenant</th>
+          <th>Nombre</th>
+          <th>ID de Sesión</th>
+          <th>Estado</th>
+          <th>Listener</th>
+          <th>Última Actividad</th>
+          <th>Validada</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sessions.map(s => `
+          <tr>
+            <td><span class="pill" style="font-size:11px; padding:3px 8px;">${escapeHtml(s.tenantId || 'default')}</span></td>
+            <td><strong>${escapeHtml(s.label)}</strong></td>
+            <td><code>${s.sessionId.substring(0, 8)}…</code></td>
+            <td><span class="status-badge ${escapeHtml(s.status)}">${escapeHtml(s.status)}</span></td>
+            <td><span class="status-badge ${s.listenerStatus === 'listening' ? 'connected' : 'idle'}">${escapeHtml(s.listenerStatus || 'idle')}</span></td>
+            <td>${s.lastActivityAt ? new Date(s.lastActivityAt).toLocaleTimeString() : '—'}</td>
+            <td>${new Date(s.validatedAt).toLocaleDateString()} ${new Date(s.validatedAt).toLocaleTimeString()}</td>
+            <td>
+              <div class="actions-row">
+                <button class="btn secondary" style="padding:4px 8px; font-size:12px;" onclick="validateSession('${s.sessionId}')">Validar</button>
+                <button class="btn secondary" style="padding:4px 8px; font-size:12px;" onclick="selectSessionAndGoThreads('${s.sessionId}')">Hilos</button>
+                <button class="btn secondary" style="padding:4px 8px; font-size:12px;" onclick="toggleSessionListener('${s.sessionId}', '${s.listenerStatus || 'idle'}')">${s.listenerStatus === 'listening' ? '⏹ Detener' : '▶ Listener'}</button>
+                <button class="btn danger" style="padding:4px 8px; font-size:12px;" onclick="deleteSession('${s.sessionId}')">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderWebhook(webhook, disp) {
+  el('webhookEnabled').checked = webhook.enabled;
+  el('webhookUrl').value = webhook.url || '';
+  el('webhookSecret').value = '';
+  el('webhookClearSecret').checked = false;
+  el('webhookSecretState').textContent = webhook.secretConfigured ? 'Cifrado con llave Fernet privada' : 'No configurado';
+
+  document.querySelectorAll('[name="webhookEvent"]').forEach(input => {
+    input.checked = (webhook.events || []).includes(input.value);
+  });
+
+  if (disp) {
+    el('overviewDispatcherDelivered').textContent = disp.deliveredCount || 0;
+    el('overviewDispatcherStatus').textContent = 'Estado: ' + (disp.lastStatus || 'idle');
+
+    el('dispDispatched').textContent = disp.dispatchedCount || 0;
+    el('dispDelivered').textContent = disp.deliveredCount || 0;
+    el('dispFailed').textContent = disp.failedCount || 0;
+    el('dispDropped').textContent = disp.droppedCount || 0;
+
+    const queue = disp.queueSize || 0;
+    const max = disp.maxQueueSize || 1000;
+    el('dispQueueText').textContent = `${queue} / ${max}`;
+    el('dispQueueBar').style.width = Math.min(100, Math.round((queue / max) * 100)) + '%';
+
+    el('dispLastStatus').textContent = disp.lastStatus || 'idle';
+    el('dispLastError').textContent = disp.lastError || 'Ninguno';
+  }
+}
+
+function populateSessionDropdowns() {
+  const options = cachedSessions.map(s => `<option value="${s.sessionId}">${escapeHtml(s.label)} (${s.sessionId.substring(0, 8)})</option>`).join('');
+  const fallback = '<option value="">No hay sesiones conectadas</option>';
+  el('threadsSessionSelect').innerHTML = options || fallback;
+  el('contactsSessionSelect').innerHTML = options || fallback;
+}
+
+function selectSessionAndGoThreads(sessionId) {
+  switchView('threads');
+  el('threadsSessionSelect').value = sessionId;
+  loadThreads();
+}
+
+// Session API Calls
+async function validateSession(sessionId) {
+  try {
+    await request(`/sessions/${encodeURIComponent(sessionId)}/validate`, { method: 'POST' });
+    toast('Sesión validada exitosamente.', 'success');
+    await loadAllData();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function deleteSession(sessionId) {
+  if (!confirm('¿Seguro que deseas desconectar y eliminar esta sesión?')) return;
+  try {
+    await request(`/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+    toast('Sesión eliminada.', 'success');
+    await loadAllData();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// Dialog: New Session
+el('newSessionBtn').onclick = () => el('sessionDialog').showModal();
+el('quickNewSessionBtn').onclick = () => el('sessionDialog').showModal();
+
+el('sessionForm').onsubmit = async e => {
+  e.preventDefault();
+  const btn = el('connectSessionBtn');
+  btn.disabled = true;
+  try {
+    const raw = el('sessionCookies').value.trim();
+    let cookies = [];
+    if (raw.startsWith('[')) {
+      cookies = JSON.parse(raw);
+    } else {
+      cookies = raw.split(';').map(part => {
+        const [name, ...val] = part.trim().split('=');
+        return { name: name.trim(), value: val.join('=').trim() };
+      }).filter(c => c.name && c.value);
+    }
+
+    await request('/sessions', {
+      method: 'POST',
+      body: JSON.stringify({
+        label: el('sessionLabel').value,
+        tenantId: el('sessionTenantId').value || 'default',
+        cookies
+      })
+    });
+
+    el('sessionDialog').close();
+    el('sessionForm').reset();
+    toast('Sesión de Facebook conectada exitosamente.', 'success');
+    await loadAllData();
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// Webhook Actions
+el('webhookForm').onsubmit = async e => {
+  e.preventDefault();
+  const btn = el('saveWebhookBtn');
+  btn.disabled = true;
+  try {
+    const events = [...document.querySelectorAll('[name="webhookEvent"]:checked')].map(i => i.value);
+    const payload = {
+      enabled: el('webhookEnabled').checked,
+      url: el('webhookUrl').value.trim(),
+      events,
+      clearSecret: el('webhookClearSecret').checked
+    };
+    const secret = el('webhookSecret').value.trim();
+    if (secret) payload.secret = secret;
+
+    await request('/webhook', { method: 'PUT', body: JSON.stringify(payload) });
+    toast('Configuración de webhook actualizada.', 'success');
+    await loadAllData();
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+el('clearWebhookBtn').onclick = async () => {
+  if (!confirm('¿Deseas restablecer la configuración del webhook?')) return;
+  try {
+    await request('/webhook', { method: 'DELETE' });
+    toast('Webhook restablecido.', 'success');
+    await loadAllData();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+};
+
+async function testProbeWebhook() {
+  toast('Enviando ping de prueba a webhook…');
+  try {
+    const res = await request('/webhook/test', { method: 'POST', body: JSON.stringify({}) });
+    const box = el('probeResultBox');
+    if (res.success) {
+      toast(`Probe exitoso: HTTP ${res.statusCode} (${res.latencyMs}ms)`, 'success');
+      box.innerHTML = `<div class="notice" style="border-left-color:var(--green); color:var(--text);">Probe exitoso: Destino respondió HTTP ${res.statusCode} en ${res.latencyMs}ms con firma HMAC verificada.</div>`;
+    } else {
+      toast(`Probe falló: ${res.error || 'Sin respuesta'}`, 'error');
+      box.innerHTML = `<div class="notice" style="border-left-color:var(--rose); color:#fca5a5;">Probe falló: ${escapeHtml(res.error)} (${res.latencyMs}ms)</div>`;
+    }
+    await loadAllData();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// Threads & Messaging
+el('loadThreadsBtn').onclick = loadThreads;
+
+async function loadThreads() {
+  const sessionId = el('threadsSessionSelect').value;
+  if (!sessionId) return toast('Selecciona una sesión primero', 'error');
+
+  const container = el('threadsListContainer');
+  container.innerHTML = '<div class="empty-state">Consultando threads de Facebook…</div>';
+  try {
+    const res = await request(`/sessions/${encodeURIComponent(sessionId)}/threads`);
+    const threads = res.items || [];
+    el('threadsCountPill').textContent = `${threads.length} threads`;
+
+    if (!threads.length) {
+      container.innerHTML = '<div class="empty-state">No se encontraron threads en esta cuenta.</div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <table>
+        <tbody>
+          ${threads.map(t => `
+            <tr style="cursor:pointer;" onclick="selectThreadForMessage('${t.threadId}', '${t.type}')">
+              <td>
+                <div style="font-weight:700;">${escapeHtml(t.name || 'Chat ' + t.threadId)}</div>
+                <div class="tag">${t.type} • ID: ${t.threadId}</div>
+              </td>
+              <td>${t.unreadCount > 0 ? `<span class="badge" style="background:#dc2626; color:white; padding:2px 6px; border-radius:99px; font-size:11px;">${t.unreadCount}</span>` : ''}</td>
+              <td><button class="btn secondary" style="padding:4px 8px; font-size:11px;">Elegir</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state" style="color:var(--rose);">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function selectThreadForMessage(threadId, type) {
+  el('msgThreadId').value = threadId;
+  el('msgType').value = type === 'group' ? 'group' : 'user';
+  toast(`Thread ${threadId} seleccionado en el compositor.`);
+}
+
+el('sendMessageForm').onsubmit = async e => {
+  e.preventDefault();
+  const sessionId = el('threadsSessionSelect').value;
+  if (!sessionId) return toast('Selecciona una sesión', 'error');
+
+  const btn = el('sendMsgBtn');
+  btn.disabled = true;
+  try {
+    const mediaId = el('msgMediaId').value.trim();
+    if (mediaId) {
+      const res = await request(`/sessions/${encodeURIComponent(sessionId)}/messages/media`, {
+        method: 'POST',
+        body: JSON.stringify({
+          threadId: el('msgThreadId').value.trim(),
+          threadType: el('msgType').value,
+          mediaIds: [mediaId],
+          text: el('msgText').value.trim() || null
+        })
+      });
+      toast(`Mensaje con medio enviado con éxito. ID: ${res.messageId}`, 'success');
+      el('reactMsgId').value = res.messageId;
+      el('unsendMsgId').value = res.messageId;
+      el('msgText').value = '';
+      el('msgMediaId').value = '';
+    } else {
+      const payload = {
+        threadId: el('msgThreadId').value.trim(),
+        threadType: el('msgType').value,
+        text: el('msgText').value.trim(),
+        replyToMessageId: el('msgReplyId').value.trim() || null
+      };
+
+      const res = await request(`/sessions/${encodeURIComponent(sessionId)}/messages/text`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      toast(`Mensaje enviado con éxito. ID: ${res.messageId}`, 'success');
+      el('reactMsgId').value = res.messageId;
+      el('unsendMsgId').value = res.messageId;
+      el('msgText').value = '';
+    }
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+async function submitReaction(action) {
+  const sessionId = el('threadsSessionSelect').value;
+  const msgId = el('reactMsgId').value.trim();
+  const emoji = el('reactEmoji').value.trim();
+  if (!sessionId || !msgId || !emoji) return toast('Sesión, ID de mensaje y emoji requeridos', 'error');
+
+  try {
+    await request(`/sessions/${encodeURIComponent(sessionId)}/messages/reaction`, {
+      method: 'POST',
+      body: JSON.stringify({ messageId: msgId, emoji, action })
+    });
+    toast(`Reacción "${emoji}" ${action === 'add' ? 'agregada' : 'retirada'}.`, 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function submitUnsend(e) {
+  e.preventDefault();
+  const sessionId = el('threadsSessionSelect').value;
+  const msgId = el('unsendMsgId').value.trim();
+  if (!sessionId || !msgId) return toast('Sesión y ID de mensaje requeridos', 'error');
+
+  if (!confirm('¿Deseas revocar este mensaje para todos en el chat?')) return;
+  try {
+    await request(`/sessions/${encodeURIComponent(sessionId)}/messages/unsend`, {
+      method: 'POST',
+      body: JSON.stringify({ messageId: msgId })
+    });
+    toast('Mensaje revocado con éxito.', 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// Contacts & Search
+async function lookupUserInfo(e) {
+  e.preventDefault();
+  const sessionId = el('contactsSessionSelect').value;
+  const userId = el('lookupUserId').value.trim();
+  if (!sessionId || !userId) return toast('Sesión y User ID requeridos', 'error');
+
+  const container = el('userInfoResult');
+  container.innerHTML = '<div class="tag">Consultando perfil…</div>';
+  try {
+    const user = await request(`/sessions/${encodeURIComponent(sessionId)}/users/${encodeURIComponent(userId)}`);
+    container.innerHTML = `
+      <div class="card" style="padding:16px;">
+        <div style="font-size:16px; font-weight:800;">${escapeHtml(user.name || 'Sin nombre')}</div>
+        <div class="tag">@${escapeHtml(user.username || 'sin_alias')} • ID: ${escapeHtml(user.userId)}</div>
+        <div style="margin-top:8px; font-size:12px;">
+          <div><strong>Género:</strong> ${escapeHtml(user.gender || 'Desconocido')}</div>
+          <div><strong>No-amigo:</strong> ${user.isNonFriend ? 'Sí' : 'No'}</div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `<div style="color:var(--rose); font-size:12px;">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function searchFacebookUsers(e) {
+  e.preventDefault();
+  const sessionId = el('contactsSessionSelect').value;
+  const q = el('searchQuery').value.trim();
+  if (!sessionId || !q) return toast('Sesión y término de búsqueda requeridos', 'error');
+
+  const container = el('userSearchResults');
+  container.innerHTML = '<div class="tag">Buscando usuarios…</div>';
+  try {
+    const res = await request(`/sessions/${encodeURIComponent(sessionId)}/search?q=${encodeURIComponent(q)}`);
+    const items = res.items || [];
+    if (!items.length) {
+      container.innerHTML = '<div class="tag">No se encontraron resultados.</div>';
+      return;
+    }
+    container.innerHTML = `
+      <table>
+        <thead><tr><th>Nombre</th><th>User ID</th><th>Acción</th></tr></thead>
+        <tbody>
+          ${items.map(u => `
+            <tr>
+              <td><strong>${escapeHtml(u.name)}</strong></td>
+              <td><code>${escapeHtml(u.userId)}</code></td>
+              <td><button class="btn secondary" style="padding:3px 8px; font-size:11px;" onclick="el('lookupUserId').value='${u.userId}'; lookupUserInfo(event);">Ver</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (err) {
+    container.innerHTML = `<div style="color:var(--rose); font-size:12px;">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function handleBlockUser(e) {
+  e.preventDefault();
+  const sessionId = el('contactsSessionSelect').value;
+  const userId = el('blockUserId').value.trim();
+  const action = el('blockActionSelect').value;
+  if (!sessionId || !userId) return toast('Sesión y User ID requeridos', 'error');
+
+  if (!confirm(`¿Confirmas la acción "${action}" para el usuario ${userId}?`)) return;
+  try {
+    await request(`/sessions/${encodeURIComponent(sessionId)}/privacy/block`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, action })
+    });
+    toast(`Usuario ${action === 'block' ? 'bloqueado' : 'desbloqueado'} con éxito.`, 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// Diagnostics & Audit
+async function loadDiagnostics() {
+  try {
+    const diag = await request('/diagnostics');
+    const pill = el('diagReadinessPill');
+    pill.textContent = diag.readiness.status.toUpperCase();
+    pill.className = 'status-badge ' + (diag.readiness.status === 'ready' ? 'ready' : 'degraded');
+
+    const checks = diag.readiness.checks || {};
+    const tbody = el('readinessTableBody');
+    tbody.innerHTML = Object.keys(checks).map(name => {
+      const c = checks[name];
+      const ok = c.ready !== false;
+      return `
+        <tr>
+          <td><strong>${escapeHtml(name)}</strong></td>
+          <td><span class="status-badge ${ok ? 'ready' : 'error'}">${ok ? 'READY' : 'NOT READY'}</span></td>
+          <td><code>${escapeHtml(JSON.stringify(c))}</code></td>
+        </tr>
+      `;
+    }).join('');
+
+    const auditContainer = el('auditLogContainer');
+    const logs = diag.auditLogs || [];
+    if (!logs.length) {
+      auditContainer.innerHTML = '<div class="empty-state">No hay eventos en el buffer de auditoría.</div>';
+    } else {
+      auditContainer.innerHTML = logs.slice().reverse().map(l => `
+        <div style="padding:6px 0; border-bottom:1px solid #141f33;">
+          <span style="color:var(--cyan);">[${new Date().toLocaleTimeString()}]</span>
+          <span class="status-badge" style="font-size:10px; margin:0 6px;">${escapeHtml(l.type)}</span>
+          <span>${escapeHtml(l.details)}</span>
+          ${l.sessionId ? `<span style="color:var(--muted); font-size:11px;">(Session: ${l.sessionId.substring(0,8)})</span>` : ''}
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// Session Listener Toggle
+async function toggleSessionListener(sessionId, currentStatus) {
+  const action = currentStatus === 'listening' ? 'stop' : 'start';
+  try {
+    await request(`/sessions/${encodeURIComponent(sessionId)}/listen/${action}`, { method: 'POST' });
+    toast(`Listener ${action === 'start' ? 'iniciado' : 'detenido'} para la sesión.`, 'success');
+    await loadAllData();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// Media Management
+async function loadMediaList() {
+  try {
+    const list = await request('/media');
+    const container = el('mediaTableBody');
+    if (!container) return;
+    if (!list.length) {
+      container.innerHTML = '<tr><td colspan="6" class="empty-state">No hay archivos multimedia cargados en staging.</td></tr>';
+      return;
+    }
+    container.innerHTML = list.map(m => `
+      <tr>
+        <td><code>${escapeHtml(m.mediaId)}</code></td>
+        <td><strong>${escapeHtml(m.fileName)}</strong></td>
+        <td><span class="pill" style="font-size:11px;">${escapeHtml(m.mimeType)}</span></td>
+        <td>${(m.sizeBytes / 1024).toFixed(1)} KB</td>
+        <td>${new Date(m.createdAt).toLocaleDateString()} ${new Date(m.createdAt).toLocaleTimeString()}</td>
+        <td>
+          <div class="actions-row">
+            <a class="btn secondary" style="padding:4px 8px; font-size:12px; text-decoration:none;" href="/api/v1/media/${encodeURIComponent(m.mediaId)}" target="_blank">Ver</a>
+            <button class="btn secondary" style="padding:4px 8px; font-size:12px;" onclick="copyToClipboard('${m.mediaId}')">Copiar ID</button>
+            <button class="btn danger" style="padding:4px 8px; font-size:12px;" onclick="deleteMediaItem('${m.mediaId}')">Eliminar</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    toast('Error cargando medios: ' + err.message, 'error');
+  }
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (file) uploadMediaFile(file);
+}
+
+async function uploadMediaFile(file) {
+  toast(`Cargando archivo ${file.name}…`);
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const b64 = reader.result.split(',')[1];
+      const res = await request('/media/upload', {
+        method: 'POST',
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          contentBase64: b64
+        })
+      });
+      toast(`Archivo ${res.fileName} cargado exitosamente (${res.mediaId}).`, 'success');
+      loadMediaList();
+    } catch (err) {
+      toast('Error subiendo archivo: ' + err.message, 'error');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function deleteMediaItem(mediaId) {
+  if (!confirm(`¿Eliminar permanentemente el archivo ${mediaId}?`)) return;
+  try {
+    await request(`/media/${encodeURIComponent(mediaId)}`, { method: 'DELETE' });
+    toast('Archivo eliminado.', 'success');
+    loadMediaList();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    toast(`Copiado al portapapeles: ${text}`, 'success');
+  }).catch(() => {
+    prompt('Copia el ID:', text);
+  });
+}
+
+// Realtime WebSocket Stream
+let realtimeWs = null;
+function initRealtimeWebSocket() {
+  const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${wsProto}//${location.host}/ws`;
+  try {
+    realtimeWs = new WebSocket(wsUrl);
+    realtimeWs.onopen = () => {
+      const badge = el('wsStatusBadge');
+      if (badge) badge.innerHTML = '<span class="dot"></span> WS: Conectado';
+      const diagPill = el('diagWsPill');
+      if (diagPill) diagPill.innerHTML = '<span class="dot"></span> Conectado';
+    };
+    realtimeWs.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        appendRealtimeEvent(data);
+      } catch (e) {
+        // Ping-pong or plain text
+      }
+    };
+    realtimeWs.onclose = () => {
+      const badge = el('wsStatusBadge');
+      if (badge) badge.innerHTML = '<span class="dot amber"></span> WS: Reconectando…';
+      const diagPill = el('diagWsPill');
+      if (diagPill) diagPill.innerHTML = '<span class="dot amber"></span> Desconectado';
+      setTimeout(initRealtimeWebSocket, 5000);
+    };
+  } catch (err) {
+    console.error('WebSocket connection error:', err);
+  }
+}
+
+function appendRealtimeEvent(evt) {
+  const container = el('wsEventsContainer');
+  if (!container) return;
+  const time = new Date().toLocaleTimeString();
+  const entry = document.createElement('div');
+  entry.style.padding = '4px 0';
+  entry.style.borderBottom = '1px solid #131c30';
+  entry.innerHTML = `<span style="color:var(--muted);">[${time}]</span> <span style="color:var(--cyan); font-weight:700;">${escapeHtml(evt.event || 'event')}</span>: ${escapeHtml(JSON.stringify(evt.payload || {}))}`;
+  if (container.textContent.includes('Esperando')) {
+    container.innerHTML = '';
+  }
+  container.prepend(entry);
+}
+
+el('refreshBtn').onclick = () => {
+  toast('Actualizando datos…');
+  loadAllData();
+};
+
+// Initial load
+loadAllData();
+initRealtimeWebSocket();
 </script>
 </body>
 </html>

@@ -74,7 +74,7 @@ class WebhookConfig:
             "events": list(self.events or []),
             "secretConfigured": bool(self.secret),
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
-            "deliveryImplemented": False,
+            "deliveryImplemented": True,
         }
 
 
