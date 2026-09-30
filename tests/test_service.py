@@ -568,3 +568,47 @@ def test_media_and_websocket_endpoints(
     with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect("/ws?token=wrong_secret") as ws:
             pass
+
+
+def test_service_main_port_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbchat_v2.service import main
+
+    invocations: list[dict[str, Any]] = []
+
+    def mock_run(target: str, *, host: str, port: int, access_log: bool) -> None:
+        invocations.append({
+            "target": target,
+            "host": host,
+            "port": port,
+            "access_log": access_log,
+        })
+
+    import uvicorn
+    monkeypatch.setattr(uvicorn, "run", mock_run)
+
+    # 1. Default port 8080 when no env set
+    monkeypatch.delenv("FBCHAT_PORT", raising=False)
+    monkeypatch.delenv("PORT", raising=False)
+    monkeypatch.delenv("UVICORN_PORT", raising=False)
+    monkeypatch.delenv("FBCHAT_HOST", raising=False)
+    main()
+    assert invocations[-1]["port"] == 8080
+    assert invocations[-1]["host"] == "0.0.0.0"
+
+    # 2. Configurable via FBCHAT_PORT
+    monkeypatch.setenv("FBCHAT_PORT", "9090")
+    monkeypatch.setenv("FBCHAT_HOST", "127.0.0.1")
+    main()
+    assert invocations[-1]["port"] == 9090
+    assert invocations[-1]["host"] == "127.0.0.1"
+
+    # 3. Fallback to PORT env var
+    monkeypatch.delenv("FBCHAT_PORT", raising=False)
+    monkeypatch.setenv("PORT", "7070")
+    main()
+    assert invocations[-1]["port"] == 7070
+
+    # 4. Graceful fallback on non-integer port
+    monkeypatch.setenv("PORT", "not-a-number")
+    main()
+    assert invocations[-1]["port"] == 8080

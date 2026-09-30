@@ -32,7 +32,9 @@ ENV PYTHONUNBUFFERED=1 \
     FBCHAT_E2EE_BIN=/usr/local/bin/fbchat-bridge-e2ee \
     FBCHAT_E2EE_REQUIRED=true \
     FBCHAT_API_AUTH_REQUIRED=true \
-    FBCHAT_STATE_DIR=/var/lib/fbchat
+    FBCHAT_STATE_DIR=/var/lib/fbchat \
+    FBCHAT_HOST=0.0.0.0 \
+    FBCHAT_PORT=8080
 
 RUN groupadd --gid 10001 fbchat \
     && useradd --uid 10001 --gid fbchat --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin fbchat \
@@ -46,6 +48,6 @@ WORKDIR /var/lib/fbchat
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/readyz', timeout=3).read()"]
+    CMD ["python", "-c", "import os, urllib.request; port = os.environ.get('FBCHAT_PORT', '8080'); urllib.request.urlopen(f'http://127.0.0.1:{port}/readyz', timeout=3).read()"]
 
-CMD ["python", "-m", "uvicorn", "fbchat_v2.service:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]
+CMD ["python", "-m", "fbchat_v2.service"]

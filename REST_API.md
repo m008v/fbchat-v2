@@ -24,6 +24,8 @@ Every portal and `/api/v1` route uses HTTP Basic authentication when
 
 | Environment variable | Purpose | Image default |
 |---|---|---|
+| `FBCHAT_PORT` | HTTP/WS listening port | `8080` (or `PORT`) |
+| `FBCHAT_HOST` | HTTP/WS listening interface | `0.0.0.0` |
 | `FBCHAT_API_AUTH_REQUIRED` | Require HTTP Basic authentication | `true` |
 | `FBCHAT_API_USERNAME` | API username | unset |
 | `FBCHAT_API_PASSWORD` | API password | unset |

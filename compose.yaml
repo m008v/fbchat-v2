@@ -7,13 +7,15 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      FBCHAT_E2EE_REQUIRED: "true"
+      FBCHAT_HOST: 0.0.0.0
+      FBCHAT_PORT: ${FBCHAT_PORT:-8080}
+      FBCHAT_E2EE_REQUIRED: ${FBCHAT_E2EE_REQUIRED:-true}
       FBCHAT_API_AUTH_REQUIRED: "true"
       FBCHAT_API_USERNAME: ${FBCHAT_API_USERNAME:?set FBCHAT_API_USERNAME}
       FBCHAT_API_PASSWORD: ${FBCHAT_API_PASSWORD:?set FBCHAT_API_PASSWORD}
       FBCHAT_STATE_DIR: /var/lib/fbchat
     ports:
-      - "127.0.0.1:8088:8080"
+      - "${FBCHAT_HOST_PORT:-127.0.0.1:8088}:${FBCHAT_PORT:-8080}"
     volumes:
       - fbchat_state:/var/lib/fbchat
     read_only: true

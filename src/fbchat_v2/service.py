@@ -1122,3 +1122,26 @@ def create_app(
 
 
 app = create_app()
+
+
+def main() -> None:
+    """Run the Uvicorn server using port and host from environment variables."""
+    import uvicorn
+
+    host = os.environ.get("FBCHAT_HOST", "0.0.0.0")
+    raw_port = (
+        os.environ.get("FBCHAT_PORT")
+        or os.environ.get("PORT")
+        or os.environ.get("UVICORN_PORT")
+        or "8080"
+    )
+    try:
+        port = int(raw_port)
+    except ValueError:
+        port = 8080
+
+    uvicorn.run("fbchat_v2.service:app", host=host, port=port, access_log=False)
+
+
+if __name__ == "__main__":
+    main()
