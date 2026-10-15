@@ -1145,6 +1145,19 @@ Hai mã này được tạo riêng từng run và chỉ gửi qua E2EE. Đây l�
 với việc RPC gửi trả thành công. Event regular và event cũ không được tính là
 bằng chứng E2EE. Timeout gửi không được tự retry.
 
+Khi không thấy reply, xem counter `observed` trong report: `challenge_message`
+nghĩa là mã đã tới qua Go LightSpeed regular, còn `challenge_e2eeMessage` là
+event E2EE. Counter không lưu nội dung hay ID. Thêm `--regular-notice` để gửi
+đúng một thông báo chẩn đoán cho challenge regular mới; mặc định tắt. Kết quả
+`regular_notice_rpc_ok` luôn tách khỏi các acceptance check E2EE; đây không
+phải fallback sang Python MQTT.
+
+Mặc định mỗi run tạo nonce mới. Có thể dùng `--challenge <mã-chính-xác>` khi
+khởi động lại chẩn đoán để peer không cần đổi mã; event trước thời điểm ready
+vẫn bị loại. Dùng `--device-path <device-cũ.json>` để tái sử dụng thiết bị từ
+run đã dừng sạch, không chạy hai listener cùng device. Path này không được
+trùng config, binary, report hoặc file điều khiển.
+
 Mỗi phút driver ghi RSS parent/bridge, generation, trạng thái kết nối và queue
 drop. Đến phút thứ năm, nó kill đúng child bridge của mình để kiểm watchdog
 respawn, E2EE reconnect và một lần gửi text sau reconnect. Đây là mô phỏng
@@ -1155,6 +1168,8 @@ provider outage.
 đạt; `1` là lỗi hoặc bị dừng; `2` là chạy hết thời gian nhưng còn check thiếu
 bằng chứng/không đạt. `status=completed` riêng lẻ không đồng nghĩa mọi check
 đã pass. Ctrl+C yêu cầu cleanup listener/bridge trước khi ghi report cuối.
+Nếu chạy nền, tạo file `stop.request` trong output directory để yêu cầu cùng
+luồng shutdown sạch; không xóa device để dừng bot.
 
 ---
 

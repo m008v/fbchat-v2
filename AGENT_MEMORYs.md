@@ -1,5 +1,49 @@
 # Agent Memories
 
+## 2026-10-15 — Chẩn đoán canary không reply và sửa CI Linux
+
+### Mục tiêu
+- Xác định vì sao peer đã gửi challenge nhưng không thấy reply; giữ kiểm thử
+  E2EE nghiêm ngặt và không chuyển sang Python MQTT.
+
+### Đã thực hiện
+- Canary ghi counter allowlist cho event, challenge và nhánh filter, không ghi
+  payload/ID. Thêm `--regular-notice` opt-in: chỉ reply một lần cho challenge
+  regular mới, không retry uncertain send và không tính vào E2EE acceptance.
+- Thêm shared `--device-path`, challenge override chính xác và `stop.request`
+  để restart chẩn đoán, giữ device và shutdown sạch. Chặn device path trùng
+  config/binary/evidence/control file. Cập nhật DOCS và regression tests.
+- Sửa guard RSS thành `sys.platform != "win32"`: CI Linux mypy hiểu nhánh
+  Windows-only thay vì báo `ctypes.WinDLL` không tồn tại.
+
+### Quyết định kỹ thuật
+- Live run chẩn đoán nhận đúng challenge qua `message` Go LightSpeed, không có
+  `e2eeMessage`; strict canary trước đó cố ý bỏ regular nên không trả lời.
+  Chưa suy diễn điều này thành kết luận về trạng thái mã hóa trên Messenger UI.
+- Run đầu `e2ee-soak-20261015-1329` đã bị dừng để bổ sung counters; ghi operator
+  interruption note riêng, giữ report cũ. Không coi đủ thời gian soak.
+- Run chẩn đoán `e2ee-receive-diag-20261015-1342` kết thúc cancelled sau 290,84
+  giây, shutdown sạch, không queue drop/lỗi quan sát. Device được giữ nguyên.
+
+### Kiểm tra
+- Full Python `304 passed`, trong đó canary `36 passed`; Ruff, Black,
+  compileall và mypy cả Linux/Windows (49 source file mỗi platform) đạt.
+- Run mới `.tmp/e2ee-receive-notice-20261015-1350`, driver PID ban đầu `4840`,
+  ready 13:49:59 Asia/Saigon, cold restart giữ identity. Nhận challenge regular
+  và RPC notice thành công; hai socket online, queue drop 0. Peer trả lời
+  "ok rồi" sau câu hỏi xác nhận thấy notice; chưa chứng minh E2EE payload,
+  ảnh/file hai chiều hoặc trạng thái mã hóa của cuộc trò chuyện trên UI.
+- CI của commit `19bc416` chỉ fail Python quality tại Linux mypy; 11 job khác
+  đạt. Guard được tái hiện và sửa local; CI mới cần kiểm sau push.
+- Đã kiểm tra UTF-8 strict và mojibake trên các file thay đổi trước commit.
+
+### Việc còn lại
+- Run mới tự chạy 2 giờ từ ready, dự kiến kết thúc khoảng 15:50; đọc từng
+  acceptance check và shutdown trước khi kết luận. Không có heartbeat đã tạo.
+- Cần xác nhận trạng thái mã hóa của đúng cuộc trò chuyện để
+  kiểm E2EE thực tế. Bridge crash khác với mất mạng thật; chưa test outage.
+- Giữ version `2.3.3`; không tag, GitHub Release hay upload PyPI. Giữ `.vs/`.
+
 ## 2026-10-15 — Media ACL, bounded logs, typing cancellation và E2EE soak
 
 ### Mục tiêu

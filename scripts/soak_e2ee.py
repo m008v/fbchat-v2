@@ -54,7 +54,7 @@ def positive_seconds(value: str) -> float:
 
 def process_rss(pid: int) -> int | None:
     """Read RSS without adding a runtime dependency or invoking a shell."""
-    if os.name != "nt":
+    if sys.platform != "win32":
         try:
             for line in Path(f"/proc/{pid}/status").read_text().splitlines():
                 if line.startswith("VmRSS:"):
@@ -116,11 +116,33 @@ def device_identity(path: Path) -> bytes:
     return hashlib.sha256(payload).digest()
 
 
+def validate_device_path(
+    path: Path, *, output_dir: Path, config: Path, binary_path: Path
+) -> None:
+    reserved = {
+        config.resolve(),
+        binary_path.resolve(),
+        output_dir.resolve(),
+        *(
+            output_dir.resolve() / name
+            for name in ("report.json", "report.pending", "stop.request")
+        ),
+    }
+    if path.resolve() in reserved or (path.exists() and not path.is_file()):
+        raise ValueError(
+            "Device path không được trùng config, binary hoặc evidence/control file."
+        )
+
+
 class Canary:
     def __init__(self, args: argparse.Namespace) -> None:
         self.args = args
         self.output = args.output_dir.resolve()
-        self.device_path = self.output / "device.json"
+        self.device_path = (
+            args.device_path.resolve()
+            if getattr(args, "device_path", None) is not None
+            else self.output / "device.json"
+        )
         self.events: Queue[dict[str, Any]] = Queue(maxsize=64)
         self.listener_failures: Queue[BaseException] = Queue(maxsize=2)
         self.observer_drops = 0
@@ -139,9 +161,12 @@ class Canary:
         self.text_ack = f"text-ok-{secrets.token_hex(4)}"
         self.media_ack = f"media-ok-{secrets.token_hex(4)}"
         self.media_ack_prompted = False
+        self.regular_notice_attempted = False
         self.minimum_event_timestamp_ms = int(time.time() * 1000)
         self.bridge_error_events = 0
         self.final_bridge_drops = 0
+        self.observed: Counter[str] = Counter()
+        self.observed_lock = threading.Lock()
         self.report: dict[str, Any] = {
             "started_at": utc_now(),
             "status": "starting",
@@ -151,6 +176,7 @@ class Canary:
             "text_reply_rpc_ok": False,
             "peer_confirmed_text": False,
             "peer_confirmed_media": False,
+            "regular_notice_rpc_ok": False,
             "post_reconnect_text_rpc_ok": False,
             "watchdog_fault_injected": False,
             "shutdown_clean": False,
@@ -158,9 +184,13 @@ class Canary:
             "media": [],
             "samples": [],
             "errors": [],
+            "observed": {},
         }
 
     def save(self) -> None:
+        with self.observed_lock:
+            self.report["observed"] = dict(self.observed)
+        self.report["bridge_error_events"] = self.bridge_error_events
         temporary = self.output / "report.pending"
         temporary.write_text(
             json.dumps(self.report, ensure_ascii=False, indent=2) + "\n",
@@ -176,15 +206,66 @@ class Canary:
         self.save()
 
     def on_event(self, event: dict[str, Any]) -> None:
-        if event.get("type") == "error":
+        kind = event.get("type")
+        if not isinstance(kind, str):
+            self.observe("event_invalid_type")
+            return
+        known_kind = (
+            kind
+            if kind
+            in {
+                "message",
+                "e2eeMessage",
+                "error",
+                "raw",
+                "ready",
+                "reconnected",
+                "closed",
+                "disconnected",
+                "e2eeConnected",
+                "e2eeReceipt",
+                "typing",
+                "reaction",
+                "readReceipt",
+                "deviceDataChanged",
+            }
+            else "other"
+        )
+        self.observe(f"event_{known_kind}")
+        data = event.get("data")
+        if kind in {"message", "e2eeMessage"} and isinstance(data, dict):
+            if data.get("text") == self.args.challenge:
+                self.observe(f"challenge_{kind}")
+        if kind == "raw" and isinstance(data, dict):
+            raw_type = data.get("type")
+            if isinstance(raw_type, str) and raw_type in {
+                "FBMessage",
+                "Message",
+                "UndecryptableMessage",
+                "Receipt",
+                "Connected",
+                "Disconnected",
+            }:
+                self.observe(f"raw_{raw_type}")
+        if kind == "error":
             self.bridge_error_events += 1
             return
-        if event.get("type") != "e2eeMessage":
+        regular_challenge = (
+            kind == "message"
+            and isinstance(data, dict)
+            and data.get("text") == self.args.challenge
+            and getattr(self.args, "regular_notice", False)
+        )
+        if kind != "e2eeMessage" and not regular_challenge:
             return
         try:
             self.events.put_nowait(event)
         except Full:
             self.observer_drops += 1
+
+    def observe(self, name: str) -> None:
+        with self.observed_lock:
+            self.observed[name] += 1
 
     def start_listener(self) -> None:
         if self.stop_requested.is_set():
@@ -305,6 +386,7 @@ class Canary:
     def handle_event(self, event: dict[str, Any]) -> None:
         data = event.get("data")
         if not isinstance(data, dict):
+            self.observe("reject_invalid_data")
             return
         timestamp = data.get("timestampMs")
         if (
@@ -312,8 +394,13 @@ class Canary:
             or timestamp < self.minimum_event_timestamp_ms
             or timestamp > int(time.time() * 1000) + 60_000
         ):
+            self.observe("reject_timestamp")
             return
         if str(data.get("senderId")) == str(self.session.get("FacebookID")):
+            self.observe("reject_self")
+            return
+        if event.get("type") == "message":
+            self.handle_regular_notice(data)
             return
         chat, sender = data.get("chatJid"), data.get("senderJid")
         if (
@@ -322,13 +409,16 @@ class Canary:
             or not chat
             or not sender
         ):
+            self.observe("reject_jid_shape")
             return
         text = data.get("text", "")
         if self.peer is None:
             if text != self.args.challenge:
+                self.observe("reject_not_challenge")
                 return
             self.peer = (chat, sender)
         if self.peer != (chat, sender):
+            self.observe("reject_other_peer")
             return
         message_id = data.get("id")
         if not isinstance(message_id, str) or not message_id:
@@ -379,6 +469,34 @@ class Canary:
                 "Đã echo ảnh và file E2EE. Sau khi nhận đủ cả hai, gửi lại: "
                 f"{self.media_ack}"
             )
+        self.save()
+
+    def handle_regular_notice(self, data: dict[str, Any]) -> None:
+        if (
+            not getattr(self.args, "regular_notice", False)
+            or data.get("text") != self.args.challenge
+            or self.regular_notice_attempted
+        ):
+            return
+        thread_id = data.get("threadId")
+        if type(thread_id) is not int or thread_id <= 0:
+            self.observe("reject_regular_thread_shape")
+            return
+        self.regular_notice_attempted = True
+        self.call(
+            "sendMessage",
+            {
+                "threadId": thread_id,
+                "text": (
+                    "Đã nhận mã canary qua Go LightSpeed regular. "
+                    "Event này không phải e2eeMessage; kiểm thử E2EE chưa đạt."
+                ),
+            },
+        )
+        self.report["regular_notice_rpc_ok"] = True
+        safe_print(
+            "[canary] diagnostic notice sent via Go LightSpeed regular; E2EE proof unchanged"
+        )
         self.save()
 
     def sample(self) -> None:
@@ -456,6 +574,9 @@ class Canary:
             )
             next_sample = 0.0
             while not self.stop_requested.is_set():
+                if (self.output / "stop.request").exists():
+                    self.stop_requested.set()
+                    break
                 try:
                     failure = self.listener_failures.get_nowait()
                 except Empty:
@@ -554,12 +675,18 @@ def main() -> int:
     parser.add_argument("--binary-path", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--config", type=Path, default=SRC / "config.json")
+    parser.add_argument("--device-path", type=Path)
     parser.add_argument("--duration", type=positive_seconds, default=7200.0)
     parser.add_argument("--sample-interval", type=positive_seconds, default=60.0)
     parser.add_argument("--fault-after", type=positive_seconds, default=300.0)
-    parser.add_argument("--challenge", default="canary-233")
+    parser.add_argument(
+        "--challenge", help="Mã chính xác; bỏ trống để tạo nonce từng run."
+    )
+    parser.add_argument("--regular-notice", action="store_true")
     parser.add_argument("--debug-errors", action="store_true")
     args = parser.parse_args()
+    if args.challenge is None:
+        args.challenge = f"canary-233-{secrets.token_hex(4)}"
     if not 1 <= len(args.challenge) <= 64 or not args.challenge.isascii():
         parser.error("Challenge phải có 1–64 ký tự ASCII.")
     if args.duration > 24 * 3600 or args.sample_interval < 5:
@@ -570,7 +697,16 @@ def main() -> int:
         parser.error("Không tìm thấy bridge binary.")
     if args.output_dir.exists():
         parser.error("Output directory phải mới để không ghi đè device/evidence.")
-    args.challenge = f"{args.challenge}-{secrets.token_hex(4)}"
+    if args.device_path is not None:
+        try:
+            validate_device_path(
+                args.device_path,
+                output_dir=args.output_dir,
+                config=args.config,
+                binary_path=args.binary_path,
+            )
+        except ValueError as error:
+            parser.error(str(error))
     canary = Canary(args)
     signal.signal(signal.SIGINT, lambda *_: canary.stop_requested.set())
     signal.signal(signal.SIGTERM, lambda *_: canary.stop_requested.set())
