@@ -348,6 +348,87 @@ def test_media_digest_mismatch_never_sends(
             }
         )
     assert calls == ["downloadE2EEMedia"]
+    assert "image" not in canary.echoed
+
+
+@pytest.mark.parametrize(
+    ("kind", "category", "send_method"),
+    [("image", "image", "sendE2EEImage"), ("file", "document", "sendE2EEDocument")],
+)
+def test_media_download_failure_allows_fresh_valid_media(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    category: str,
+    send_method: str,
+) -> None:
+    canary = make_canary(tmp_path)
+    canary.peer = ("test@msgr", "peer@msgr")
+    payload = b"fresh canary media"
+    calls: list[str] = []
+
+    def fake_call(method: str, params: dict[str, Any]) -> dict[str, Any]:
+        calls.append(method)
+        if len(calls) == 1:
+            raise TimeoutError("transient download failure")
+        if method == "downloadE2EEMedia":
+            return {"data": base64.b64encode(payload).decode()}
+        return {}
+
+    monkeypatch.setattr(canary, "call", fake_call)
+    attachment = {
+        "type": kind,
+        "fileSize": len(payload),
+        "mediaSha256": base64.b64encode(hashlib.sha256(payload).digest()).decode(),
+        "directPath": "/first-media",
+    }
+    with pytest.raises(TimeoutError, match="download"):
+        canary.handle_media(attachment)
+    assert category not in canary.echoed
+    assert not canary.report["media"]
+
+    canary.handle_media({**attachment, "directPath": "/fresh-media"})
+    assert calls == ["downloadE2EEMedia", "downloadE2EEMedia", send_method]
+    assert category in canary.echoed
+    assert canary.report["media"][0]["echo_rpc_ok"] is True
+
+
+@pytest.mark.parametrize(
+    ("kind", "category", "send_method"),
+    [("image", "image", "sendE2EEImage"), ("file", "document", "sendE2EEDocument")],
+)
+def test_uncertain_media_send_is_never_retried(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    category: str,
+    send_method: str,
+) -> None:
+    canary = make_canary(tmp_path)
+    canary.peer = ("test@msgr", "peer@msgr")
+    payload = b"canary media with uncertain delivery"
+    calls: list[str] = []
+
+    def fake_call(method: str, params: dict[str, Any]) -> dict[str, Any]:
+        calls.append(method)
+        if method == "downloadE2EEMedia":
+            return {"data": base64.b64encode(payload).decode()}
+        raise TimeoutError("uncertain send")
+
+    monkeypatch.setattr(canary, "call", fake_call)
+    attachment = {
+        "type": kind,
+        "fileSize": len(payload),
+        "mediaSha256": base64.b64encode(hashlib.sha256(payload).digest()).decode(),
+        "directPath": "/first-media",
+    }
+    with pytest.raises(TimeoutError, match="uncertain"):
+        canary.handle_media(attachment)
+    canary.handle_media(attachment)
+    canary.handle_media({**attachment, "directPath": "/fresh-media"})
+    assert calls == ["downloadE2EEMedia", send_method]
+    assert category in canary.echoed
+    assert "echo_rpc_ok" not in canary.report["media"][0]
 
 
 @pytest.mark.parametrize("size", [0, -1, 2 * 1024 * 1024 + 1, True, "10"])

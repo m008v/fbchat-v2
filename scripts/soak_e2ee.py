@@ -338,8 +338,6 @@ class Canary:
         if type(size) is not int or not 0 < size <= MAX_MEDIA_BYTES:
             self.report["counts"]["media_rejected_size"] += 1
             return
-        # Mark before RPC: a timeout cannot cause an automatic duplicate send.
-        self.echoed.add(category)
         result = self.call(
             "downloadE2EEMedia",
             {
@@ -374,10 +372,14 @@ class Canary:
                 height=attachment.get("height", 0),
                 caption=f"{self.args.challenge}: image round trip",
             )
-            self.call("sendE2EEImage", params)
+            method = "sendE2EEImage"
         else:
             params["filename"] = "canary-roundtrip.bin"
-            self.call("sendE2EEDocument", params)
+            method = "sendE2EEDocument"
+        # Downloads are read-only; consume the one-shot only when sending.
+        # Mark first so an uncertain send can never trigger a duplicate echo.
+        self.echoed.add(category)
+        self.call(method, params)
         evidence["echo_rpc_ok"] = True
         safe_print(
             f"[canary] E2EE {category}: download/digest/send OK ({len(payload)} bytes)"

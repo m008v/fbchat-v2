@@ -15,6 +15,8 @@
   config/binary/evidence/control file. Cập nhật DOCS và regression tests.
 - Sửa guard RSS thành `sys.platform != "win32"`: CI Linux mypy hiểu nhánh
   Windows-only thay vì báo `ctypes.WinDLL` không tồn tại.
+- Chỉ consume media one-shot ngay trước send RPC, sau download/digest; lỗi
+  download không chặn media mới cùng loại. Timeout gửi vẫn không retry.
 
 ### Quyết định kỹ thuật
 - Live run chẩn đoán nhận đúng challenge qua `message` Go LightSpeed, không có
@@ -26,22 +28,33 @@
   giây, shutdown sạch, không queue drop/lỗi quan sát. Device được giữ nguyên.
 
 ### Kiểm tra
-- Full Python `304 passed`, trong đó canary `36 passed`; Ruff, Black,
+- Full Python `308 passed`, trong đó canary `40 passed`; Ruff, Black,
   compileall và mypy cả Linux/Windows (49 source file mỗi platform) đạt.
 - Run mới `.tmp/e2ee-receive-notice-20261015-1350`, driver PID ban đầu `4840`,
   ready 13:49:59 Asia/Saigon, cold restart giữ identity. Nhận challenge regular
   và RPC notice thành công; hai socket online, queue drop 0. Peer trả lời
-  "ok rồi" sau câu hỏi xác nhận thấy notice; chưa chứng minh E2EE payload,
-  ảnh/file hai chiều hoặc trạng thái mã hóa của cuộc trò chuyện trên UI.
+  "ok rồi" sau câu hỏi xác nhận thấy notice. Sau đó nhận challenge E2EE và
+  ACK nonce: `text_reply_rpc_ok` + `peer_confirmed_text` đều true.
+- Live E2EE ảnh 17.151 byte và document 17.686 byte: download/giải mã,
+  SHA-256 và echo RPC đều đạt; peer xác nhận nhận lại cả hai. ACK nonce media
+  chưa có trong report tại thời điểm ghi. Không lưu nội dung/tên file gốc.
+- Live listener dùng harness trước media marker follow-up; happy path đã chạy
+  thật, failure/uncertain-send của patch được regression-test riêng.
+- Fault lúc 14:00:00: watchdog respawn lần đầu thành công, generation 2,
+  E2EE phục hồi khoảng 14:00:13 và post-reconnect send RPC đạt. Sample sau
+  reconnect hai socket online, queue drop 0, chưa có error event; chưa có ACK
+  riêng từ peer cho tin sau reconnect.
 - CI của commit `19bc416` chỉ fail Python quality tại Linux mypy; 11 job khác
-  đạt. Guard được tái hiện và sửa local; CI mới cần kiểm sau push.
+  đạt. Guard được tái hiện và sửa local; CI commit `fa05f0f` đạt 12/12 job,
+  run `38695150013`. Media marker follow-up cần CI mới sau push.
 - Đã kiểm tra UTF-8 strict và mojibake trên các file thay đổi trước commit.
 
 ### Việc còn lại
 - Run mới tự chạy 2 giờ từ ready, dự kiến kết thúc khoảng 15:50; đọc từng
   acceptance check và shutdown trước khi kết luận. Không có heartbeat đã tạo.
-- Cần xác nhận trạng thái mã hóa của đúng cuộc trò chuyện để
-  kiểm E2EE thực tế. Bridge crash khác với mất mạng thật; chưa test outage.
+- Cần ACK nonce media và kết quả đủ thời gian/clean shutdown. Bridge crash khác
+  với mất mạng thật; chưa test outage. Không suy diễn E2EE text/ảnh/file đã
+  chạy được thành bằng chứng mọi kiểu message và mọi provider outage ổn định.
 - Giữ version `2.3.3`; không tag, GitHub Release hay upload PyPI. Giữ `.vs/`.
 
 ## 2026-10-15 — Media ACL, bounded logs, typing cancellation và E2EE soak
