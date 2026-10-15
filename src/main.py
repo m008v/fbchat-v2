@@ -1,4 +1,7 @@
-"""Bot mẫu async-first cho fbchat-v2."""
+"""Bot mẫu async-first, bắt buộc cài Go E2EE bridge.
+
+Bot này không tự hạ cấp hoặc fallback sang Python MQTT khi bridge/E2EE lỗi.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +19,7 @@ from typing import Any
 
 import httpx
 
+from _core._console import configure_utf8_console
 from _core._permissions import create_private_json_file, set_private_file_permissions
 from _core._session import dataGetHome
 from _core._storage import FileSessionStorage
@@ -23,6 +27,8 @@ from _features._facebook import _search
 from _messaging._bridge_actions import BridgeActions
 from _messaging._listening_e2ee import (
     DELIVERY_STATUS_UNKNOWN,
+    _format_exception_chain,
+    _redact_bridge_text,
     listeningE2EEEvent,
 )
 
@@ -30,7 +36,6 @@ HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.json"
 Handler = Callable[[dict[str, Any], str], Awaitable[None]]
 DEFAULT_HTTP_TIMEOUT = 30.0
-DEFAULT_E2EE_READY_TIMEOUT = 90.0
 EVENT_QUEUE_MAXSIZE = 1000
 RECENT_MESSAGE_IDS_MAXSIZE = 4096
 SEARCH_QUERY_MIN_LENGTH = 2
@@ -203,7 +208,7 @@ class SimpleBot:
         }
 
     async def run(self) -> None:
-        log("bot", f"Đăng nhập E2EE với UID = {self.dataFB.get('FacebookID')}")
+        log("bot", "Đang khởi động transport E2EE bắt buộc.")
         loop = asyncio.get_running_loop()
         self.listener.on_message(
             lambda event: self._forward_listener_event(loop, event)
@@ -214,7 +219,7 @@ class SimpleBot:
         try:
             ready = await asyncio.to_thread(
                 self.listener.wait_until_connected,
-                DEFAULT_E2EE_READY_TIMEOUT,
+                self.listener.startup_timeout,
                 require_e2ee=True,
             )
             if not ready:
@@ -326,7 +331,7 @@ class SimpleBot:
             return None
         if event_type == "error":
             if self.debug_errors:
-                log("e2ee", f"bridge error: {data}")
+                log("e2ee", f"bridge error: {_redact_bridge_text(data)}")
             else:
                 log("e2ee", "bridge error (chi tiết đã được ẩn)")
             return None
@@ -368,13 +373,12 @@ class SimpleBot:
             if self.debug_errors:
                 log("recv", "Bỏ qua message do chính tài khoản bot gửi.")
             return
-        target = message.get("chatJid") or message.get("replyToID")
         body_for_log = (
             repr(body)
             if self.log_message_content
             else f"<redacted length={len(str(body))}>"
         )
-        log("recv", f"[{message.get('type')}] {sender_id}@{target}: {body_for_log}")
+        log("recv", f"[{message.get('type')}] message nhận được: {body_for_log}")
         if not str(body).startswith(self.prefix):
             return
 
@@ -395,8 +399,11 @@ class SimpleBot:
             await handler(message, argument)
         except Exception as error:  # bot không được chết vì một lệnh lỗi
             if self.debug_errors:
-                log("err", f"Lỗi khi xử lý /{command}: {error}")
-                traceback.print_exc()
+                log(
+                    "err",
+                    f"Lỗi khi xử lý /{command}: {_redact_bridge_text(error)}\n"
+                    f"{_redact_bridge_text(traceback.format_exc())}",
+                )
             else:
                 log(
                     "err",
@@ -417,8 +424,7 @@ class SimpleBot:
             if result.get("deliveryStatus") == DELIVERY_STATUS_UNKNOWN:
                 log(
                     "send",
-                    f"E2EE UNKNOWN -> {chat_jid}; messageId={message_id or '<missing>'}; "
-                    "không tự retry để tránh gửi trùng.",
+                    "E2EE delivery UNKNOWN; không tự retry để tránh gửi trùng.",
                 )
                 return
             if message_id:
@@ -428,17 +434,16 @@ class SimpleBot:
                     if self.log_message_content
                     else f"<redacted length={len(content)}>"
                 )
-                log("send", f"E2EE -> {chat_jid}: {content_for_log}")
+                log("send", f"E2EE gửi thành công: {content_for_log}")
             else:
-                log("send", f"E2EE FAIL -> {chat_jid}; keys={sorted(result)}")
+                log("send", f"E2EE gửi thất bại; keys={sorted(result)}")
             return
 
         thread_id = message.get("replyToID")
         if not thread_id:
             log(
                 "send",
-                "Bỏ qua reply vì thiếu chatJid/threadID "
-                f"(messageID={message.get('messageID')!r}).",
+                "Bỏ qua reply vì thiếu chatJid/threadID.",
             )
             return
         result = await self.listener.send_message(
@@ -453,9 +458,9 @@ class SimpleBot:
                 if self.log_message_content
                 else f"<redacted length={len(content)}>"
             )
-            log("send", f"regular -> {thread_id}: {content_for_log}")
+            log("send", f"regular gửi thành công: {content_for_log}")
         else:
-            log("send", f"regular FAIL -> {thread_id}; keys={sorted(result)}")
+            log("send", f"regular gửi thất bại; keys={sorted(result)}")
 
     async def _cmd_ping(self, message: dict[str, Any], argument: str) -> None:
         sent_ts = int(message.get("timestamp") or 0)
@@ -559,7 +564,7 @@ class SimpleBot:
         result = await BridgeActions(self.listener._bridge).unsend_e2ee_message(
             target_chat_jid, target_message_id
         )
-        log("unsend", f"{target_message_id}; keys={sorted(result)}")
+        log("unsend", f"Đã gọi thu hồi E2EE; keys={sorted(result)}")
         self._last_bot_message.pop(chat_jid, None)
 
 
@@ -586,12 +591,13 @@ async def main() -> None:
 
 
 def main_blocking() -> None:
+    configure_utf8_console()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         log("bot", "Đã dừng theo yêu cầu người dùng.")
     except (RuntimeError, ValueError, json.JSONDecodeError) as error:
-        log("boot", f"❌ {error}")
+        log("boot", f"❌ {_format_exception_chain(error)}")
         raise SystemExit(1) from error
 
 

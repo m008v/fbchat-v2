@@ -74,7 +74,7 @@ from fbchat_v2._features._facebook import _reactionPost
 
 async def main():
     cookies = "PASTE_YOUR_FACEBOOK_COOKIE_HERE"
-    dataFB = dataGetHome(cookies)
+    dataFB = await dataGetHome(cookies)
 
     post_id = "1000123456789_9876543210"
 

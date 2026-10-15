@@ -4,22 +4,22 @@
 
 ### Thư viện Python async-first cho Facebook Messenger API không chính thức
 
-[![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/MinhHuyDev/fbchat-v2)
+[![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/m008v/fbchat-v2)
 [![PyPI](https://img.shields.io/pypi/v/fbchat-v2?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/fbchat-v2/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-2.3.2-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
-[![Issues](https://img.shields.io/github/issues/MinhHuyDev/fbchat-v2?color=orange)](https://github.com/MinhHuyDev/fbchat-v2/issues)
+[![Version](https://img.shields.io/badge/version-2.3.3-blue)](https://github.com/m008v/fbchat-v2/releases)
+[![Issues](https://img.shields.io/github/issues/m008v/fbchat-v2?color=orange)](https://github.com/m008v/fbchat-v2/issues)
 [![License](https://img.shields.io/badge/license-Xem%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
 
-[🇬🇧 English](README_EN.md) · [📖 Tài liệu](DOCS.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Sơ đồ luồng](FLOWCHART.md) · [🐛 Báo lỗi](https://github.com/MinhHuyDev/fbchat-v2/issues)
+[🇬🇧 English](README_EN.md) · [📖 Tài liệu](DOCS.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Sơ đồ luồng](FLOWCHART.md) · [🐛 Báo lỗi](https://github.com/m008v/fbchat-v2/issues)
 
 </div>
 
 ---
 
 > [!IMPORTANT]
-> Đây là phiên bản `v2.3.2` sử dụng *httpx.Client* thay vì *requests* như cũ và đã trang bị **async/await** nên syntax code có thể bị thay đổi hoặc xung đột với bản của bạn đang dùng. Nếu bạn vẫn muốn dùng **requests** (*no async/await*), hãy bấm vào đây: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
+> Đây là phiên bản `v.2.3.3` (tag kỹ thuật `v2.3.3`) sử dụng *httpx.Client* thay vì *requests* như cũ và đã trang bị **async/await** nên syntax code có thể bị thay đổi hoặc xung đột với bản của bạn đang dùng. Nếu bạn vẫn muốn dùng **requests** (*no async/await*), hãy bấm vào đây: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
 
 > [!WARNING]
 > **Tuyên bố miễn trừ trách nhiệm** - Đây **không** phải là sản phẩm chính thức của Facebook. Facebook đã có sẵn API chatbot chính thức [tại đây](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` khác biệt ở chỗ nó xác thực bằng **tài khoản / cookie người dùng Facebook thực**, vốn tiềm ẩn rủi ro. Hãy cân nhắc kỹ trước khi sử dụng.
@@ -31,7 +31,7 @@ Xin chào, mình là **MinhHuyDev** (*m008v*) - tác giả và người duy trì
 
 Trước hết, mình xin chân thành cảm ơn tất cả người dùng trong và ngoài nước đã đóng góp ý tưởng và báo lỗi cho dự án. Trong **bản cập nhật lớn v2.2.0** này, codebase đã được **tái cấu trúc hoàn toàn**, xử lý phần lớn các lỗi nhỏ tồn đọng và trang bị *async/await* mạnh mẽ!
 
-Tất nhiên vẫn sẽ còn những lỗi vặt khó tìm ra, hoặc các đoạn code chưa thật sự đồng bộ. Nếu bạn phát hiện ra ***vấn đề***, hãy mở issue trên [GitHub](https://github.com/MinhHuyDev/fbchat-v2/issues) hoặc nhắn trực tiếp cho mình qua [Telegram](https://t.me/MinhHuyDev).
+Tất nhiên vẫn sẽ còn những lỗi vặt khó tìm ra, hoặc các đoạn code chưa thật sự đồng bộ. Nếu bạn phát hiện ra ***vấn đề***, hãy mở issue trên [GitHub](https://github.com/m008v/fbchat-v2/issues) hoặc nhắn trực tiếp cho mình qua [Telegram](https://t.me/MinhHuyDev).
 
 ---
 
@@ -78,11 +78,11 @@ Tất nhiên vẫn sẽ còn những lỗi vặt khó tìm ra, hoặc các đo�
 - 📊 Tạo cuộc thăm dò ý kiến (poll) và lấy toàn bộ metadata của thread
 
 ### Tính năng Facebook (`_features._facebook`)
-- ❤️ **Thả và gỡ cảm xúc bài viết timeline** ([`_reactionPost`](src/_features/_facebook/README.md#-tiêu-điểm-_reactionpostpy-tương-tác-cảm-xúc): Like, Love, Care, Haha, Wow, Sad, Angry, Undo)
+- ❤️ **Thả và gỡ cảm xúc bài viết timeline** ([`_reactionPost`](src/fbchat_v2/_features/_facebook/README.md#-tiêu-điểm-_reactionpostpy-tương-tác-cảm-xúc): Like, Love, Care, Haha, Wow, Sad, Angry, Undo)
 - 📝 Đăng bài (`_createPost`), lưu trữ (`_archivePost`), xóa bài viết (`_deletePost`)
 - 👤 Tìm kiếm người dùng (`_search`), lấy thông tin profile (`_get_user_info`), quản lý thông báo (`_notification`)
 - 🚫 Chặn / bỏ chặn (`_blocking`), hủy kết bạn (`_unFriend`), quản lý Marketplace và chế độ Professional
-- 📖 *Xem hướng dẫn chi tiết tại [Tài liệu `_features._facebook`](src/_features/_facebook/README.md)*
+- 📖 *Xem hướng dẫn chi tiết tại [Tài liệu `fbchat_v2._features._facebook`](src/fbchat_v2/_features/_facebook/README.md)*
 
 ### Mới cập nhật
 - ⚡ Hỗ trợ **`async` / `await`** đầy đủ
@@ -99,9 +99,9 @@ Codebase chia thành 3 tầng. Feature không được tự quản session và m
 
 | Tầng | Đường dẫn | Trách nhiệm |
 |---|---|---|
-| Core | `src/_core/` | HTTP transport, session, storage, login và utility |
-| Features | `src/_features/` | Nghiệp vụ Facebook và quản trị thread |
-| Messaging | `src/_messaging/` | Send, listen, E2EE, attachment, reaction, theme và notes |
+| Core | `src/fbchat_v2/_core/` | HTTP transport, session, storage, login và utility |
+| Features | `src/fbchat_v2/_features/` | Nghiệp vụ Facebook và quản trị thread |
+| Messaging | `src/fbchat_v2/_messaging/` | Send, listen, E2EE, attachment, reaction, theme và notes |
 
 ```mermaid
 flowchart LR
@@ -200,12 +200,12 @@ dependencies = [
 
 ## 📦 Cài đặt
 
-> Tóm tắt: **Bước 1–4 bắt buộc** cho mọi user. **Bước 5 chỉ cần nếu bạn muốn nhận tin nhắn 1-1 (E2EE)**.
+> Tóm tắt: **Bước 1–4 bắt buộc** cho mọi user. **Bước 5 bắt buộc khi chạy bot mẫu `src/main.py` hoặc dùng E2EE**.
 
 ### 1. Clone mã nguồn
 
 ```bash
-git clone https://github.com/MinhHuyDev/fbchat-v2
+git clone --recurse-submodules https://github.com/m008v/fbchat-v2.git
 cd fbchat-v2
 ```
 
@@ -250,9 +250,9 @@ python scripts/verify_distribution.py
 
 Không cần đặt `PYTHONPATH=src` và không import bằng prefix `src.`.
 
-### 5. *(Tuỳ chọn)* Build bridge E2EE - cho tin nhắn 1-1
+### 5. Build bridge E2EE - bắt buộc cho bot mẫu
 
-Nếu bạn chỉ cần nhận tin nhắn nhóm, **bỏ qua bước này**. Ngược lại, tin nhắn cá nhân (E2EE) cần binary Go `fbchat-bridge-e2ee`.
+Consumer chỉ dùng API HTTP hoặc listener MQTT thường có thể bỏ qua bước này. Riêng `src/main.py`, `_e2ee_listening_test.py` và `_e2ee_send_test.py` **bắt buộc** có binary Go `fbchat-bridge-e2ee`; các entrypoint này fail closed và không fallback sang Python MQTT.
 
 #### 5.1. Cài Go toolchain
 
@@ -283,7 +283,8 @@ git clone https://github.com/mautrix/meta.git ./meta
 #### 5.3. Tải dep & build
 
 ```bash
-go mod tidy
+cd bridge-e2ee
+go mod download
 
 # Windows
 go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .
@@ -299,9 +300,9 @@ Lần build đầu mất vài phút (~300 MB cache Go module). Sau đó binary k
 ```bash
 cd ..
 # Windows
-.\build\fbchat-bridge-e2ee.exe --help
+python scripts/smoke_bridge_rpc.py .\build\fbchat-bridge-e2ee.exe --expected-version 2.3.3
 # Linux/macOS
-./build/fbchat-bridge-e2ee --help
+python scripts/smoke_bridge_rpc.py ./build/fbchat-bridge-e2ee --expected-version 2.3.3
 ```
 
 Nếu binary không nằm ở vị trí mặc định, set biến môi trường:
@@ -325,7 +326,7 @@ Sao chép [`src/config.example.json`](src/config.example.json) thành `src/confi
 python src/main.py
 ```
 
-Nếu console in ra thông tin tài khoản + `last_seq_id`, cài đặt đã hoàn tất.
+Khi console in `E2EE listener đã sẵn sàng`, cài đặt runtime đã hoàn tất. Bot mẫu không in ID tài khoản, cookie hoặc `last_seq_id` để tránh lộ metadata.
 
 ---
 
@@ -363,7 +364,7 @@ Ví dụ:
 | `prefix` | Không | Tiền tố lệnh, mặc định `/` |
 | `admins` | Không | Danh sách Facebook ID được dùng lệnh quản trị |
 | `log_message_content` | Không | Cho phép ghi plaintext nội dung chat; mặc định `false` để bảo vệ riêng tư |
-| `debug_errors` | Không | In payload/traceback chi tiết; mặc định `false` |
+| `debug_errors` | Không | In diagnostic đã redact để debug bridge; mặc định `false` |
 | `botName` | Không | Metadata cho config, bot mẫu hiện không dùng |
 | `version` | Không | Metadata cho config, bot mẫu hiện không dùng |
 
@@ -431,7 +432,7 @@ result = await sender.send(
     threadID="100012345678"
 )
 if result.get("error"):
-    raise RuntimeError(result["payload"]["error-decription"])
+    raise RuntimeError(result["payload"]["error-description"])
 ```
 
 `threadID` có thể là một ID hoặc danh sách ID khi `typeChat="user"`. Khi gửi attachment, `typeAttachment` và `attachmentID` phải đi cùng nhau.
@@ -523,7 +524,7 @@ async def run_listener(data_fb: dict) -> None:
     try:
         ready = await asyncio.to_thread(
             listener.wait_until_connected,
-            90,
+            listener.startup_timeout,
             require_e2ee=True,
         )
         if not ready:
@@ -554,7 +555,7 @@ Event chính:
 | `error` | lỗi bridge/transport | Cần log và giám sát |
 | `bridge_fatal` | số lần retry | Watchdog đã bỏ cuộc |
 
-Action nâng cao như edit, unsend, typing, mark-read, gửi ảnh/audio và download media nằm trong `BridgeActions`. Xem [tài liệu messaging](src/_messaging/README.md).
+Action nâng cao như edit, unsend, typing, mark-read, gửi ảnh/audio và download media nằm trong `BridgeActions`. Xem [tài liệu messaging](src/fbchat_v2/_messaging/README.md).
 
 ---
 
@@ -580,9 +581,9 @@ Queue của bot có giới hạn 1000 event và drop event cũ nhất khi đầy
 | Tài liệu | Nội dung |
 |---|---|
 | [DOCS.md](DOCS.md) | Hướng dẫn API và workflow đầy đủ |
-| [Core](src/_core/README.md) | Session, HTTP, storage và login |
-| [Features](src/_features/README.md) | Facebook feature và thread |
-| [Messaging](src/_messaging/README.md) | Send, listener, attachment và E2EE |
+| [Core](src/fbchat_v2/_core/README.md) | Session, HTTP, storage và login |
+| [Features](src/fbchat_v2/_features/README.md) | Facebook feature và thread |
+| [Messaging](src/fbchat_v2/_messaging/README.md) | Send, listener, attachment và E2EE |
 | [Bridge E2EE](bridge-e2ee/README.md) | Build, binary discovery và JSON-RPC |
 | [Flowchart](FLOWCHART.md) | Luồng session, HTTP, MQTT, E2EE và shutdown |
 | [Mindmap](mindmap-mermaid.md) | Bản đồ module toàn dự án |
@@ -605,7 +606,7 @@ ruff check src tests scripts
 black --check src tests scripts
 mypy
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.2-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.3-py3-none-any.whl
 git diff --check
 ```
 
@@ -652,6 +653,6 @@ Dự án được phân phối theo điều khoản trong [LICENSE](LICENSE). Ph
 
 <div align="center">
 
-[MinhHuyDev](https://github.com/MinhHuyDev) | [Telegram](https://t.me/MinhHuyDev)
+[MinhHuyDev](https://github.com/m008v) | [Telegram](https://t.me/MinhHuyDev)
 
 </div>

@@ -270,17 +270,17 @@ go vet ./...
 - 🧩 Messaging docs: [src/_messaging/README.md](../src/_messaging/README.md)
 - 🌉 Bridge docs: [bridge-e2ee/README.md](../bridge-e2ee/README.md)
 - 📋 Changelog: [CHANGELOG.md](../CHANGELOG.md)
-- 🐛 Báo lỗi: <https://github.com/MinhHuyDev/fbchat-v2/issues>
+- 🐛 Báo lỗi: <https://github.com/m008v/fbchat-v2/issues>
 - 💬 Telegram: <https://t.me/MinhHuyDev>
 
-Full Changelog: <https://github.com/MinhHuyDev/fbchat-v2/compare/v2.1.4...v2.2.0>
+Full Changelog: <https://github.com/m008v/fbchat-v2/compare/v2.1.4...v2.2.0>
 
 ---
 
 <div align="center">
 
-📥 Tải về: [Source code (zip)](https://github.com/MinhHuyDev/fbchat-v2/archive/refs/tags/v2.2.0.zip) · [Source code (tar.gz)](https://github.com/MinhHuyDev/fbchat-v2/archive/refs/tags/v2.2.0.tar.gz)
+📥 Tải về: [Source code (zip)](https://github.com/m008v/fbchat-v2/archive/refs/tags/v2.2.0.zip) · [Source code (tar.gz)](https://github.com/m008v/fbchat-v2/archive/refs/tags/v2.2.0.tar.gz)
 
-💬 Hỏi đáp & báo lỗi: [GitHub Issues](https://github.com/MinhHuyDev/fbchat-v2/issues) · [Telegram @MinhHuyDev](https://t.me/MinhHuyDev)
+💬 Hỏi đáp & báo lỗi: [GitHub Issues](https://github.com/m008v/fbchat-v2/issues) · [Telegram @MinhHuyDev](https://t.me/MinhHuyDev)
 
 </div>

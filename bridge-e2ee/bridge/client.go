@@ -133,7 +133,8 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		logLevel = zerolog.Disabled
 	}
 	zerolog.SetGlobalLevel(logLevel)
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
+	console := zerolog.ConsoleWriter{Out: os.Stderr}
+	logger := zerolog.New(newRedactingLogWriter(console)).With().Timestamp().Logger()
 
 	// Create messagix client
 	msgClient := messagix.NewClient(cks, logger, &messagix.Config{
@@ -196,9 +197,9 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 
 func (c *Client) handleMessagixEvent(ctx context.Context, evt any) {
 	switch evt.(type) {
-	case *messagix.Event_Ready, *messagix.Event_Reconnected:
+	case *messagix.ConnectedEvent, *messagix.ReconnectedEvent:
 		c.regularConnected.Store(true)
-	case *messagix.Event_SocketError, *messagix.Event_PermanentError:
+	case *messagix.TransientDisconnectEvent, *messagix.PermanentErrorEvent:
 		c.regularConnected.Store(false)
 	}
 	c.handleEvent(ctx, evt)
@@ -282,7 +283,21 @@ func (c *Client) connectE2EE(operations e2eeConnectOperations) (err error) {
 		c.rollbackE2EEClient(currentE2EE, currentE2EE.Disconnect)
 	}
 
-	// Prepare E2EE client
+	// Register and persist the device before constructing whatsmeow.Client.
+	// Newer whatsmeow versions snapshot Device.ID in NewClient to decide whether
+	// the client is paired. Preparing first leaves that snapshot false forever,
+	// so a successful socket login is ignored as "connect success without
+	// pairing" and the bridge never becomes E2EE-ready.
+	if err = operations.register(); err != nil {
+		return err
+	}
+	if err = operations.save(); err != nil {
+		return fmt.Errorf("failed to persist E2EE device after registration: %w", err)
+	}
+	if err = c.lifecycleError(); err != nil {
+		return err
+	}
+
 	e2eeClient, err := operations.prepare()
 	if err != nil {
 		return err
@@ -315,17 +330,6 @@ func (c *Client) connectE2EE(operations e2eeConnectOperations) (err error) {
 	}
 	c.E2EE = e2eeClient
 	c.lifecycleMu.Unlock()
-
-	// Register E2EE
-	if err = operations.register(); err != nil {
-		return err
-	}
-	if err = operations.save(); err != nil {
-		return fmt.Errorf("failed to persist E2EE device after registration: %w", err)
-	}
-	if err = c.lifecycleError(); err != nil {
-		return err
-	}
 
 	// Register before connecting: ConnectContext may synchronously deliver queued
 	// messages, so registering afterwards creates a message-loss window.
@@ -454,18 +458,20 @@ func (c *Client) Events() <-chan *Event {
 
 // DeviceStore manages the E2EE device persistently
 type DeviceStore struct {
-	Device       *store.Device
-	path         string
-	mu           sync.RWMutex
-	saveMu       sync.Mutex
-	identities   map[string][32]byte
-	sessions     map[string][]byte
-	preKeys      map[uint32]*keys.PreKey
-	uploadedKeys map[uint32]struct{}
-	senderKeys   map[string][]byte
-	nextPreKeyID uint32
-	deleted      bool
-	dataChanges  *deviceDataDispatcher
+	Device        *store.Device
+	path          string
+	mu            sync.RWMutex
+	saveMu        sync.Mutex
+	identities    map[string][32]byte
+	sessions      map[string][]byte
+	preKeys       map[uint32]*keys.PreKey
+	uploadedKeys  map[uint32]struct{}
+	senderKeys    map[string][]byte
+	privacyTokens map[string]store.PrivacyToken
+	nctSalt       []byte
+	nextPreKeyID  uint32
+	deleted       bool
+	dataChanges   *deviceDataDispatcher
 }
 
 var errDeviceDataDispatcherStopped = errors.New("device data dispatcher is stopped")
@@ -576,41 +582,50 @@ func (ds *DeviceStore) stopDataChangedDispatcher() {
 
 // DeviceJSON for JSON serialization
 type DeviceJSON struct {
-	NoiseKeyPriv     string            `json:"noise_key_priv"`
-	IdentityKeyPriv  string            `json:"identity_key_priv"`
-	SignedPreKeyPriv string            `json:"signed_pre_key_priv"`
-	SignedPreKeyID   uint32            `json:"signed_pre_key_id"`
-	SignedPreKeySig  string            `json:"signed_pre_key_sig"`
-	RegistrationID   uint32            `json:"registration_id"`
-	AdvSecretKey     string            `json:"adv_secret_key"`
-	FacebookUUID     string            `json:"facebook_uuid"`
-	JIDUser          string            `json:"jid_user,omitempty"`
-	JIDDevice        uint16            `json:"jid_device,omitempty"`
-	LID              string            `json:"lid,omitempty"`
-	LIDMigrationTS   int64             `json:"lid_migration_timestamp,omitempty"`
-	PushName         string            `json:"push_name,omitempty"`
-	BusinessName     string            `json:"business_name,omitempty"`
-	Platform         string            `json:"platform,omitempty"`
-	Account          string            `json:"account,omitempty"`
-	Identities       map[string]string `json:"identities,omitempty"`
-	Sessions         map[string]string `json:"sessions,omitempty"`
-	PreKeys          map[string]string `json:"pre_keys,omitempty"`
-	UploadedPreKeys  []uint32          `json:"uploaded_pre_keys"`
-	SenderKeys       map[string]string `json:"sender_keys,omitempty"`
-	NextPreKeyID     uint32            `json:"next_pre_key_id"`
+	NoiseKeyPriv     string                      `json:"noise_key_priv"`
+	IdentityKeyPriv  string                      `json:"identity_key_priv"`
+	SignedPreKeyPriv string                      `json:"signed_pre_key_priv"`
+	SignedPreKeyID   uint32                      `json:"signed_pre_key_id"`
+	SignedPreKeySig  string                      `json:"signed_pre_key_sig"`
+	RegistrationID   uint32                      `json:"registration_id"`
+	AdvSecretKey     string                      `json:"adv_secret_key"`
+	FacebookUUID     string                      `json:"facebook_uuid"`
+	JIDUser          string                      `json:"jid_user,omitempty"`
+	JIDDevice        uint16                      `json:"jid_device,omitempty"`
+	LID              string                      `json:"lid,omitempty"`
+	LIDMigrationTS   int64                       `json:"lid_migration_timestamp,omitempty"`
+	PushName         string                      `json:"push_name,omitempty"`
+	BusinessName     string                      `json:"business_name,omitempty"`
+	Platform         string                      `json:"platform,omitempty"`
+	Account          string                      `json:"account,omitempty"`
+	Identities       map[string]string           `json:"identities,omitempty"`
+	Sessions         map[string]string           `json:"sessions,omitempty"`
+	PreKeys          map[string]string           `json:"pre_keys,omitempty"`
+	UploadedPreKeys  []uint32                    `json:"uploaded_pre_keys"`
+	SenderKeys       map[string]string           `json:"sender_keys,omitempty"`
+	PrivacyTokens    map[string]PrivacyTokenJSON `json:"privacy_tokens,omitempty"`
+	NCTSalt          string                      `json:"nct_salt,omitempty"`
+	NextPreKeyID     uint32                      `json:"next_pre_key_id"`
+}
+
+type PrivacyTokenJSON struct {
+	Token           string `json:"token"`
+	Timestamp       *int64 `json:"timestamp,omitempty"`
+	SenderTimestamp *int64 `json:"sender_timestamp,omitempty"`
 }
 
 const maxRegistrationID = 16380
 
 func newEmptyDeviceStore(path string) *DeviceStore {
 	return &DeviceStore{
-		path:         path,
-		identities:   make(map[string][32]byte),
-		sessions:     make(map[string][]byte),
-		preKeys:      make(map[uint32]*keys.PreKey),
-		uploadedKeys: make(map[uint32]struct{}),
-		senderKeys:   make(map[string][]byte),
-		nextPreKeyID: 1,
+		path:          path,
+		identities:    make(map[string][32]byte),
+		sessions:      make(map[string][]byte),
+		preKeys:       make(map[uint32]*keys.PreKey),
+		uploadedKeys:  make(map[uint32]struct{}),
+		senderKeys:    make(map[string][]byte),
+		privacyTokens: make(map[string]store.PrivacyToken),
+		nextPreKeyID:  1,
 	}
 }
 
@@ -775,6 +790,33 @@ func (ds *DeviceStore) loadDeviceJSON(deviceJSON *DeviceJSON) error {
 		}
 		ds.senderKeys[storageKey] = decoded
 	}
+	for userString, encoded := range deviceJSON.PrivacyTokens {
+		user, parseErr := waTypes.ParseJID(userString)
+		if parseErr != nil {
+			return fmt.Errorf("parse privacy token user %q: %w", userString, parseErr)
+		}
+		tokenBytes, decodeErr := decodeStoredBytes("privacy token", encoded.Token, -1)
+		if decodeErr != nil {
+			return fmt.Errorf("privacy token %q: %w", userString, decodeErr)
+		}
+		token := store.PrivacyToken{
+			User:  user.ToNonAD(),
+			Token: tokenBytes,
+		}
+		if encoded.Timestamp != nil {
+			token.Timestamp = time.Unix(*encoded.Timestamp, 0)
+		}
+		if encoded.SenderTimestamp != nil {
+			token.SenderTimestamp = time.Unix(*encoded.SenderTimestamp, 0)
+		}
+		ds.privacyTokens[token.User.String()] = token
+	}
+	if deviceJSON.NCTSalt != "" {
+		ds.nctSalt, err = decodeStoredBytes("NCT salt", deviceJSON.NCTSalt, -1)
+		if err != nil {
+			return err
+		}
+	}
 
 	if deviceJSON.UploadedPreKeys == nil {
 		// Legacy stores did not distinguish uploaded pre-keys. Treat existing
@@ -892,6 +934,10 @@ func (ds *DeviceStore) marshalDeviceDataLocked() ([]byte, error) {
 		PreKeys:          make(map[string]string),
 		UploadedPreKeys:  make([]uint32, 0, len(ds.uploadedKeys)),
 		SenderKeys:       make(map[string]string),
+		PrivacyTokens:    make(map[string]PrivacyTokenJSON),
+	}
+	if len(ds.nctSalt) > 0 {
+		deviceJSON.NCTSalt = base64.StdEncoding.EncodeToString(ds.nctSalt)
 	}
 
 	if ds.Device.ID != nil {
@@ -929,27 +975,45 @@ func (ds *DeviceStore) marshalDeviceDataLocked() ([]byte, error) {
 	for k, v := range ds.senderKeys {
 		deviceJSON.SenderKeys[k] = base64.StdEncoding.EncodeToString(v)
 	}
+	for user, token := range ds.privacyTokens {
+		encoded := PrivacyTokenJSON{
+			Token: base64.StdEncoding.EncodeToString(token.Token),
+		}
+		if !token.Timestamp.IsZero() {
+			timestamp := token.Timestamp.Unix()
+			encoded.Timestamp = &timestamp
+		}
+		if !token.SenderTimestamp.IsZero() {
+			senderTimestamp := token.SenderTimestamp.Unix()
+			encoded.SenderTimestamp = &senderTimestamp
+		}
+		deviceJSON.PrivacyTokens[user] = encoded
+	}
 
 	return json.MarshalIndent(deviceJSON, "", "  ")
 }
 
 type mutableDeviceStoreState struct {
-	identities   map[string][32]byte
-	sessions     map[string][]byte
-	preKeys      map[uint32]*keys.PreKey
-	uploadedKeys map[uint32]struct{}
-	senderKeys   map[string][]byte
-	nextPreKeyID uint32
+	identities    map[string][32]byte
+	sessions      map[string][]byte
+	preKeys       map[uint32]*keys.PreKey
+	uploadedKeys  map[uint32]struct{}
+	senderKeys    map[string][]byte
+	privacyTokens map[string]store.PrivacyToken
+	nctSalt       []byte
+	nextPreKeyID  uint32
 }
 
 func (ds *DeviceStore) captureMutableStateLocked() mutableDeviceStoreState {
 	state := mutableDeviceStoreState{
-		identities:   make(map[string][32]byte, len(ds.identities)),
-		sessions:     make(map[string][]byte, len(ds.sessions)),
-		preKeys:      make(map[uint32]*keys.PreKey, len(ds.preKeys)),
-		uploadedKeys: make(map[uint32]struct{}, len(ds.uploadedKeys)),
-		senderKeys:   make(map[string][]byte, len(ds.senderKeys)),
-		nextPreKeyID: ds.nextPreKeyID,
+		identities:    make(map[string][32]byte, len(ds.identities)),
+		sessions:      make(map[string][]byte, len(ds.sessions)),
+		preKeys:       make(map[uint32]*keys.PreKey, len(ds.preKeys)),
+		uploadedKeys:  make(map[uint32]struct{}, len(ds.uploadedKeys)),
+		senderKeys:    make(map[string][]byte, len(ds.senderKeys)),
+		privacyTokens: make(map[string]store.PrivacyToken, len(ds.privacyTokens)),
+		nctSalt:       cloneBytes(ds.nctSalt),
+		nextPreKeyID:  ds.nextPreKeyID,
 	}
 	for address, identity := range ds.identities {
 		state.identities[address] = identity
@@ -966,6 +1030,10 @@ func (ds *DeviceStore) captureMutableStateLocked() mutableDeviceStoreState {
 	for key, senderKey := range ds.senderKeys {
 		state.senderKeys[key] = senderKey
 	}
+	for user, token := range ds.privacyTokens {
+		token.Token = cloneBytes(token.Token)
+		state.privacyTokens[user] = token
+	}
 	return state
 }
 
@@ -975,6 +1043,8 @@ func (ds *DeviceStore) restoreMutableStateLocked(state mutableDeviceStoreState) 
 	ds.preKeys = state.preKeys
 	ds.uploadedKeys = state.uploadedKeys
 	ds.senderKeys = state.senderKeys
+	ds.privacyTokens = state.privacyTokens
+	ds.nctSalt = state.nctSalt
 	ds.nextPreKeyID = state.nextPreKeyID
 }
 

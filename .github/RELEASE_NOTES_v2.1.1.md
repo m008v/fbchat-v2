@@ -68,7 +68,7 @@ Người dùng E2EE (`_listening_e2ee.py`) vẫn cần bridge Go - xem
 - 📖 Docs: [DOCS.md](../DOCS.md)
 - 📊 Flowchart: [FLOWCHART.md](../FLOWCHART.md)
 - 📋 Changelog: [CHANGELOG.md](../CHANGELOG.md)
-- 🐛 Báo lỗi: https://github.com/MinhHuyDev/fbchat-v2/issues
+- 🐛 Báo lỗi: https://github.com/m008v/fbchat-v2/issues
 - 💬 Telegram: https://t.me/MinhHuyDev
 
-Full Changelog: https://github.com/MinhHuyDev/fbchat-v2/compare/v2.1.0...v2.1.1
+Full Changelog: https://github.com/m008v/fbchat-v2/compare/v2.1.0...v2.1.1

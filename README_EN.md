@@ -4,15 +4,15 @@
 
 ### Async-first Python library for the unofficial Facebook Messenger API
 
-[![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/MinhHuyDev/fbchat-v2)
+[![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/m008v/fbchat-v2)
 [![PyPI](https://img.shields.io/pypi/v/fbchat-v2?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/fbchat-v2/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-2.3.2-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
-[![Issues](https://img.shields.io/github/issues/MinhHuyDev/fbchat-v2?color=orange)](https://github.com/MinhHuyDev/fbchat-v2/issues)
+[![Version](https://img.shields.io/badge/version-2.3.3-blue)](https://github.com/m008v/fbchat-v2/releases)
+[![Issues](https://img.shields.io/github/issues/m008v/fbchat-v2?color=orange)](https://github.com/m008v/fbchat-v2/issues)
 [![License](https://img.shields.io/badge/license-See%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
 
-[🇻🇳 Tiếng Việt](README.md) · [📖 Documents](DOCS.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Flowchart](FLOWCHART.md) · [🐛 Report bugs](https://github.com/MinhHuyDev/fbchat-v2/issues)
+[🇻🇳 Tiếng Việt](README.md) · [📖 Documents](DOCS.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Flowchart](FLOWCHART.md) · [🐛 Report bugs](https://github.com/m008v/fbchat-v2/issues)
 
 </div>
 
@@ -20,7 +20,7 @@
 
 
 > [!IMPORTANT]
-> This is version `v2.3.2`, which uses *httpx.Client* instead of the old *requests* flow and now ships with **async/await** support. Because of that, code syntax may change or conflict with the version you are currently using. If you still want to use **requests** (*no async/await*), click here: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
+> This is release `v.2.3.3` (technical tag `v2.3.3`), which uses *httpx.Client* instead of the old *requests* flow and now ships with **async/await** support. Because of that, code syntax may change or conflict with the version you are currently using. If you still want to use **requests** (*no async/await*), click here: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
 
 > [!WARNING]
 > **Disclaimer** - This is **not** an official Facebook product. Facebook already provides an official chatbot API [here](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` is different because it authenticates with a **real Facebook user account / cookie**, which comes with security risks. Think carefully before using it.
@@ -33,7 +33,7 @@ Hello, I am **MinhHuyDev** (*m008v*) - the author and maintainer of this project
 
 First of all, thank you sincerely to all users in Vietnam and abroad who have contributed ideas and reported bugs for this project. In this **major v2.2.0 update**, the codebase has been **fully restructured**, most small legacy bugs have been addressed, and strong *async/await* support has been added.
 
-Of course, there may still be small bugs that are hard to find, or parts of the code that are not fully consistent yet. If you discover a ***problem***, open an issue on [GitHub](https://github.com/MinhHuyDev/fbchat-v2/issues) or message me directly on [Telegram](https://t.me/MinhHuyDev).
+Of course, there may still be small bugs that are hard to find, or parts of the code that are not fully consistent yet. If you discover a ***problem***, open an issue on [GitHub](https://github.com/m008v/fbchat-v2/issues) or message me directly on [Telegram](https://t.me/MinhHuyDev).
 
 ---
 
@@ -84,11 +84,11 @@ Of course, there may still be small bugs that are hard to find, or parts of the 
 
 ### Facebook Features (`_features._facebook`)
 
-- ❤️ **React and unreact to timeline posts** ([`_reactionPost`](src/_features/_facebook/README_EN.md#-spotlight-_reactionpostpy-post-reactions): Like, Love, Care, Haha, Wow, Sad, Angry, Undo)
+- ❤️ **React and unreact to timeline posts** ([`_reactionPost`](src/fbchat_v2/_features/_facebook/README_EN.md#-spotlight-_reactionpostpy-post-reactions): Like, Love, Care, Haha, Wow, Sad, Angry, Undo)
 - 📝 Create posts (`_createPost`), archive posts (`_archivePost`), delete posts (`_deletePost`)
 - 👤 Search users (`_search`), fetch profile info (`_get_user_info`), manage notifications (`_notification`)
 - 🚫 Block / unblock (`_blocking`), unfriend users (`_unFriend`), manage Marketplace and Professional Mode
-- 📖 *See full details in [Facebook Features Documentation](src/_features/_facebook/README_EN.md)*
+- 📖 *See full details in [Facebook Features Documentation](src/fbchat_v2/_features/_facebook/README_EN.md)*
 
 ### Recently Updated
 
@@ -106,9 +106,9 @@ The codebase is split into 3 layers. Feature modules must not manage sessions by
 
 | Layer | Path | Responsibility |
 |---|---|---|
-| Core | `src/_core/` | HTTP transport, session, storage, login, and utilities |
-| Features | `src/_features/` | Facebook business features and thread administration |
-| Messaging | `src/_messaging/` | Send, listen, E2EE, attachment, reaction, theme, and notes |
+| Core | `src/fbchat_v2/_core/` | HTTP transport, session, storage, login, and utilities |
+| Features | `src/fbchat_v2/_features/` | Facebook business features and thread administration |
+| Messaging | `src/fbchat_v2/_messaging/` | Send, listen, E2EE, attachment, reaction, theme, and notes |
 
 ```mermaid
 flowchart LR
@@ -206,12 +206,12 @@ dependencies = [
 
 ## 📦 Installation
 
-> Summary: **Steps 1-4 are required** for every user. **Step 5 is only required if you want to receive 1-1 messages (E2EE)**.
+> Summary: **Steps 1-4 are required** for every user. **Step 5 is required for the `src/main.py` sample bot and all E2EE usage**.
 
 ### 1. Clone the source
 
 ```bash
-git clone https://github.com/MinhHuyDev/fbchat-v2
+git clone --recurse-submodules https://github.com/m008v/fbchat-v2.git
 cd fbchat-v2
 ```
 
@@ -256,9 +256,9 @@ python scripts/verify_distribution.py
 
 You do not need `PYTHONPATH=src`, and imports must not use a `src.` prefix.
 
-### 5. *(Optional)* Build the E2EE bridge - for 1-1 messages
+### 5. Build the E2EE bridge - required for the sample bot
 
-If you only need to receive group messages, **skip this step**. Personal messages (E2EE) require the Go binary `fbchat-bridge-e2ee`.
+Consumers using only HTTP APIs or the regular MQTT listener may skip this step. The `src/main.py`, `_e2ee_listening_test.py`, and `_e2ee_send_test.py` entrypoints **require** the Go `fbchat-bridge-e2ee` binary; they fail closed and never fall back to Python MQTT.
 
 #### 5.1. Install the Go toolchain
 
@@ -289,7 +289,8 @@ git clone https://github.com/mautrix/meta.git ./meta
 #### 5.3. Download dependencies & build
 
 ```bash
-go mod tidy
+cd bridge-e2ee
+go mod download
 
 # Windows
 go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .
@@ -305,9 +306,9 @@ The first build may take a few minutes and about 300 MB of Go module cache. Afte
 ```bash
 cd ..
 # Windows
-.\build\fbchat-bridge-e2ee.exe --help
+python scripts/smoke_bridge_rpc.py .\build\fbchat-bridge-e2ee.exe --expected-version 2.3.3
 # Linux/macOS
-./build/fbchat-bridge-e2ee --help
+python scripts/smoke_bridge_rpc.py ./build/fbchat-bridge-e2ee --expected-version 2.3.3
 ```
 
 If the binary is not in the default location, set the environment variable:
@@ -331,7 +332,7 @@ Copy [`src/config.example.json`](src/config.example.json) to `src/config.json`, 
 python src/main.py
 ```
 
-If the console prints account information plus `last_seq_id`, the setup is complete.
+When the console prints `E2EE listener đã sẵn sàng`, runtime setup is complete. The sample bot does not print account IDs, cookies, or `last_seq_id` metadata.
 
 ---
 
@@ -369,7 +370,7 @@ Example:
 | `prefix` | No | Command prefix, defaults to `/` |
 | `admins` | No | List of Facebook IDs allowed to use admin commands |
 | `log_message_content` | No | Allow plaintext message logging; defaults to `false` for privacy |
-| `debug_errors` | No | Print detailed payloads/tracebacks; defaults to `false` |
+| `debug_errors` | No | Print redacted bridge diagnostics; defaults to `false` |
 | `botName` | No | Config metadata, currently unused by the sample bot |
 | `version` | No | Config metadata, currently unused by the sample bot |
 
@@ -437,7 +438,7 @@ result = await sender.send(
     threadID="100012345678"
 )
 if result.get("error"):
-    raise RuntimeError(result["payload"]["error-decription"])
+    raise RuntimeError(result["payload"]["error-description"])
 ```
 
 `threadID` can be a single ID or a list of IDs when `typeChat="user"`. When sending an attachment, `typeAttachment` and `attachmentID` must be passed together.
@@ -529,7 +530,7 @@ async def run_listener(data_fb: dict) -> None:
     try:
         ready = await asyncio.to_thread(
             listener.wait_until_connected,
-            90,
+            listener.startup_timeout,
             require_e2ee=True,
         )
         if not ready:
@@ -560,7 +561,7 @@ Main events:
 | `error` | bridge/transport error | Should be logged and monitored |
 | `bridge_fatal` | retry count | Watchdog gave up |
 
-Advanced actions such as edit, unsend, typing, mark-read, sending images/audio, and downloading media live in `BridgeActions`. See the [messaging documentation](src/_messaging/README.md).
+Advanced actions such as edit, unsend, typing, mark-read, sending images/audio, and downloading media live in `BridgeActions`. See the [messaging documentation](src/fbchat_v2/_messaging/README.md).
 
 ---
 
@@ -586,9 +587,9 @@ The bot queue is limited to 1000 events and drops the oldest event when full. Th
 | Documentation | Content |
 |---|---|
 | [DOCS.md](DOCS.md) | Full API and workflow guide |
-| [Core](src/_core/README.md) | Session, HTTP, storage, and login |
-| [Features](src/_features/README.md) | Facebook features and threads |
-| [Messaging](src/_messaging/README.md) | Send, listener, attachment, and E2EE |
+| [Core](src/fbchat_v2/_core/README.md) | Session, HTTP, storage, and login |
+| [Features](src/fbchat_v2/_features/README.md) | Facebook features and threads |
+| [Messaging](src/fbchat_v2/_messaging/README.md) | Send, listener, attachment, and E2EE |
 | [Bridge E2EE](bridge-e2ee/README.md) | Build, binary discovery, and JSON-RPC |
 | [Flowchart](FLOWCHART.md) | Session, HTTP, MQTT, E2EE, and shutdown flow |
 | [Mindmap](mindmap-mermaid.md) | Codebase-wide module map |
@@ -611,7 +612,7 @@ ruff check src tests scripts
 black --check src tests scripts
 mypy
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.2-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.3-py3-none-any.whl
 git diff --check
 ```
 
@@ -658,6 +659,6 @@ This project is distributed under the terms in [LICENSE](LICENSE). The bridge in
 
 <div align="center">
 
-[MinhHuyDev](https://github.com/MinhHuyDev) | [Telegram](https://t.me/MinhHuyDev)
+[MinhHuyDev](https://github.com/m008v) | [Telegram](https://t.me/MinhHuyDev)
 
 </div>

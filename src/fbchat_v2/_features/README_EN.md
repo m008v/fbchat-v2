@@ -34,7 +34,7 @@
 - Fetch inbox and thread metadata.
 - Change group names, emojis, nicknames, and administrators.
 
-The layer receives `dataFB` from `_core._session.dataGetHome()`. It does not read cookies from application configuration or own the bot lifecycle.
+The layer receives `dataFB` from `fbchat_v2._core._session.dataGetHome()`. It does not read cookies from application configuration or own the bot lifecycle.
 
 ---
 

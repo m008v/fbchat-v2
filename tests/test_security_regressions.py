@@ -395,6 +395,34 @@ async def test_unknown_command_name_is_redacted_by_default(
     assert "<redacted>" in joined
 
 
+@pytest.mark.asyncio
+async def test_message_transport_identifiers_are_not_logged(
+    monkeypatch: pytest.MonkeyPatch, mock_dataFB: dict[str, Any]
+) -> None:
+    monkeypatch.setattr(
+        sample_main, "listeningE2EEEvent", lambda data, **kwargs: object()
+    )
+    output: list[str] = []
+    monkeypatch.setattr(sample_main, "log", lambda tag, message: output.append(message))
+    bot = sample_main.SimpleBot(mock_dataFB)
+
+    await bot._dispatch(
+        {
+            "messageID": "mid.private",
+            "body": "plain message",
+            "userID": "123456789012345",
+            "replyToID": "987654321012345",
+            "chatJid": "987654321012345@msgr",
+            "type": "e2ee",
+        }
+    )
+
+    joined = "\n".join(output)
+    assert "123456789012345" not in joined
+    assert "987654321012345" not in joined
+    assert "mid.private" not in joined
+
+
 def test_listener_hides_bridge_error_payload(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

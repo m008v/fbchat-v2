@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fbchat-v2"
-version = "2.3.2"
+version = "2.3.3"
 description = "Async-first, account-based Python library for the unofficial Facebook Messenger API with E2EE support."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -48,11 +48,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/MinhHuyDev/fbchat-v2"
-Documentation = "https://github.com/MinhHuyDev/fbchat-v2/blob/main/DOCS.md"
-Repository = "https://github.com/MinhHuyDev/fbchat-v2"
-Issues = "https://github.com/MinhHuyDev/fbchat-v2/issues"
-Changelog = "https://github.com/MinhHuyDev/fbchat-v2/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/m008v/fbchat-v2"
+Documentation = "https://github.com/m008v/fbchat-v2/blob/main/DOCS.md"
+Repository = "https://github.com/m008v/fbchat-v2"
+Issues = "https://github.com/m008v/fbchat-v2/issues"
+Changelog = "https://github.com/m008v/fbchat-v2/blob/main/CHANGELOG.md"
 Telegram = "https://t.me/MinhHuyDev"
 
 [project.optional-dependencies]

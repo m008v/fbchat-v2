@@ -41,7 +41,7 @@ Feature trong `_features` và `_messaging` không nên tự dựng session, tự
 ## 🏗️ Cấu trúc thư mục
 
 ```text
-src/_core/
+src/fbchat_v2/_core/
 ├── __init__.py          # Version và module exports
 ├── _http.py             # httpx Client/AsyncClient transport
 ├── _session.py          # Cookie -> dataFB
@@ -57,7 +57,7 @@ src/_core/
 
 ## 🌐 Public API
 
-`src/_core/__init__.py` công bố:
+`src/fbchat_v2/_core/__init__.py` công bố:
 
 ```python
 __all__ = ["_session", "_utils", "_facebookLogin", "__version__"]
@@ -66,9 +66,9 @@ __all__ = ["_session", "_utils", "_facebookLogin", "__version__"]
 Storage và HTTP transport vẫn import trực tiếp từ module:
 
 ```python
-from _core._http import get_async, post_async
-from _core._session import dataGetHome
-from _core._storage import EnvSessionStorage, FileSessionStorage
+from fbchat_v2._core._http import get_async, post_async
+from fbchat_v2._core._session import dataGetHome
+from fbchat_v2._core._storage import EnvSessionStorage, FileSessionStorage
 ```
 
 Application code thường chỉ cần `dataGetHome`, storage và public feature. Helper cấp thấp phù hợp khi viết module mới hoặc integration đặc biệt.
@@ -135,7 +135,7 @@ Ví dụ:
 ```python
 import asyncio
 
-from _core._session import dataGetHome
+from fbchat_v2._core._session import dataGetHome
 
 
 async def main() -> None:
@@ -244,7 +244,7 @@ Khi truyền client do caller sở hữu, config `verify` thuộc về client. K
 | `parse_json_response(text, strip_for_loop_prefix=False)` | Parse JSON có optional prefix |
 
 ```python
-from _core._utils import formAll, post_form_json_async
+from fbchat_v2._core._utils import formAll, post_form_json_async
 
 form = formAll(
     data_fb,

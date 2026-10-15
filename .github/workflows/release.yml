@@ -9,7 +9,7 @@ on:
       tag_name:
         description: Existing tag to rebuild missing assets; dispatch this workflow from the same tag ref
         required: true
-        default: v2.3.2
+        default: v2.3.3
 
 permissions:
   contents: read
@@ -33,6 +33,7 @@ jobs:
     outputs:
       sha: ${{ steps.source.outputs.sha }}
       tag: ${{ steps.release.outputs.tag }}
+      name: ${{ steps.release.outputs.name }}
     steps:
       - name: Resolve release tag
         id: release
@@ -52,6 +53,7 @@ jobs:
             exit 1
           fi
           printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+          printf 'name=v.%s\n' "${tag#v}" >> "$GITHUB_OUTPUT"
       - name: Check out release tag
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -347,6 +349,7 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ needs.resolve-release.outputs.tag }}
+          name: ${{ needs.resolve-release.outputs.name }}
           target_commitish: ${{ needs.resolve-release.outputs.sha }}
           files: verified-assets/*
           body_path: .github/RELEASE_NOTES_${{ needs.resolve-release.outputs.tag }}.md

@@ -233,16 +233,16 @@ func (c *Client) handleEvent(ctx context.Context, evt any) {
 	})
 
 	switch e := evt.(type) {
-	case *messagix.Event_Ready:
+	case *messagix.ConnectedEvent:
 		c.emitEvent(EventTypeReady, map[string]any{
-			"isNewSession": e.IsNewSession,
+			"isNewSession": false,
 		})
 
-	case *messagix.Event_Reconnected:
+	case *messagix.ReconnectedEvent:
 		c.openRealtimeMessageWindow(standaloneUpsertGraceMs)
 		c.emitEvent(EventTypeReconnected, nil)
 
-	case *messagix.Event_SocketError:
+	case *messagix.TransientDisconnectEvent:
 		message := "Messenger socket disconnected"
 		if e.Err != nil {
 			message = e.Err.Error()
@@ -251,7 +251,7 @@ func (c *Client) handleEvent(ctx context.Context, evt any) {
 			Message: message,
 		})
 
-	case *messagix.Event_PermanentError:
+	case *messagix.PermanentErrorEvent:
 		message := "Messenger connection failed permanently"
 		if e.Err != nil {
 			message = e.Err.Error()
@@ -261,10 +261,8 @@ func (c *Client) handleEvent(ctx context.Context, evt any) {
 			Code:    1,
 		})
 
-	case *messagix.Event_PublishResponse:
-		if e.Table != nil {
-			c.handleTable(e.Table)
-		}
+	case *table.LSTable:
+		c.handleTable(e)
 	}
 }
 

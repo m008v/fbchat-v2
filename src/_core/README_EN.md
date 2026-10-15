@@ -41,7 +41,7 @@ Modules in `_features` and `_messaging` should not bootstrap their own sessions,
 ## 🏗️ Directory layout
 
 ```text
-src/_core/
+src/fbchat_v2/_core/
 ├── __init__.py          # Version and module exports
 ├── _http.py             # httpx Client/AsyncClient transport
 ├── _session.py          # Cookie -> dataFB
@@ -57,7 +57,7 @@ src/_core/
 
 ## 🌐 Public API
 
-`src/_core/__init__.py` exports:
+`src/fbchat_v2/_core/__init__.py` exports:
 
 ```python
 __all__ = ["_session", "_utils", "_facebookLogin", "__version__"]
@@ -66,9 +66,9 @@ __all__ = ["_session", "_utils", "_facebookLogin", "__version__"]
 Storage and low-level HTTP transports are imported directly:
 
 ```python
-from _core._http import get_async, post_async
-from _core._session import dataGetHome
-from _core._storage import EnvSessionStorage, FileSessionStorage
+from fbchat_v2._core._http import get_async, post_async
+from fbchat_v2._core._session import dataGetHome
+from fbchat_v2._core._storage import EnvSessionStorage, FileSessionStorage
 ```
 
 Application code usually needs only `dataGetHome`, a storage implementation, and a public feature. Low-level helpers are intended for new modules or special integrations.
@@ -133,7 +133,7 @@ Flow:
 ```python
 import asyncio
 
-from _core._session import dataGetHome
+from fbchat_v2._core._session import dataGetHome
 
 
 async def main() -> None:
@@ -240,7 +240,7 @@ When the caller injects a client, TLS configuration belongs to that client. A re
 | `parse_json_response(text, strip_for_loop_prefix=False)` | Parse optional-prefixed JSON |
 
 ```python
-from _core._utils import formAll, post_form_json_async
+from fbchat_v2._core._utils import formAll, post_form_json_async
 
 form = formAll(
     data_fb,

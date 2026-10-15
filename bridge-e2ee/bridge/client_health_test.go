@@ -31,17 +31,17 @@ func TestClientConnectionHealthTracksSocketEvents(t *testing.T) {
 		t.Fatal("new client reported connected before a socket ready event")
 	}
 
-	client.handleMessagixEvent(ctx, &messagix.Event_Ready{})
+	client.handleMessagixEvent(ctx, &messagix.ConnectedEvent{})
 	if !client.IsConnected() {
 		t.Fatal("client did not report connected after a socket ready event")
 	}
 
-	client.handleMessagixEvent(ctx, &messagix.Event_SocketError{Err: errors.New("socket closed")})
+	client.handleMessagixEvent(ctx, &messagix.TransientDisconnectEvent{Err: errors.New("socket closed")})
 	if client.IsConnected() {
 		t.Fatal("client remained connected after a socket error")
 	}
 
-	client.handleMessagixEvent(ctx, &messagix.Event_Reconnected{})
+	client.handleMessagixEvent(ctx, &messagix.ReconnectedEvent{})
 	if !client.IsConnected() {
 		t.Fatal("client did not report connected after a socket reconnect event")
 	}
@@ -114,27 +114,32 @@ func TestConnectE2EERollsBackPartialClientOnFailure(t *testing.T) {
 			expectedError := errors.New(test.failureStep + " failed")
 			client := &Client{ctx: ctx, cancel: cancel}
 			disconnectCalls := 0
+			var operationOrder []string
 
 			operations := e2eeConnectOperations{
 				prepare: func() (*whatsmeow.Client, error) {
+					operationOrder = append(operationOrder, "prepare")
 					if test.failureStep == "prepare" {
 						return nil, expectedError
 					}
 					return candidate, nil
 				},
 				register: func() error {
+					operationOrder = append(operationOrder, "register")
 					if test.failureStep == "register" {
 						return expectedError
 					}
 					return nil
 				},
 				save: func() error {
+					operationOrder = append(operationOrder, "save")
 					if test.failureStep == "save" {
 						return expectedError
 					}
 					return nil
 				},
 				connect: func(*whatsmeow.Client) error {
+					operationOrder = append(operationOrder, "connect")
 					if test.failureStep == "connect" {
 						return expectedError
 					}
@@ -153,12 +158,26 @@ func TestConnectE2EERollsBackPartialClientOnFailure(t *testing.T) {
 			if client.E2EE != nil {
 				t.Fatal("connectE2EE() retained a partially initialized client")
 			}
-			wantDisconnectCalls := 1
-			if test.failureStep == "prepare" {
-				wantDisconnectCalls = 0
+			wantDisconnectCalls := 0
+			if test.failureStep == "connect" {
+				wantDisconnectCalls = 1
 			}
 			if disconnectCalls != wantDisconnectCalls {
 				t.Fatalf("disconnect calls = %d, want %d", disconnectCalls, wantDisconnectCalls)
+			}
+			wantOrder := map[string][]string{
+				"register": {"register"},
+				"save":     {"register", "save"},
+				"prepare":  {"register", "save", "prepare"},
+				"connect":  {"register", "save", "prepare", "connect"},
+			}[test.failureStep]
+			if len(operationOrder) != len(wantOrder) {
+				t.Fatalf("operation order = %v, want %v", operationOrder, wantOrder)
+			}
+			for index := range wantOrder {
+				if operationOrder[index] != wantOrder[index] {
+					t.Fatalf("operation order = %v, want %v", operationOrder, wantOrder)
+				}
 			}
 		})
 	}

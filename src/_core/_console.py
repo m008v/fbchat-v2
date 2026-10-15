@@ -6,6 +6,19 @@ import sys
 from typing import TextIO
 
 
+def configure_utf8_console() -> None:
+    """Use UTF-8 for CLI entry points without breaking custom output streams."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if not callable(reconfigure):
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (OSError, ValueError):
+            # Embedded runtimes may expose reconfigure but reject mutations.
+            continue
+
+
 def safe_print(message: object, *, file: TextIO | None = None) -> None:
     """Print text while escaping characters unsupported by the output stream."""
     target = file if file is not None else sys.stdout

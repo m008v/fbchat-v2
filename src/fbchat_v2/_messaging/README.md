@@ -493,12 +493,16 @@ threading.Thread(target=listener.connect_mqtt).start()
 ```python
 ready = await asyncio.to_thread(
     listener.wait_until_connected,
-    90,
+    listener.startup_timeout,
     require_e2ee=True,
 )
 if not ready:
     raise TimeoutError("E2EE listener chưa sẵn sàng.")
 ```
+
+`startup_timeout` là hard ceiling lớn hơn tổng các phase có timeout riêng. Khi
+startup lỗi, wrapper giữ nguyên exception chain và nêu phase thất bại thay vì
+để timeout ngoài che mất lỗi `contract`, `regular ready` hoặc `E2EE ready`.
 
 ### Event raw
 
@@ -893,7 +897,7 @@ async def run(data_fb: dict) -> None:
     try:
         ready = await asyncio.to_thread(
             listener.wait_until_connected,
-            90,
+            listener.startup_timeout,
             require_e2ee=True,
         )
         if not ready:

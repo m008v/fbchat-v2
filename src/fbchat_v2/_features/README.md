@@ -34,7 +34,7 @@
 - Lấy inbox/thread metadata.
 - Đổi tên, emoji, nickname và admin của group.
 
-Tầng này nhận `dataFB` đã được `_core._session.dataGetHome()` tạo. Nó không tự đọc cookie từ config và không sở hữu lifecycle bot.
+Tầng này nhận `dataFB` đã được `fbchat_v2._core._session.dataGetHome()` tạo. Nó không tự đọc cookie từ config và không sở hữu lifecycle bot.
 
 ---
 

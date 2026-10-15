@@ -138,7 +138,7 @@ python -m pip install -e .
 
 Xem [CHANGELOG.md](../CHANGELOG.md#210---2026-05-12).
 
-So sánh diff: [`v2.0.x...v2.1.0`](https://github.com/MinhHuyDev/fbchat-v2/compare/v2.0.x...v2.1.0)
+So sánh diff: [`v2.0.x...v2.1.0`](https://github.com/m008v/fbchat-v2/compare/v2.0.x...v2.1.0)
 
 ---
 
@@ -153,9 +153,9 @@ So sánh diff: [`v2.0.x...v2.1.0`](https://github.com/MinhHuyDev/fbchat-v2/compa
 
 <div align="center">
 
-📥 Tải về: [Source code (zip)](https://github.com/MinhHuyDev/fbchat-v2/archive/refs/tags/v2.1.0.zip) · [Source code (tar.gz)](https://github.com/MinhHuyDev/fbchat-v2/archive/refs/tags/v2.1.0.tar.gz)
+📥 Tải về: [Source code (zip)](https://github.com/m008v/fbchat-v2/archive/refs/tags/v2.1.0.zip) · [Source code (tar.gz)](https://github.com/m008v/fbchat-v2/archive/refs/tags/v2.1.0.tar.gz)
 
-💬 Hỏi đáp & báo lỗi: [GitHub Issues](https://github.com/MinhHuyDev/fbchat-v2/issues) · [Telegram @MinhHuyDev](https://t.me/MinhHuyDev)
+💬 Hỏi đáp & báo lỗi: [GitHub Issues](https://github.com/m008v/fbchat-v2/issues) · [Telegram @MinhHuyDev](https://t.me/MinhHuyDev)
 
 *Made with ❤️ by [MinhHuyDev](https://github.com/MinhHuyDev)*
 

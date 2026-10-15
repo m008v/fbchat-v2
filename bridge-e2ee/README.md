@@ -3,7 +3,7 @@
 Bridge Go cho Facebook Messenger thường và chat cá nhân E2EE. Binary chạy như subprocess, nhận JSON-RPC từng dòng qua stdin, trả response/event từng dòng qua stdout.
 
 [![docs](https://img.shields.io/badge/docs-main-3b3b3b?style=flat-square)](../README.md)
-[![Messaging DOCS](https://img.shields.io/badge/Messaging-DOCS-2563eb?style=flat-square)](../src/_messaging/README.md)
+[![Messaging DOCS](https://img.shields.io/badge/Messaging-DOCS-2563eb?style=flat-square)](../src/fbchat_v2/_messaging/README.md)
 [![Flowchart](https://img.shields.io/badge/Flowchart-runtime-0b8ecf?style=flat-square)](../FLOWCHART.md)
 
 > [!IMPORTANT]
@@ -83,7 +83,7 @@ Go version thấp hơn directive trong `go.mod` có thể từ chối build ho�
 ### Clone có submodule
 
 ```bash
-git clone --recurse-submodules https://github.com/MinhHuyDev/fbchat-v2.git
+git clone --recurse-submodules https://github.com/m008v/fbchat-v2.git
 cd fbchat-v2
 ```
 
@@ -208,9 +208,9 @@ RPC `newClient` nhận:
 Nếu dùng `devicePath`, file này là secret vì có thể chứa device/session state. Không commit hoặc chia sẻ nó.
 
 Ở Python wrapper, `debug_errors=False` là mặc định: stderr vẫn được drain để
-tránh deadlock nhưng nội dung diagnostic, payload lỗi và exception bị ẩn. Chỉ
-bật `debug_errors=True` trong môi trường kiểm soát vì log có thể chứa dữ liệu
-riêng tư.
+tránh deadlock nhưng nội dung diagnostic, payload lỗi và exception bị ẩn. Khi
+bật `debug_errors=True`, logger Go và stderr drain vẫn redact cookie, token,
+provider ID/JID và query string; tuy vậy chỉ nên bật trong môi trường kiểm soát.
 
 ---
 
@@ -363,14 +363,14 @@ Bridge áp dụng backpressure khi đẩy event sang Python reader thay vì sile
 ```python
 import asyncio
 
-from _messaging._listening_e2ee import listeningE2EEEvent
+from fbchat_v2._messaging._listening_e2ee import listeningE2EEEvent
 
 listener = listeningE2EEEvent(data_fb)
 task = asyncio.create_task(listener.connect_mqtt())
 try:
     ready = await asyncio.to_thread(
         listener.wait_until_connected,
-        90,
+        listener.startup_timeout,
         require_e2ee=True,
     )
     if not ready:
@@ -388,7 +388,7 @@ finally:
 ### Advanced actions
 
 ```python
-from _messaging._bridge_actions import BridgeActions
+from fbchat_v2._messaging._bridge_actions import BridgeActions
 
 if listener._bridge is None:
     raise RuntimeError("Bridge chưa sẵn sàng.")

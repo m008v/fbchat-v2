@@ -48,7 +48,7 @@ Module nhận `dataFB` từ `_core`. Nó không tự lưu cookie hoặc quản l
 ## 🏗️ Cấu trúc thư mục
 
 ```text
-src/_messaging/
+src/fbchat_v2/_messaging/
 ├── __init__.py
 ├── _send.py                  # Gửi text/attachment thường
 ├── _attachments.py           # Upload file -> attachment ID
@@ -104,7 +104,7 @@ Python tìm binary theo `binary_path=`, `FBCHAT_E2EE_BIN`, path mặc định tr
 
 ## 🌐 Public API
 
-`src/_messaging/__init__.py`:
+`src/fbchat_v2/_messaging/__init__.py`:
 
 ```python
 __all__ = [
@@ -125,7 +125,7 @@ __all__ = [
 `_bridge_actions` có thể import trực tiếp:
 
 ```python
-from _messaging._bridge_actions import BridgeActions
+from fbchat_v2._messaging._bridge_actions import BridgeActions
 ```
 
 Tóm tắt async API:
@@ -166,7 +166,7 @@ Field thường dùng:
 Tạo bằng:
 
 ```python
-from _core._session import dataGetHome
+from fbchat_v2._core._session import dataGetHome
 
 data_fb = await dataGetHome(cookie)
 if data_fb is None:
@@ -211,7 +211,7 @@ await api().send(
 ### Gửi text
 
 ```python
-from _messaging._send import api as SendAPI
+from fbchat_v2._messaging._send import api as SendAPI
 
 sender = SendAPI()
 result = await sender.send(
@@ -305,7 +305,7 @@ await _attachments.func(
 Parser hiện chỉ trả metadata item đầu tiên. Với nhiều file, workflow đáng tin cậy là gọi upload cho từng path, kiểm tra từng `attachmentID`, rồi truyền list ID vào sender; truyền list path không làm result trở thành list.
 
 ```python
-from _messaging import _attachments
+from fbchat_v2._messaging import _attachments
 
 uploaded = await _attachments.func(
     "photo.jpg",
@@ -372,7 +372,7 @@ Khi caller không truyền async client, wrapper dùng compatibility upload tron
 ### Khởi tạo
 
 ```python
-from _messaging._listening import listeningEvent
+from fbchat_v2._messaging._listening import listeningEvent
 
 listener = listeningEvent(
     data_fb,
@@ -433,7 +433,7 @@ Reconnect được quản lý ở vòng ngoài, không gọi đệ quy `connect_
 ### Khởi tạo
 
 ```python
-from _messaging._listening_e2ee import listeningE2EEEvent
+from fbchat_v2._messaging._listening_e2ee import listeningE2EEEvent
 
 listener = listeningE2EEEvent(
     data_fb,
@@ -492,12 +492,16 @@ threading.Thread(target=listener.connect_mqtt).start()
 ```python
 ready = await asyncio.to_thread(
     listener.wait_until_connected,
-    90,
+    listener.startup_timeout,
     require_e2ee=True,
 )
 if not ready:
     raise TimeoutError("E2EE listener chưa sẵn sàng.")
 ```
+
+`startup_timeout` là hard ceiling lớn hơn tổng các phase có timeout riêng. Khi
+startup lỗi, wrapper giữ nguyên exception chain và nêu phase thất bại thay vì
+để timeout ngoài che mất lỗi `contract`, `regular ready` hoặc `E2EE ready`.
 
 ### Event raw
 
@@ -569,7 +573,7 @@ Watchdog tự respawn bridge tối đa 5 lần với backoff. Application vẫn 
 ## 🌉 Bridge actions
 
 ```python
-from _messaging._bridge_actions import BridgeActions
+from fbchat_v2._messaging._bridge_actions import BridgeActions
 
 if listener._bridge is None:
     raise RuntimeError("Bridge chưa sẵn sàng.")
@@ -672,7 +676,7 @@ Wrapper decode base64 thành bytes và giữ metadata còn lại trong dict.
 2. Spawn bridge standalone và tự connect.
 
 ```python
-from _messaging._send_e2ee import api as E2EESender
+from fbchat_v2._messaging._send_e2ee import api as E2EESender
 
 sender = E2EESender(listener=listener)
 result = await asyncio.to_thread(
@@ -708,7 +712,7 @@ Application async mới nên dùng `listener.send_e2ee_message()` trực tiếp.
 ### Reaction
 
 ```python
-from _messaging import _reactions
+from fbchat_v2._messaging import _reactions
 
 response = await _reactions.func(
     data_fb,
@@ -725,7 +729,7 @@ payload = response.json()
 ### Sửa tin thường bằng LS task
 
 ```python
-from _messaging import _editMessage
+from fbchat_v2._messaging import _editMessage
 
 result = await _editMessage.func(
     data_fb,
@@ -740,7 +744,7 @@ result = await _editMessage.func(
 ### Thu hồi qua HTTP
 
 ```python
-from _messaging import _unsend
+from fbchat_v2._messaging import _unsend
 
 result = await _unsend.func(
     "mid.$message",
@@ -758,7 +762,7 @@ Message ID rỗng raise `ValueError`. Response không phải JSON hợp lệ ho�
 ### Theme
 
 ```python
-from _messaging import _changeTheme
+from fbchat_v2._messaging import _changeTheme
 
 themes = await _changeTheme.listThemes(data_fb)
 match = await _changeTheme.findTheme(data_fb, "love")
@@ -787,7 +791,7 @@ await _changeTheme.func(
 ### Notes
 
 ```python
-from _messaging import _createNotes
+from fbchat_v2._messaging import _createNotes
 
 current = await _createNotes.checkNote(data_fb)
 created = await _createNotes.createNote(
@@ -812,7 +816,7 @@ Entry point `func` hỗ trợ `check`, `create`, `delete`, `recreate`. Text ho�
 ## 📬 Message requests
 
 ```python
-from _messaging import _message_requests
+from fbchat_v2._messaging import _message_requests
 
 result = await _message_requests.func(data_fb, client=client)
 if result.get("success"):
@@ -871,7 +875,7 @@ flowchart TD
 ```python
 import asyncio
 
-from _messaging._listening_e2ee import listeningE2EEEvent
+from fbchat_v2._messaging._listening_e2ee import listeningE2EEEvent
 
 
 async def run(data_fb: dict) -> None:
@@ -892,7 +896,7 @@ async def run(data_fb: dict) -> None:
     try:
         ready = await asyncio.to_thread(
             listener.wait_until_connected,
-            90,
+            listener.startup_timeout,
             require_e2ee=True,
         )
         if not ready:

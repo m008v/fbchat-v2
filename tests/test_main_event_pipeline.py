@@ -308,8 +308,9 @@ async def test_unknown_e2ee_delivery_is_not_cached_or_logged_as_success(
 
     assert bot._last_bot_message == {}
     assert len(output) == 1
-    assert any("E2EE UNKNOWN" in line for line in output)
-    assert any("mid-timeout" in line for line in output)
+    assert any("delivery UNKNOWN" in line for line in output)
+    assert all("mid-timeout" not in line for line in output)
+    assert all("2000@msgr" not in line for line in output)
     assert all("E2EE ->" not in line for line in output)
     assert all("PRIVATE_REPLY" not in line for line in output)
 

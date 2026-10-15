@@ -1,6 +1,6 @@
 # fbchat-v2 - Tài liệu API async
 
-Tài liệu này mô tả API hiện hành trên nhánh `beta-async/await`. Các ví dụ I/O mới đều dùng `async`/`await`; API blocking chỉ được nhắc đến khi cần giải thích boundary hoặc hỗ trợ code legacy.
+Tài liệu này mô tả API hiện hành trên nhánh `main` cho package `fbchat-v2==2.3.3`. Các ví dụ I/O mới đều dùng `async`/`await`; API blocking chỉ được nhắc đến khi cần giải thích boundary hoặc hỗ trợ code legacy.
 
 > [!NOTE]
 > Đây là API Facebook không chính thức. Endpoint, token HTML, GraphQL `doc_id`, MQTT payload và E2EE protocol có thể thay đổi mà không báo trước.
@@ -74,9 +74,16 @@ Các boundary này được cô lập bằng `asyncio.to_thread()` trong wrapper
 ## 2. ⚙️ Cài đặt và import
 
 ```bash
-git clone --branch beta-async/await --recurse-submodules https://github.com/MinhHuyDev/fbchat-v2.git
+git clone --recurse-submodules https://github.com/m008v/fbchat-v2.git
 cd fbchat-v2
 python -m venv .venv
+
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
+# macOS / Linux
+source .venv/bin/activate
+
 python -m pip install -e ".[dev]"
 python scripts/verify_distribution.py
 ```
@@ -565,14 +572,14 @@ task = asyncio.create_task(listener.connect_mqtt())
 ```python
 ready = await asyncio.to_thread(
     listener.wait_until_connected,
-    90,
+    listener.startup_timeout,
     require_e2ee=True,
 )
 if not ready:
     raise TimeoutError("E2EE listener chưa sẵn sàng.")
 ```
 
-Không gửi ngay sau `create_task(connect_mqtt())`. Bridge có thể mới spawn nhưng chưa chạy `newClient`, `connect` và `connectE2EE`.
+Không gửi ngay sau `create_task(connect_mqtt())`. Bridge có thể mới spawn nhưng chưa chạy `newClient`, `connect` và `connectE2EE`. Wrapper áp timeout riêng cho các phase `contract`, `new client`, `regular connect`, `regular ready`, `E2EE connect` và `E2EE ready`; `startup_timeout` chỉ là hard ceiling bên ngoài nên không che exception gốc của phase lỗi.
 
 ### Schema event
 
@@ -885,6 +892,8 @@ await _addAdmin.func(data_fb, "thread-id", "user-id", statusChoice=False)
 
 Bot mẫu là reference cho lifecycle, không phải framework bot production.
 
+Bot mẫu bắt buộc có Go E2EE bridge, fail closed khi E2EE chưa sẵn sàng và không fallback sang Python MQTT. Consumer muốn dùng listener MQTT thường phải khởi tạo `listeningEvent` riêng; đó không phải chế độ dự phòng của bot mẫu.
+
 ### Cấu hình
 
 ```json
@@ -911,7 +920,7 @@ debug được kiểm soát.
 5. E2EE listener start thành task.
 6. Callback bridge chuyển event về queue bằng `call_soon_threadsafe`.
 7. Bot bỏ self-message, dedupe message ID và dispatch handler async.
-8. Reply E2EE hoặc regular dựa trên `chatJid`.
+8. Reply qua bridge theo event nhận được; startup vẫn bắt buộc hoàn tất E2EE.
 9. Shutdown stop bridge, await listener task và đóng HTTP client.
 
 ### Command có sẵn
@@ -973,7 +982,7 @@ finally:
 
 ### Log an toàn
 
-Log loại exception, endpoint logical và ID không nhạy cảm. Không log request form, cookie, access token, password hoặc TOTP.
+Log loại exception và endpoint logical. Không log provider ID/JID, request form, cookie, access token, password hoặc TOTP. Bridge logger và Python stderr drain đều redact metadata nhạy cảm trước khi in; `debug_errors` không phải giấy phép đổ payload chat ra console.
 
 ---
 
@@ -1086,7 +1095,7 @@ black --check src tests scripts
 mypy
 python -m compileall -q src tests scripts
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.2-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.3-py3-none-any.whl
 git diff --check
 ```
 
@@ -1211,7 +1220,7 @@ Chỉ tại entry point sync hoặc integration chưa có event loop. Trong coro
 
 Chi tiết theo module:
 
-- [`src/_core/README.md`](src/_core/README.md)
-- [`src/_features/README.md`](src/_features/README.md)
-- [`src/_messaging/README.md`](src/_messaging/README.md)
+- [`src/fbchat_v2/_core/README.md`](src/fbchat_v2/_core/README.md)
+- [`src/fbchat_v2/_features/README.md`](src/fbchat_v2/_features/README.md)
+- [`src/fbchat_v2/_messaging/README.md`](src/fbchat_v2/_messaging/README.md)
 - [`bridge-e2ee/README.md`](bridge-e2ee/README.md)

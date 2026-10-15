@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import sys
 import textwrap
 import threading
@@ -52,7 +53,7 @@ def _wait_for_blocked_writer(bridge: e2ee._BridgeProcess, timeout: float = 2.0) 
 
 def _contract_script(
     *,
-    bridge_version: str = "2.3.2",
+    bridge_version: str = "2.3.3",
     connected: bool = True,
     e2ee_connected: bool = True,
 ) -> str:
@@ -90,10 +91,146 @@ def test_bridge_subprocess_contract_and_shutdown_are_hermetic(tmp_path: Path) ->
     try:
         hello = bridge._validate_contract()
         assert hello["protocolVersion"] == 1
-        assert hello["bridgeVersion"] == "2.3.2"
+        assert hello["bridgeVersion"] == "2.3.3"
     finally:
         bridge.close()
     assert proc.poll() is not None
+
+
+def test_bridge_startup_phase_preserves_original_exception(tmp_path: Path) -> None:
+    command = _write_bridge_script(
+        tmp_path,
+        """
+        import json
+        import sys
+
+        hello = {
+            "protocolVersion": 1,
+            "bridgeVersion": "2.3.3",
+            "capabilities": [
+                "newClient", "connect", "connectE2EE", "isConnected", "events"
+            ],
+        }
+        for raw in sys.stdin:
+            request = json.loads(raw)
+            method = request.get("method")
+            if method == "hello":
+                response = {"id": request["id"], "ok": True, "data": hello}
+            elif method == "newClient":
+                response = {
+                    "id": request["id"],
+                    "ok": False,
+                    "error": "cookie c_user=123456789; thread_id=987654321 failed",
+                }
+            else:
+                response = {"id": request["id"], "ok": True, "data": {}}
+            print(json.dumps(response), flush=True)
+        """,
+    )
+    bridge = e2ee._BridgeProcess(Path(command[0]), command=command)
+    try:
+        with pytest.raises(e2ee.BridgeStartupError) as raised:
+            bridge.connect_client({"cookies": {}}, enable_e2ee=True)
+        assert raised.value.phase == "new client"
+        assert isinstance(raised.value.__cause__, e2ee.BridgeError)
+        assert "123456789" not in str(raised.value)
+        assert "987654321" not in str(raised.value)
+    finally:
+        bridge.close()
+
+
+def test_bridge_log_redaction_preserves_diagnostics_without_identifiers() -> None:
+    raw = json.dumps(
+        {
+            "level": "warn",
+            "database_id": 1,
+            "thread_id": 123456789012345,
+            "message_id": "mid.123456789012345",
+            "readerId": "opaque-reader",
+            "threadName": "private group",
+            "new_cursor": "opaque-sync-cursor",
+            "data": ["private row"],
+            "val": "private value",
+            "payload": {"text": "private message"},
+            "error": (
+                "request https://example.test/path?access_token=secret "
+                "for 123456789@msgr with c_user=123456789 failed; "
+                '<iq id="short-id"><enc>ciphertext</enc></iq>'
+            ),
+        }
+    )
+    redacted = e2ee._redact_bridge_text(raw)
+    decoded = json.loads(redacted)
+    assert decoded["database_id"] == 1
+    assert decoded["thread_id"] == "<redacted>"
+    assert decoded["message_id"] == "<redacted>"
+    assert decoded["readerId"] == "<redacted>"
+    assert decoded["threadName"] == "<redacted>"
+    assert decoded["new_cursor"] == "<redacted>"
+    assert decoded["data"] == "<redacted>"
+    assert decoded["val"] == "<redacted>"
+    assert decoded["payload"] == "<redacted>"
+    for secret in (
+        "123456789012345",
+        "123456789@msgr",
+        "access_token=secret",
+        "c_user=123456789",
+        "private message",
+        "opaque-sync-cursor",
+        "private row",
+        "private value",
+        "opaque-reader",
+        "private group",
+        "short-id",
+        "ciphertext",
+    ):
+        assert secret not in redacted
+
+
+def test_bridge_console_log_redaction_hides_sync_state_and_xml_payload() -> None:
+    raw = (
+        'new_cursor="opaque-sync-cursor" data=["private", "row"] '
+        'val="private value" <iq id="short-id" from="12345@msgr">'
+        "<enc>ciphertext</enc></iq>"
+    )
+
+    redacted = e2ee._redact_bridge_text(raw)
+
+    for secret in (
+        "opaque-sync-cursor",
+        "private",
+        "row",
+        "private value",
+        "short-id",
+        "12345@msgr",
+        "ciphertext",
+    ):
+        assert secret not in redacted
+
+
+def test_bridge_console_log_redaction_keeps_database_id_only() -> None:
+    raw = (
+        '12:00PM DBG Synced database database={"LastAppliedCursor":"opaque",'
+        '"SyncParams":"private"} database_id=1'
+    )
+
+    redacted = e2ee._redact_bridge_text(raw)
+
+    assert redacted == "12:00PM DBG Synced database database=<redacted> database_id=1"
+
+
+def test_bridge_event_fallback_redacts_opaque_ids_and_thread_names() -> None:
+    raw = (
+        '{"id": "mid.opaque", "threadName": "private group", '
+        '"readerId": "opaque-reader", "database_id": 1}'
+    )
+
+    redacted = e2ee._redact_bridge_text(raw)
+
+    assert "mid.opaque" not in redacted
+    assert "private group" not in redacted
+    assert "opaque-reader" not in redacted
+    assert '"database_id":1' in redacted
 
 
 @pytest.mark.parametrize("failing_method", ["newClient", "connect", "connectE2EE"])
@@ -232,7 +369,7 @@ def test_bridge_reader_ignores_valid_json_that_is_not_an_object(tmp_path: Path) 
     )
     bridge = e2ee._BridgeProcess(Path(command[0]), command=command)
     try:
-        assert bridge._validate_contract()["bridgeVersion"] == "2.3.2"
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
         assert bridge._reader.is_alive()
     finally:
         bridge.close()
@@ -346,7 +483,7 @@ def test_stale_reader_exit_cannot_stop_new_generation_writer(tmp_path: Path) -> 
         assert new_generation == old_generation + 1
 
         bridge._mark_generation_exited(old_proc, old_generation, old_writer_queue)
-        assert bridge._validate_contract()["bridgeVersion"] == "2.3.2"
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
         assert bridge._writer.is_alive()
     finally:
         bridge.close()
@@ -373,7 +510,7 @@ def test_bridge_writer_handles_short_raw_pipe_writes(tmp_path: Path) -> None:
 
     bridge._proc.stdin = ShortWritePipe()  # type: ignore[assignment]
     try:
-        assert bridge._validate_contract()["bridgeVersion"] == "2.3.2"
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
     finally:
         bridge.close()
 
@@ -417,7 +554,7 @@ def test_writer_transport_failure_taints_generation_and_watchdog_recovers(
         while not isinstance(state.get("data", {}).get("generation"), int):
             state = _wait_for_event(bridge.events, e2ee._BRIDGE_STATE_EVENT)
         assert first_proc.poll() is not None
-        assert bridge._validate_contract()["bridgeVersion"] == "2.3.2"
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
     finally:
         bridge.close()
 
@@ -472,7 +609,7 @@ def test_reader_transport_failure_taints_generation_and_watchdog_recovers(
         while not isinstance(state.get("data", {}).get("generation"), int):
             state = _wait_for_event(bridge.events, e2ee._BRIDGE_STATE_EVENT)
         assert first_proc.poll() is not None
-        assert bridge._validate_contract()["bridgeVersion"] == "2.3.2"
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
     finally:
         bridge.close()
         for stream in wrapped_streams:
@@ -568,7 +705,7 @@ def test_malformed_health_payload_causes_recovery_instead_of_watchdog_death(
         hello_calls = 0
         hello = {{
             "protocolVersion": 1,
-            "bridgeVersion": "2.3.2",
+            "bridgeVersion": "2.3.3",
             "capabilities": [
                 "newClient", "connect", "connectE2EE", "isConnected", "events"
             ],
@@ -592,7 +729,7 @@ def test_malformed_health_payload_causes_recovery_instead_of_watchdog_death(
     bridge.HEALTH_RPC_TIMEOUT = 0.5
     bridge.BASE_BACKOFF = 0.01
     try:
-        assert bridge._validate_contract()["bridgeVersion"] == "2.3.2"
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
         watchdog = bridge.start_watchdog(enable_e2ee=False)
 
         state = _wait_for_event(bridge.events, e2ee._BRIDGE_STATE_EVENT)
@@ -601,7 +738,7 @@ def test_malformed_health_payload_causes_recovery_instead_of_watchdog_death(
         assert watchdog.is_alive()
         assert first_proc.poll() is not None
         assert bridge._proc is not first_proc
-        assert bridge._validate_contract()["bridgeVersion"] == "2.3.2"
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
     finally:
         bridge.close()
 
@@ -621,7 +758,7 @@ def test_watchdog_does_not_kill_a_valid_long_running_rpc(tmp_path: Path) -> None
             print("launch", file=handle)
         hello = {{
             "protocolVersion": 1,
-            "bridgeVersion": "2.3.2",
+            "bridgeVersion": "2.3.3",
             "capabilities": [
                 "newClient", "connect", "connectE2EE", "isConnected", "events"
             ],
@@ -665,7 +802,7 @@ def test_watchdog_kills_hung_rpc_and_respawns(tmp_path: Path) -> None:
             print("launch", file=handle)
         hello = {{
             "protocolVersion": 1,
-            "bridgeVersion": "2.3.2",
+            "bridgeVersion": "2.3.3",
             "capabilities": [
                 "newClient", "connect", "connectE2EE", "isConnected", "events"
             ],
@@ -852,6 +989,7 @@ def test_response_timeout_rejects_same_generation_calls_before_watchdog(
     tmp_path: Path,
 ) -> None:
     methods = tmp_path / "methods.txt"
+    ready = tmp_path / "ready.txt"
     command = _write_bridge_script(
         tmp_path,
         f"""
@@ -860,6 +998,7 @@ def test_response_timeout_rejects_same_generation_calls_before_watchdog(
         import sys
 
         methods = pathlib.Path({str(methods)!r})
+        pathlib.Path({str(ready)!r}).write_text("ready", encoding="utf-8")
         for raw in sys.stdin:
             request = json.loads(raw)
             method = request.get("method")
@@ -874,6 +1013,10 @@ def test_response_timeout_rejects_same_generation_calls_before_watchdog(
     )
     bridge = e2ee._BridgeProcess(Path(command[0]), command=command)
     try:
+        deadline = time.monotonic() + 2.0
+        while not ready.exists() and time.monotonic() < deadline:
+            time.sleep(0.005)
+        assert ready.exists(), "fake bridge did not become ready"
         with pytest.raises(e2ee.BridgeError, match="timed out"):
             bridge.call_blocking("first", timeout=0.05)
 
@@ -889,6 +1032,7 @@ def test_response_timeout_rejects_same_generation_calls_before_watchdog(
 
 def test_watchdog_recovers_after_blocked_pipe_write_timeout(tmp_path: Path) -> None:
     launches = tmp_path / "launches.txt"
+    first_ready = tmp_path / "first-ready.txt"
     command = _write_bridge_script(
         tmp_path,
         f"""
@@ -903,11 +1047,12 @@ def test_watchdog_recovers_after_blocked_pipe_write_timeout(tmp_path: Path) -> N
         with launches.open("a", encoding="utf-8") as handle:
             print(generation, file=handle)
         if generation == 1:
+            pathlib.Path({str(first_ready)!r}).write_text("ready", encoding="utf-8")
             while True:
                 time.sleep(1)
         hello = {{
             "protocolVersion": 1,
-            "bridgeVersion": "2.3.2",
+            "bridgeVersion": "2.3.3",
             "capabilities": [
                 "newClient", "connect", "connectE2EE", "isConnected", "events"
             ],
@@ -939,6 +1084,10 @@ def test_watchdog_recovers_after_blocked_pipe_write_timeout(tmp_path: Path) -> N
             errors.append(exc)
 
     caller = threading.Thread(target=send_large_request)
+    deadline = time.monotonic() + 2.0
+    while not first_ready.exists() and time.monotonic() < deadline:
+        time.sleep(0.005)
+    assert first_ready.exists(), "fake bridge did not enter the blocked generation"
     caller.start()
     try:
         _wait_for_blocked_writer(bridge)
@@ -948,12 +1097,14 @@ def test_watchdog_recovers_after_blocked_pipe_write_timeout(tmp_path: Path) -> N
         assert len(errors) == 1
         assert isinstance(errors[0], e2ee.BridgeError)
 
-        state = _wait_for_event(bridge.events, e2ee._BRIDGE_STATE_EVENT)
+        state = _wait_for_event(bridge.events, e2ee._BRIDGE_STATE_EVENT, timeout=10.0)
         while not isinstance(state.get("data", {}).get("generation"), int):
-            state = _wait_for_event(bridge.events, e2ee._BRIDGE_STATE_EVENT)
+            state = _wait_for_event(
+                bridge.events, e2ee._BRIDGE_STATE_EVENT, timeout=10.0
+            )
         assert first_proc.poll() is not None
         assert bridge._proc is not first_proc
-        assert bridge._validate_contract()["bridgeVersion"] == "2.3.2"
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
     finally:
         bridge.close()
         caller.join(timeout=1.0)
@@ -961,6 +1112,7 @@ def test_watchdog_recovers_after_blocked_pipe_write_timeout(tmp_path: Path) -> N
 
 def test_watchdog_kills_each_failed_replay_before_retry(tmp_path: Path) -> None:
     launches = tmp_path / "launches.txt"
+    first_ready = tmp_path / "first-ready.txt"
     command = _write_bridge_script(
         tmp_path,
         f"""
@@ -974,9 +1126,11 @@ def test_watchdog_kills_each_failed_replay_before_retry(tmp_path: Path) -> None:
         with state.open("a", encoding="utf-8") as handle:
             print("launch", file=handle)
         count = len(previous) + 1
+        if count == 1:
+            pathlib.Path({str(first_ready)!r}).write_text("ready", encoding="utf-8")
         hello = {{
             "protocolVersion": 1,
-            "bridgeVersion": "2.3.2",
+            "bridgeVersion": "2.3.3",
             "capabilities": [
                 "newClient", "connect", "connectE2EE", "isConnected", "events"
             ],
@@ -1003,6 +1157,10 @@ def test_watchdog_kills_each_failed_replay_before_retry(tmp_path: Path) -> None:
     bridge.BASE_BACKOFF = 0.01
     bridge.MAX_RETRIES = 2
     try:
+        deadline = time.monotonic() + 2.0
+        while not first_ready.exists() and time.monotonic() < deadline:
+            time.sleep(0.005)
+        assert first_ready.exists(), "fake bridge did not become ready"
         bridge.start_watchdog(
             connect_cfg={"cookies": {"c_user": "test"}}, enable_e2ee=False
         )
@@ -1036,7 +1194,7 @@ def test_successful_short_lived_respawns_still_exhaust_retry_budget(
         threading.Timer(0.25, lambda: os._exit(17)).start()
         hello = {{
             "protocolVersion": 1,
-            "bridgeVersion": "2.3.2",
+            "bridgeVersion": "2.3.3",
             "capabilities": [
                 "newClient", "connect", "connectE2EE", "isConnected", "events"
             ],
@@ -1123,7 +1281,7 @@ def test_recovery_gates_external_rpc_and_timeout_covers_gate_wait(
         methods = pathlib.Path({str(methods)!r})
         hello = {{
             "protocolVersion": 1,
-            "bridgeVersion": "2.3.2",
+            "bridgeVersion": "2.3.3",
             "capabilities": [
                 "newClient", "connect", "connectE2EE", "isConnected", "events"
             ],
@@ -1226,6 +1384,7 @@ class _StartupListener:
         self.ready = ready
         self.stopped = False
         self.stop_calls = 0
+        self.startup_timeout = 375.0
 
     def on_message(self, callback: Any) -> None:
         self.callback = callback
@@ -1235,7 +1394,7 @@ class _StartupListener:
             await asyncio.sleep(0)
 
     def wait_until_connected(self, timeout: float, *, require_e2ee: bool) -> bool:
-        assert timeout == sample_main.DEFAULT_E2EE_READY_TIMEOUT
+        assert timeout == self.startup_timeout
         assert require_e2ee is True
         if self.readiness_error is not None:
             raise self.readiness_error
@@ -1336,7 +1495,7 @@ def test_listener_fails_closed_and_reaps_bridge_on_e2ee_startup_error(
     assert listener._startup_done.is_set()
     assert not listener._connected.is_set()
     assert not listener._e2ee_connected.is_set()
-    with pytest.raises(RuntimeError, match="failed to start"):
+    with pytest.raises(e2ee.BridgeError, match="handshake rejected"):
         listener.wait_until_connected(0.1, require_e2ee=True)
 
 
@@ -1512,3 +1671,27 @@ def test_listener_state_flags_follow_bridge_events(mock_dataFB: dict[str, Any]) 
     assert bridge.closed is True
     assert not listener._connected.is_set()
     assert not listener._e2ee_connected.is_set()
+
+
+def test_listener_waits_for_reconnect_after_startup(
+    mock_dataFB: dict[str, Any],
+) -> None:
+    listener = e2ee.listeningE2EEEvent(mock_dataFB)
+    listener._startup_done.set()
+    listener._connected.clear()
+    listener._e2ee_connected.clear()
+
+    def publish_reconnect() -> None:
+        time.sleep(0.05)
+        listener._connected.set()
+        time.sleep(0.05)
+        listener._e2ee_connected.set()
+
+    publisher = threading.Thread(target=publish_reconnect)
+    publisher.start()
+    try:
+        started = time.monotonic()
+        assert listener.wait_until_connected(1.0, require_e2ee=True) is True
+        assert time.monotonic() - started >= 0.09
+    finally:
+        publisher.join(timeout=1.0)

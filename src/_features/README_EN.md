@@ -33,14 +33,14 @@
 - Fetch inbox and thread metadata.
 - Change group names, emojis, nicknames, and administrators.
 
-The layer receives `dataFB` from `_core._session.dataGetHome()`. It does not read cookies from application configuration or own the bot lifecycle.
+The layer receives `dataFB` from `fbchat_v2._core._session.dataGetHome()`. It does not read cookies from application configuration or own the bot lifecycle.
 
 ---
 
 ## 🏗️ Directory layout
 
 ```text
-src/_features/
+src/fbchat_v2/_features/
 ├── _facebook/
 │   ├── README.md                # Dedicated Facebook features documentation
 │   ├── _archivePost.py          # Archive a timeline post
@@ -105,8 +105,8 @@ src/_features/
 Import modules to keep the common `func` name unambiguous:
 
 ```python
-from _features._facebook import _search
-from _features._thread import _changeEmoji
+from fbchat_v2._features._facebook import _search
+from fbchat_v2._features._thread import _changeEmoji
 
 users = await _search.func(data_fb, "Minh")
 changed = await _changeEmoji.func(data_fb, "thread-id", "🔥")
@@ -140,7 +140,7 @@ Rules:
 
 ## ✨ Facebook features
 
-> 💡 *Full documentation and examples for all 13 Facebook personal account modules are available in [`src/_features/_facebook/README.md`](_facebook/README.md).*
+> 💡 *Full documentation and examples for all 13 Facebook personal account modules are available in [`src/fbchat_v2/_features/_facebook/README.md`](_facebook/README.md).*
 
 ### `_reactionPost.py`
 
@@ -481,8 +481,8 @@ Use one client for a multi-request workflow:
 import asyncio
 import httpx
 
-from _features._facebook import _notification, _search
-from _features._thread import _all_thread_data
+from fbchat_v2._features._facebook import _notification, _search
+from fbchat_v2._features._thread import _all_thread_data
 
 async with httpx.AsyncClient(
     timeout=httpx.Timeout(30, connect=10),

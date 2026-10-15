@@ -14,6 +14,14 @@ REQUIRED_CAPABILITIES = frozenset(
 )
 
 
+def _configure_console_encoding() -> None:
+    """Keep Vietnamese diagnostics printable in legacy Windows terminals."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
 def _decode_responses(stdout: str) -> dict[int, dict[str, Any]]:
     responses: dict[int, dict[str, Any]] = {}
     for line_number, raw_line in enumerate(stdout.splitlines(), start=1):
@@ -143,6 +151,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    _configure_console_encoding()
     args = parse_args()
     smoke_bridge(
         args.binary,

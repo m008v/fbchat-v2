@@ -34,7 +34,7 @@ The [`_reactionPost.py`](_reactionPost.py) module allows your account to react t
 ### 1. Function Syntax
 
 ```python
-from _features._facebook import _reactionPost
+from fbchat_v2._features._facebook import _reactionPost
 
 result = await _reactionPost.func(
     dataFB,
@@ -68,12 +68,12 @@ Case-insensitive string input with rich alias support:
 
 ```python
 import asyncio
-from _core._session import dataGetHome
-from _features._facebook import _reactionPost
+from fbchat_v2._core._session import dataGetHome
+from fbchat_v2._features._facebook import _reactionPost
 
 async def main():
     cookies = "PASTE_YOUR_FACEBOOK_COOKIE_HERE"
-    dataFB = dataGetHome(cookies)
+    dataFB = await dataGetHome(cookies)
 
     post_id = "1000123456789_9876543210"
 
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 ### Create, Archive & Delete Posts
 
 ```python
-from _features._facebook import _createPost, _archivePost, _deletePost
+from fbchat_v2._features._facebook import _createPost, _archivePost, _deletePost
 
 # Publish a new post
 post = await _createPost.func(dataFB, "Hello from fbchat-v2!")
@@ -117,7 +117,7 @@ deleted = await _deletePost.func(dataFB, postID="123456789", typePost="my_post")
 ### Friend Management & Interactivity
 
 ```python
-from _features._facebook import _unFriend, _blocking, _get_user_info, _search
+from fbchat_v2._features._facebook import _unFriend, _blocking, _get_user_info, _search
 
 # Unfriend
 unfriended = await _unFriend.func(dataFB, friendID="100012345678")

@@ -43,6 +43,36 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   khoảng trắng thừa đầu hero, CSS variable thiếu, V2 badge bị ẩn và layout
   contributor/preloader trên màn hình nhỏ.
 
+## [2.3.3] - 2026-10-15
+
+### Added
+
+- Thêm log redaction tại cả Python và Go bridge để che cookie, token, ID nhà
+  cung cấp, JID, tên hội thoại, URL, cursor, payload, XML crypto, prekey và chữ
+  ký; vẫn giữ `database_id` để chẩn đoán đúng luồng LightSpeed.
+- Bot thử nghiệm E2EE có thể trả lời message group thường qua chính Go
+  LightSpeed bridge, không hạ cấp sang Python MQTT.
+
+### Changed
+
+- Cập nhật Messagix/LightSpeed lên flow DGW hiện hành, bổ sung sync V4 cho
+  `databaseID=1` và thích nghi API event/media/store mới.
+- Chia startup deadline thành từng phase contract, client, regular connect,
+  regular ready, E2EE connect và E2EE ready; exception gốc được giữ qua
+  `__cause__` sau khi thông tin nhạy cảm đã được che.
+- Chuẩn hóa onboarding, tài liệu và ví dụ import theo namespace công khai
+  `fbchat_v2`; release title là `v.2.3.3`, còn tag máy đọc giữ chuẩn
+  `v2.3.3`.
+
+### Fixed
+
+- Lưu device đã đăng ký trước khi khởi tạo Whatsmeow client, sửa tình trạng
+  regular socket báo connected nhưng E2EE không hoàn tất pairing/readiness.
+- `wait_until_connected()` giờ thực sự chờ watchdog reconnect sau khi bridge
+  chết, thay vì trả `False` ngay khi trạng thái startup đã qua.
+- Driver thử nghiệm sửa thiếu `await`, giữ Unicode trên console Windows và
+  không log nội dung/định danh riêng tư theo mặc định.
+
 ## [2.3.2] - 2026-09-15
 
 ### Added
@@ -692,7 +722,8 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
-[Unreleased]: https://github.com/m008v/fbchat-v2/compare/v2.3.2...HEAD
+[Unreleased]: https://github.com/m008v/fbchat-v2/compare/v2.3.3...HEAD
+[2.3.3]: https://github.com/m008v/fbchat-v2/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.2
 [2.3.1]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.1
 [2.3.0]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.0

@@ -439,12 +439,16 @@ Do not pass `listener.connect_mqtt` to `threading.Thread`; it is a coroutine and
 ```python
 ready = await asyncio.to_thread(
     listener.wait_until_connected,
-    90,
+    listener.startup_timeout,
     require_e2ee=True,
 )
 if not ready:
     raise TimeoutError("The E2EE listener is not ready.")
 ```
+
+`startup_timeout` is a hard ceiling above the separately bounded startup
+phases. On failure, the wrapper preserves the exception chain and reports the
+failed phase instead of letting the outer wait hide the root cause.
 
 ### Raw event
 
@@ -789,7 +793,7 @@ async def run(data_fb: dict) -> None:
     try:
         ready = await asyncio.to_thread(
             listener.wait_until_connected,
-            90,
+            listener.startup_timeout,
             require_e2ee=True,
         )
         if not ready:

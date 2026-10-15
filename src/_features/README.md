@@ -33,14 +33,14 @@
 - Lấy inbox/thread metadata.
 - Đổi tên, emoji, nickname và admin của group.
 
-Tầng này nhận `dataFB` đã được `_core._session.dataGetHome()` tạo. Nó không tự đọc cookie từ config và không sở hữu lifecycle bot.
+Tầng này nhận `dataFB` đã được `fbchat_v2._core._session.dataGetHome()` tạo. Nó không tự đọc cookie từ config và không sở hữu lifecycle bot.
 
 ---
 
 ## 🏗️ Cấu trúc thư mục
 
 ```text
-src/_features/
+src/fbchat_v2/_features/
 ├── _facebook/
 │   ├── README.md                # Tài liệu chi tiết Facebook features
 │   ├── _archivePost.py          # Lưu trữ bài timeline
@@ -105,8 +105,8 @@ src/_features/
 Import theo module giúp giữ tên `func` nhất quán:
 
 ```python
-from _features._facebook import _search
-from _features._thread import _changeEmoji
+from fbchat_v2._features._facebook import _search
+from fbchat_v2._features._thread import _changeEmoji
 
 users = await _search.func(data_fb, "Minh")
 changed = await _changeEmoji.func(data_fb, "thread-id", "🔥")
@@ -140,7 +140,7 @@ Quy tắc:
 
 ## ✨ Facebook features
 
-> 💡 *Tài liệu chi tiết và đầy đủ các ví dụ cho toàn bộ 13 module Facebook cá nhân xem tại [`src/_features/_facebook/README.md`](_facebook/README.md).*
+> 💡 *Tài liệu chi tiết và đầy đủ các ví dụ cho toàn bộ 13 module Facebook cá nhân xem tại [`src/fbchat_v2/_features/_facebook/README.md`](_facebook/README.md).*
 
 ### `_reactionPost.py`
 
@@ -511,8 +511,8 @@ Một workflow nhiều request nên dùng một client:
 import asyncio
 import httpx
 
-from _features._facebook import _notification, _search
-from _features._thread import _all_thread_data
+from fbchat_v2._features._facebook import _notification, _search
+from fbchat_v2._features._thread import _all_thread_data
 
 async with httpx.AsyncClient(
     timeout=httpx.Timeout(30, connect=10),

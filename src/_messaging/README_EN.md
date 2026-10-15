@@ -48,7 +48,7 @@ The package receives `dataFB` from `_core`. It does not own application cookie s
 ## 🏗️ Directory layout
 
 ```text
-src/_messaging/
+src/fbchat_v2/_messaging/
 ├── __init__.py
 ├── _send.py                  # Regular text/attachment sending
 ├── _attachments.py           # File upload -> attachment ID
@@ -104,7 +104,7 @@ Python resolves the binary from `binary_path=`, `FBCHAT_E2EE_BIN`, the default `
 
 ## 🌐 Public API
 
-`src/_messaging/__init__.py`:
+`src/fbchat_v2/_messaging/__init__.py`:
 
 ```python
 __all__ = [
@@ -125,7 +125,7 @@ __all__ = [
 Import bridge actions directly:
 
 ```python
-from _messaging._bridge_actions import BridgeActions
+from fbchat_v2._messaging._bridge_actions import BridgeActions
 ```
 
 Async API summary:
@@ -166,7 +166,7 @@ Common fields:
 Create it with:
 
 ```python
-from _core._session import dataGetHome
+from fbchat_v2._core._session import dataGetHome
 
 data_fb = await dataGetHome(cookie)
 if data_fb is None:
@@ -209,7 +209,7 @@ await api().send(
 ### Examples
 
 ```python
-from _messaging._send import api as SendAPI
+from fbchat_v2._messaging._send import api as SendAPI
 
 sender = SendAPI()
 direct = await sender.send(
@@ -287,7 +287,7 @@ await _attachments.func(
 The parser currently returns only the first metadata item. For deterministic multi-file sending, upload every path separately, validate every `attachmentID`, and pass the collected IDs to the sender; a list of paths does not produce a list result.
 
 ```python
-from _messaging import _attachments
+from fbchat_v2._messaging import _attachments
 
 uploaded = await _attachments.func(
     "photo.jpg",
@@ -333,7 +333,7 @@ File handles are closed in `finally`. Without an injected async client, the comp
 ## 📡 Regular MQTT listener
 
 ```python
-from _messaging._listening import listeningEvent
+from fbchat_v2._messaging._listening import listeningEvent
 
 listener = listeningEvent(data_fb, message_queue_maxsize=1000)
 ```
@@ -387,7 +387,7 @@ The listener parses all deltas, verifies TLS, and uses a bounded queue. A full q
 ## 🔐 E2EE listener
 
 ```python
-from _messaging._listening_e2ee import listeningE2EEEvent
+from fbchat_v2._messaging._listening_e2ee import listeningE2EEEvent
 
 listener = listeningE2EEEvent(
     data_fb,
@@ -438,12 +438,16 @@ Do not pass `listener.connect_mqtt` to `threading.Thread`; it is a coroutine and
 ```python
 ready = await asyncio.to_thread(
     listener.wait_until_connected,
-    90,
+    listener.startup_timeout,
     require_e2ee=True,
 )
 if not ready:
     raise TimeoutError("The E2EE listener is not ready.")
 ```
+
+`startup_timeout` is a hard ceiling above the separately bounded startup
+phases. On failure, the wrapper preserves the exception chain and reports the
+failed phase instead of letting the outer wait hide the root cause.
 
 ### Raw event
 
@@ -500,7 +504,7 @@ The watchdog respawns a crashed bridge up to five times with backoff. The applic
 ## 🌉 Bridge actions
 
 ```python
-from _messaging._bridge_actions import BridgeActions
+from fbchat_v2._messaging._bridge_actions import BridgeActions
 
 if listener._bridge is None:
     raise RuntimeError("The bridge is not ready.")
@@ -580,7 +584,7 @@ The wrapper decodes base64 into bytes and preserves other metadata.
 `_send_e2ee.api` is a blocking compatibility sender. It can reuse a listener bridge or launch its own bridge.
 
 ```python
-from _messaging._send_e2ee import api as E2EESender
+from fbchat_v2._messaging._send_e2ee import api as E2EESender
 
 sender = E2EESender(listener=listener)
 result = await asyncio.to_thread(
@@ -616,7 +620,7 @@ New async applications should use `listener.send_e2ee_message()` directly. A sta
 ### Reactions
 
 ```python
-from _messaging import _reactions
+from fbchat_v2._messaging import _reactions
 
 response = await _reactions.func(
     data_fb,
@@ -633,7 +637,7 @@ payload = response.json()
 ### Edit through an LS task
 
 ```python
-from _messaging import _editMessage
+from fbchat_v2._messaging import _editMessage
 
 result = await _editMessage.func(
     data_fb,
@@ -648,7 +652,7 @@ result = await _editMessage.func(
 ### HTTP unsend
 
 ```python
-from _messaging import _unsend
+from fbchat_v2._messaging import _unsend
 
 result = await _unsend.func(
     "mid.$message",
@@ -666,7 +670,7 @@ An empty ID raises `ValueError`. Invalid JSON or a Facebook error becomes an err
 ### Themes
 
 ```python
-from _messaging import _changeTheme
+from fbchat_v2._messaging import _changeTheme
 
 themes = await _changeTheme.listThemes(data_fb)
 match = await _changeTheme.findTheme(data_fb, "love")
@@ -687,7 +691,7 @@ await _changeTheme.func(
 ### Notes
 
 ```python
-from _messaging import _createNotes
+from fbchat_v2._messaging import _createNotes
 
 current = await _createNotes.checkNote(data_fb)
 created = await _createNotes.createNote(
@@ -712,7 +716,7 @@ The unified `func` supports `check`, `create`, `delete`, and `recreate`. Empty t
 ## 📬 Message requests
 
 ```python
-from _messaging import _message_requests
+from fbchat_v2._messaging import _message_requests
 
 result = await _message_requests.func(data_fb, client=client)
 if result.get("success"):
@@ -767,7 +771,7 @@ flowchart TD
 ```python
 import asyncio
 
-from _messaging._listening_e2ee import listeningE2EEEvent
+from fbchat_v2._messaging._listening_e2ee import listeningE2EEEvent
 
 
 async def run(data_fb: dict) -> None:
@@ -788,7 +792,7 @@ async def run(data_fb: dict) -> None:
     try:
         ready = await asyncio.to_thread(
             listener.wait_until_connected,
-            90,
+            listener.startup_timeout,
             require_e2ee=True,
         )
         if not ready:
