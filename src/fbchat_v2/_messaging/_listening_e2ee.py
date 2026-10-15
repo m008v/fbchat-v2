@@ -688,6 +688,8 @@ class _BridgeProcess:
     CLOSE_GRACEFUL_TIMEOUT: float = 1.0
     MAX_RPC_REQUEST_BYTES: int = 150 * 1024 * 1024
     MAX_EVENT_QUEUE_SIZE: int = 1000
+    MAX_STDERR_LINE_BYTES: int = 64 * 1024
+    STDERR_READ_CHUNK_BYTES: int = 4 * 1024
 
     def __init__(
         self,
@@ -826,15 +828,61 @@ class _BridgeProcess:
     # ------------------------------------------------------------------
     def _drain_stderr(self, proc: subprocess.Popen[bytes]) -> None:
         assert proc.stderr is not None
-        for raw in proc.stderr:
+        pending = bytearray()
+        discarding = False
+        while True:
             try:
-                line = raw.decode("utf-8", errors="replace").rstrip()
-            except Exception:  # noqa: BLE001
+                chunk = proc.stderr.read(self.STDERR_READ_CHUNK_BYTES)
+            except (OSError, ValueError):
+                # Đóng pipe trong shutdown có thể đánh thức reader bằng lỗi.
+                if self._log_stderr and not self._stop_event.is_set():
+                    _safe_print(
+                        "[bridge stderr] read failed (details hidden)", file=sys.stderr
+                    )
+                return
+            if not chunk:
+                break
+            if not self._log_stderr:
                 continue
-            if self._log_stderr:
-                _safe_print(
-                    f"[bridge stderr] {_redact_bridge_text(line)}", file=sys.stderr
-                )
+
+            start = 0
+            while start < len(chunk):
+                newline = chunk.find(b"\n", start)
+                end = len(chunk) if newline < 0 else newline
+                if not discarding:
+                    if len(pending) + end - start > self.MAX_STDERR_LINE_BYTES:
+                        pending.clear()
+                        discarding = True
+                        # Không log prefix/tail: secret có thể nằm qua ranh giới
+                        # chunk hoặc là field của một JSON line chưa hoàn chỉnh.
+                        _safe_print(
+                            "[bridge stderr] discarded oversized log line "
+                            "(content hidden)",
+                            file=sys.stderr,
+                        )
+                    else:
+                        pending.extend(chunk[start:end])
+                if newline < 0:
+                    break
+                if not discarding:
+                    self._log_stderr_line(pending)
+                pending.clear()
+                discarding = False
+                start = newline + 1
+
+        if pending and not discarding:
+            self._log_stderr_line(pending)
+
+    @staticmethod
+    def _log_stderr_line(raw: bytearray) -> None:
+        # Decode cả dòng để không làm hỏng UTF-8 bị chia giữa hai lần đọc.
+        line = raw.decode("utf-8", errors="replace").rstrip()
+        try:
+            redacted = _redact_bridge_text(line)
+        except RecursionError:
+            # JSON lồng quá sâu vẫn có thể nhỏ hơn giới hạn byte của dòng.
+            redacted = "discarded malformed log line (content hidden)"
+        _safe_print(f"[bridge stderr] {redacted}", file=sys.stderr)
 
     @staticmethod
     def _fail_queued_writes(

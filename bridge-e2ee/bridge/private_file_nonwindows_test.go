@@ -32,6 +32,21 @@ func TestDeviceStoreUsesPrivatePOSIXPermissions(t *testing.T) {
 	assertPOSIXPermissions(t, path, 0600)
 }
 
+func TestE2EEMediaTempFileUsesPrivatePOSIXPermissions(t *testing.T) {
+	file, err := createE2EEMediaTempFile(16)
+	if err != nil {
+		t.Fatalf("createE2EEMediaTempFile() error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = file.Close()
+		_ = os.Remove(file.Name())
+	})
+	assertPOSIXPermissions(t, file.Name(), 0600)
+	if _, err := file.Write([]byte("plaintext")); err != nil {
+		t.Fatalf("private media Write() error = %v", err)
+	}
+}
+
 func assertPOSIXPermissions(t *testing.T, path string, expected os.FileMode) {
 	t.Helper()
 	info, err := os.Stat(path)

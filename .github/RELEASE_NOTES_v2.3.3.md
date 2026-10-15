@@ -28,6 +28,15 @@ ký. `database_id` không nhạy cảm vẫn được giữ lại để phân bi
 chẩn đoán sync. Demo không in nội dung message trừ khi người chạy bật opt-in
 rõ ràng.
 
+Media E2EE dùng temp file có quyền riêng từ lúc tạo, gồm DACL protected trên
+Windows. Typing có deadline 10 giây và bị hủy khi client dừng. Go logger/Python
+stderr giữ tối đa 64 KiB mỗi dòng, bỏ nguyên dòng quá cỡ rồi tiếp tục drain;
+fragment có thể chứa secret không được in ra.
+
+Toolchain Go được nâng lên `1.26.9`, `golang.org/x/net` lên `0.60.0` để vá các
+call path mà pinned vulnerability scanner phát hiện trên bản trước; gate bảo
+mật trong CI vẫn được giữ nguyên.
+
 ## Kiểm chứng canary
 
 Canary bằng tài khoản clone đã xác minh chuỗi sau trên group có sẵn:
@@ -38,6 +47,11 @@ Canary bằng tài khoản clone đã xác minh chuỗi sau trên group có sẵ
 4. E2EE kết nối lại và Go LightSpeed tiếp tục gửi reply sau reconnect.
 
 Cookie và ID thật không được đưa vào log, source hoặc release note.
+
+`scripts/soak_e2ee.py` bổ sung quy trình kiểm chứng payload E2EE hai chiều,
+media digest/echo, cold restart với cùng persistent device và soak 2 giờ có
+RSS/queue telemetry. Kết quả của quy trình này được ghi riêng theo từng run;
+việc có driver/test hermetic không tự chứng minh canary live đã đạt.
 
 ## Cài đặt sau khi phát hành
 

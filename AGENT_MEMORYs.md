@@ -1,5 +1,59 @@
 # Agent Memories
 
+## 2026-10-15 — Media ACL, bounded logs, typing cancellation và E2EE soak
+
+### Mục tiêu
+- Triển khai bốn follow-up được chọn: bảo vệ media plaintext temp, giới hạn
+  log buffer, typing cancellation, kiểm chứng E2EE payload/cold restart và
+  soak có telemetry. Giữ version `2.3.3`, chưa phát hành.
+
+### Đã thực hiện
+- Media dùng helper private temp với DACL protected ngay từ creation trên
+  Windows; test đi qua production helper và kiểm open handle trước plaintext.
+- Typing yêu cầu connected/authenticated, dùng timeout 10 giây từ lifecycle
+  context; test kiểm deadline, cancel/disconnect và giữ nguyên lỗi transport.
+- Go/Python giữ tối đa 64 KiB mỗi raw log line, discard nguyên dòng quá cỡ,
+  drain tới newline và phát diagnostic cố định; không log fragment. Python
+  đọc chunk 4 KiB, giữ Unicode, EOF và tiếp tục sau JSON lồng sâu.
+- Thêm `scripts/soak_e2ee.py` và regression test: peer opt-in theo nonce từng
+  run, freshness/dedupe, ACK nonce riêng chỉ xuất hiện trong reply E2EE,
+  media <=2 MiB được download/digest/echo, không retry uncertain send, cold
+  restart dùng persistent device và fault injection đúng child process.
+- CI base `6788b19` fail vulnerability step: pinned scanner tìm 9 reachable
+  records. Nâng tối thiểu Go `1.26.9` + `golang.org/x/net v0.60.0`; không bỏ
+  gate hoặc nâng dependency dây chuyền.
+
+### Quyết định kỹ thuật
+- Report chỉ lưu counter, boolean, RSS/queue/generation; không lưu chat ID,
+  nội dung, khóa media, tên file gốc hoặc fingerprint identity. Device chứa
+  secret nằm riêng trong thư mục ignored và không được đưa vào Git.
+- `status=completed` chỉ nghĩa đủ thời gian; `acceptance_passed` cần đủ từng
+  check, gồm xác nhận thật từ peer. Exit `2` là hoàn tất nhưng thiếu/fail check.
+- Kill child bridge là fault injection crash, không phải test mất mạng thật;
+  không suy diễn ít traffic thành bằng chứng không mất mọi message.
+
+### Kiểm tra
+- Full Python `287 passed`; targeted soak `19 passed` sau ACK hardening; Ruff,
+  Black 119 file, mypy legacy/scripts 49 file + canonical 45 file, compileall
+  và canonical sync đạt.
+- Full Go test/vet/mod verify, native Windows ACL/typing và log storm tests đạt.
+  Pinned `govulncheck@v1.8.0` báo 0 reachable vulnerabilities sau bản vá; còn
+  một record ở module không import/call. POSIX/race cần CI Linux.
+- Rebuild binary Go 1.26.9, native RPC version 2.3.3 đạt.
+- Wheel/sdist hardening 2.3.3 build được, Twine 7 strict và distribution
+  verifier sau cài thử riêng từng artifact đều đạt.
+- Live run `.tmp/e2ee-soak-20261015-1329`, driver PID ban đầu `13552`, ready lúc
+  13:29:54 Asia/Saigon. Cold restart đã reuse cùng identity, sample đầu regular
+  và E2EE connected, queue drop 0. Peer roundtrip và soak 2 giờ vẫn đang chạy.
+
+### Việc còn lại
+- Đọc report cuối sau khoảng 15:30 Asia/Saigon; chưa được gọi soak pass trước
+  khi có duration, shutdown và từng acceptance check. Người dùng đã đồng ý
+  gửi challenge E2EE, ảnh và file khi listener ready.
+- Auto-review từ chối tạo heartbeat vì chưa có yêu cầu rõ cho lịch persistent;
+  chưa tạo automation. Process soak tự chạy và ghi report local.
+- Không tag, GitHub Release hoặc upload PyPI. Giữ nguyên `.vs/`.
+
 ## 2026-10-15 — Ổn định LightSpeed DB1 và E2EE cho v.2.3.3
 
 ### Mục tiêu

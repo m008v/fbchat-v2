@@ -9,7 +9,13 @@ import (
 	"sync"
 )
 
-const redactedLogValue = "[redacted]"
+const (
+	redactedLogValue = "[redacted]"
+	// Raw lines must stay intact until redaction. Emitting chunks of an oversized
+	// JSON line could expose a credential whose key was in an earlier chunk.
+	maxRedactingLogLineBytes = 64 * 1024
+	oversizedLogDiagnostic   = "{\"level\":\"warn\",\"message\":\"discarded oversized bridge log line\"}\n"
+)
 
 var (
 	logCookiePattern = regexp.MustCompile(`(?i)\b(c_user|xs|fr|datr|sb|presence|access_token)=([^;\s]+)`)
@@ -21,9 +27,10 @@ var (
 )
 
 type redactingLogWriter struct {
-	mu      sync.Mutex
-	out     io.Writer
-	pending []byte
+	mu       sync.Mutex
+	out      io.Writer
+	pending  []byte
+	dropping bool
 }
 
 func newRedactingLogWriter(out io.Writer) io.Writer {
@@ -110,18 +117,72 @@ func (writer *redactingLogWriter) Write(input []byte) (int, error) {
 	writer.mu.Lock()
 	defer writer.mu.Unlock()
 
-	writtenInput := len(input)
-	writer.pending = append(writer.pending, input...)
-	for {
-		newline := bytes.IndexByte(writer.pending, '\n')
-		if newline < 0 {
-			break
+	total := len(input)
+	consumed := 0
+	for len(input) > 0 {
+		newline := bytes.IndexByte(input, '\n')
+		if writer.dropping {
+			if newline < 0 {
+				return total, nil
+			}
+			consumed += newline + 1
+			input = input[newline+1:]
+			writer.dropping = false
+			continue
 		}
-		line := writer.pending[:newline]
-		writer.pending = writer.pending[newline+1:]
-		if _, err := writer.out.Write(redactLogLine(line)); err != nil {
-			return 0, err
+
+		fragmentLength := len(input)
+		if newline >= 0 {
+			fragmentLength = newline
+		}
+		if fragmentLength > maxRedactingLogLineBytes-len(writer.pending) {
+			// Discard the entire raw line, including any earlier fragments. Do not
+			// redact fragments independently or retain an arbitrarily large Write.
+			writer.pending = nil
+			writer.dropping = newline < 0
+			consumed += fragmentLength
+			input = input[fragmentLength:]
+			if newline >= 0 {
+				consumed++
+				input = input[1:]
+			}
+			if err := writer.writeOutput([]byte(oversizedLogDiagnostic)); err != nil {
+				return consumed, err
+			}
+			continue
+		}
+
+		if newline < 0 {
+			if writer.pending == nil {
+				// Reserve an explicit upper bound; append growth must never retain
+				// a larger backing array even when a line arrives in many chunks.
+				writer.pending = make([]byte, 0, maxRedactingLogLineBytes)
+			}
+			writer.pending = append(writer.pending, input...)
+			return total, nil
+		}
+
+		line := input[:newline]
+		if len(writer.pending) > 0 {
+			writer.pending = append(writer.pending, line...)
+			line = writer.pending
+		}
+		redacted := redactLogLine(line)
+		clear(writer.pending)
+		writer.pending = writer.pending[:0]
+		consumed += newline + 1
+		input = input[newline+1:]
+		if err := writer.writeOutput(redacted); err != nil {
+			return consumed, err
 		}
 	}
-	return writtenInput, nil
+	return total, nil
+}
+
+func (writer *redactingLogWriter) writeOutput(output []byte) error {
+	written, err := writer.out.Write(output)
+	if err == nil && written != len(output) {
+		return io.ErrShortWrite
+	}
+	return err
 }

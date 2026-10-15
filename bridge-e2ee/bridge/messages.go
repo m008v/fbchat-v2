@@ -377,7 +377,24 @@ func parseJID(jidStr string) (waTypes.JID, error) {
 // E2EE send typing
 func (c *Client) SendE2EETyping(chatJIDStr string, isTyping bool) error {
 	e2eeClient := c.snapshotE2EEClient()
-	if e2eeClient == nil || !e2eeClient.IsConnected() {
+	if e2eeClient == nil {
+		return ErrE2EENotConnected
+	}
+	return c.sendE2EETyping(e2eeClient, chatJIDStr, isTyping)
+}
+
+const e2eeTypingTimeout = 10 * time.Second
+
+type e2eeTypingSender interface {
+	e2eeConnectionState
+	SendChatPresence(context.Context, waTypes.JID, waTypes.ChatPresence, waTypes.ChatPresenceMedia) error
+}
+
+func (c *Client) sendE2EETyping(e2eeClient e2eeTypingSender, chatJIDStr string, isTyping bool) error {
+	if err := c.lifecycleError(); err != nil {
+		return err
+	}
+	if !isE2EEReady(e2eeClient) {
 		return ErrE2EENotConnected
 	}
 
@@ -390,7 +407,9 @@ func (c *Client) SendE2EETyping(chatJIDStr string, isTyping bool) error {
 	if isTyping {
 		presence = waTypes.ChatPresenceComposing
 	}
-	return e2eeClient.SendChatPresence(context.Background(), chatJID, presence, waTypes.ChatPresenceMediaText)
+	ctx, cancel := context.WithTimeout(c.ctx, e2eeTypingTimeout)
+	defer cancel()
+	return e2eeClient.SendChatPresence(ctx, chatJID, presence, waTypes.ChatPresenceMediaText)
 }
 
 // EditE2EEMessage edits an E2EE message

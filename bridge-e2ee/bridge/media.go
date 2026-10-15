@@ -40,6 +40,14 @@ type boundedMediaFile struct {
 	maxSize int64
 }
 
+func createE2EEMediaTempFile(maxSize int64) (*boundedMediaFile, error) {
+	file, err := createPrivateTempFile(os.TempDir(), "fbchat-e2ee-media-*", 0600)
+	if err != nil {
+		return nil, fmt.Errorf("create bounded E2EE media file: %w", err)
+	}
+	return &boundedMediaFile{File: file, maxSize: maxSize}, nil
+}
+
 func (file *boundedMediaFile) validateWrite(offset int64, length int) error {
 	if offset < 0 || offset > file.maxSize || int64(length) > file.maxSize-offset {
 		return errDownloadedMediaTooLarge
@@ -1265,19 +1273,15 @@ func (c *Client) DownloadE2EEMedia(opts *DownloadE2EEMediaOptions) (*DownloadE2E
 		maxTemporarySize = opts.FileSize + maxEncryptedMediaOverhead
 	}
 
-	temporaryFile, err := os.CreateTemp("", "fbchat-e2ee-media-*")
+	boundedFile, err := createE2EEMediaTempFile(maxTemporarySize)
 	if err != nil {
-		return nil, fmt.Errorf("create bounded E2EE media file: %w", err)
+		return nil, err
 	}
-	temporaryPath := temporaryFile.Name()
+	temporaryPath := boundedFile.Name()
 	defer func() {
-		_ = temporaryFile.Close()
+		_ = boundedFile.Close()
 		_ = os.Remove(temporaryPath)
 	}()
-	if err = temporaryFile.Chmod(0600); err != nil {
-		return nil, fmt.Errorf("secure E2EE media file: %w", err)
-	}
-	boundedFile := &boundedMediaFile{File: temporaryFile, maxSize: maxTemporarySize}
 
 	// Stream encrypted bytes into a hard-capped file, decrypt in place, then
 	// allocate the returned byte slice only after the plaintext size is known.

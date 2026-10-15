@@ -74,12 +74,14 @@ func TestDecodeBase64FieldCapsInputBeforeDecode(t *testing.T) {
 }
 
 func TestBoundedMediaFileRejectsWritesAndTruncatesPastLimit(t *testing.T) {
-	temporaryFile, err := os.CreateTemp(t.TempDir(), "bounded-media-*")
+	boundedFile, err := createE2EEMediaTempFile(4)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = temporaryFile.Close() })
-	boundedFile := &boundedMediaFile{File: temporaryFile, maxSize: 4}
+	t.Cleanup(func() {
+		_ = boundedFile.Close()
+		_ = os.Remove(boundedFile.Name())
+	})
 
 	if _, err = boundedFile.Write([]byte("1234")); err != nil {
 		t.Fatalf("bounded Write() within limit error = %v", err)
@@ -96,18 +98,20 @@ func TestBoundedMediaFileRejectsWritesAndTruncatesPastLimit(t *testing.T) {
 }
 
 func TestBoundedMediaFileReadFromCannotBypassWriteLimit(t *testing.T) {
-	temporaryFile, err := os.CreateTemp(t.TempDir(), "bounded-media-readfrom-*")
+	boundedFile, err := createE2EEMediaTempFile(4)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = temporaryFile.Close() })
-	boundedFile := &boundedMediaFile{File: temporaryFile, maxSize: 4}
+	t.Cleanup(func() {
+		_ = boundedFile.Close()
+		_ = os.Remove(boundedFile.Name())
+	})
 
 	_, err = io.Copy(boundedFile, strings.NewReader("12345"))
 	if !errors.Is(err, errDownloadedMediaTooLarge) {
 		t.Fatalf("io.Copy() error = %v, want %v", err, errDownloadedMediaTooLarge)
 	}
-	info, statErr := temporaryFile.Stat()
+	info, statErr := boundedFile.Stat()
 	if statErr != nil {
 		t.Fatal(statErr)
 	}

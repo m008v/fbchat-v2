@@ -984,6 +984,13 @@ finally:
 
 Log loại exception và endpoint logical. Không log provider ID/JID, request form, cookie, access token, password hoặc TOTP. Bridge logger và Python stderr drain đều redact metadata nhạy cảm trước khi in; `debug_errors` không phải giấy phép đổ payload chat ra console.
 
+Go logger và Python stderr drain giới hạn dòng thô ở 64 KiB. Dòng vượt ngưỡng
+bị bỏ toàn bộ đến newline, chỉ phát diagnostic cố định; không in prefix/tail
+có thể chứa secret. Python vẫn drain khi tắt log và giữ đúng UTF-8 qua ranh giới
+chunk. E2EE typing dùng deadline 10 giây, nhận cancellation từ lifecycle client.
+Media giải mã được ghi vào temp file có quyền riêng ngay khi tạo, gồm DACL
+protected trên Windows.
+
 ---
 
 ## 18. 📝 Hợp đồng kết quả
@@ -1111,6 +1118,43 @@ go vet ./...
 ```
 
 Trước push, quét mọi file text tracked để phát hiện UTF-8 invalid, U+FFFD, NUL và mojibake thật. PowerShell hiển thị sai encoding không tự động có nghĩa file đã hỏng.
+
+### Canary E2EE và soak có kiểm soát
+
+Chỉ dùng tài khoản clone và một peer đã đồng ý kiểm thử. Driver đọc cookie từ
+`FBCHAT_COOKIE` hoặc `src/config.json` nội bộ, lưu device bền vững và evidence
+không có ID/nội dung chat trong một thư mục mới. Không chạy cùng device với bot
+khác và không đưa `device.json` vào Git hoặc gửi cho người khác.
+
+```powershell
+python scripts/soak_e2ee.py `
+  --binary-path .tmp/fbchat-bridge-e2ee-soak.exe `
+  --output-dir .tmp/e2ee-soak-run `
+  --duration 7200 --sample-interval 60 --fault-after 300
+```
+
+Driver đăng nhập, dừng hẳn listener, tạo listener mới từ cùng device rồi so
+sánh identity trước khi báo `READY`. Khi đó peer gửi đúng challenge có nonce
+được in trên console qua cuộc trò chuyện E2EE; chỉ peer này được kích hoạt
+một reply text, một ảnh và một file tối đa 2 MiB. Driver download/giải mã,
+đối chiếu SHA-256 của attachment rồi echo lại, không lưu plaintext ra evidence.
+
+Sau khi thật sự nhìn thấy reply, peer gửi mã `text-ok-...` nằm trong reply;
+sau khi nhận đủ ảnh và file echo, gửi mã `media-ok-...` mà bot hướng dẫn.
+Hai mã này được tạo riêng từng run và chỉ gửi qua E2EE. Đây là xác nhận từ đầu bên kia, khác
+với việc RPC gửi trả thành công. Event regular và event cũ không được tính là
+bằng chứng E2EE. Timeout gửi không được tự retry.
+
+Mỗi phút driver ghi RSS parent/bridge, generation, trạng thái kết nối và queue
+drop. Đến phút thứ năm, nó kill đúng child bridge của mình để kiểm watchdog
+respawn, E2EE reconnect và một lần gửi text sau reconnect. Đây là mô phỏng
+bridge crash; không phải bằng chứng chịu mất mạng thật hoặc mọi trường hợp
+provider outage.
+
+`report.json` ghi từng acceptance check. Exit code `0` nghĩa là các check đều
+đạt; `1` là lỗi hoặc bị dừng; `2` là chạy hết thời gian nhưng còn check thiếu
+bằng chứng/không đạt. `status=completed` riêng lẻ không đồng nghĩa mọi check
+đã pass. Ctrl+C yêu cầu cleanup listener/bridge trước khi ghi report cuối.
 
 ---
 

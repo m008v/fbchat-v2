@@ -52,6 +52,9 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   ký; vẫn giữ `database_id` để chẩn đoán đúng luồng LightSpeed.
 - Bot thử nghiệm E2EE có thể trả lời message group thường qua chính Go
   LightSpeed bridge, không hạ cấp sang Python MQTT.
+- Thêm canary/soak driver có opt-in peer, cold restart bằng persistent device,
+  E2EE text/media round trip, kiểm digest, fault injection watchdog và evidence
+  RSS/queue không chứa secret.
 
 ### Changed
 
@@ -72,6 +75,12 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   chết, thay vì trả `False` ngay khi trạng thái startup đã qua.
 - Driver thử nghiệm sửa thiếu `await`, giữ Unicode trên console Windows và
   không log nội dung/định danh riêng tư theo mặc định.
+- Media E2EE dùng temp file có DACL riêng ngay từ lúc tạo trên Windows;
+  typing được hủy theo lifecycle và có deadline 10 giây.
+- Go/Python log drain giới hạn dòng 64 KiB, bỏ nguyên dòng quá cỡ và tiếp tục
+  drain thay vì giữ buffer vô hạn hoặc in fragment có secret.
+- Nâng Go lên `1.26.9` và `golang.org/x/net` lên `0.60.0` theo kết quả pinned
+  `govulncheck`; giữ nguyên vulnerability gate trong CI.
 
 ## [2.3.2] - 2026-09-15
 

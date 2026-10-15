@@ -233,6 +233,146 @@ def test_bridge_event_fallback_redacts_opaque_ids_and_thread_names() -> None:
     assert '"database_id":1' in redacted
 
 
+@pytest.mark.parametrize("line_size", [63, 64, 65])
+def test_bridge_stderr_line_limit_is_in_bytes_and_recovers_after_newline(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    line_size: int,
+) -> None:
+    monkeypatch.setattr(e2ee._BridgeProcess, "MAX_STDERR_LINE_BYTES", 64)
+    monkeypatch.setattr(e2ee._BridgeProcess, "STDERR_READ_CHUNK_BYTES", 7)
+    command = _write_bridge_script(
+        tmp_path,
+        f"""
+        import sys
+
+        sys.stderr.buffer.write(b"x" * {line_size} + b"\\n")
+        sys.stderr.buffer.write(b"ready after oversized\\n")
+        sys.stderr.flush()
+        {_contract_script()}
+        """,
+    )
+    bridge = e2ee._BridgeProcess(Path(command[0]), command=command, log_stderr=True)
+    try:
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
+        bridge.close()
+        bridge._stderr_thread.join(timeout=2.0)
+        assert not bridge._stderr_thread.is_alive()
+        logged = capsys.readouterr().err
+        assert "[bridge stderr] ready after oversized\n" in logged
+        if line_size <= 64:
+            assert f"[bridge stderr] {'x' * line_size}\n" in logged
+            assert "discarded oversized log line" not in logged
+        else:
+            assert "xxxxxxx" not in logged
+            assert logged.count("discarded oversized log line") == 1
+    finally:
+        bridge.close()
+
+
+@pytest.mark.parametrize("trailing_newline", [False, True])
+def test_bridge_stderr_preserves_unicode_and_redacts_across_chunk_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    trailing_newline: bool,
+) -> None:
+    monkeypatch.setattr(e2ee._BridgeProcess, "STDERR_READ_CHUNK_BYTES", 1)
+    payload = "đã kết nối 💥 c_user=123456789" + ("\n" if trailing_newline else "")
+    command = _write_bridge_script(
+        tmp_path,
+        f"""
+        import sys
+
+        sys.stderr.buffer.write({payload.encode('utf-8')!r})
+        sys.stderr.flush()
+        {_contract_script()}
+        """,
+    )
+    bridge = e2ee._BridgeProcess(Path(command[0]), command=command, log_stderr=True)
+    try:
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
+        bridge.close()
+        bridge._stderr_thread.join(timeout=2.0)
+        assert not bridge._stderr_thread.is_alive()
+        logged = capsys.readouterr().err
+        assert logged == "[bridge stderr] đã kết nối 💥 c_user=<redacted>\n"
+    finally:
+        bridge.close()
+
+
+@pytest.mark.parametrize("log_stderr", [False, True])
+@pytest.mark.parametrize("trailing_newline", [False, True])
+def test_bridge_stderr_drains_large_secret_lines_without_blocking_rpc(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    log_stderr: bool,
+    trailing_newline: bool,
+) -> None:
+    command = _write_bridge_script(
+        tmp_path,
+        f"""
+        import sys
+
+        sys.stderr.buffer.write(b'{{"access_token":"PRIVATE_PREFIX')
+        for _ in range(2048):
+            sys.stderr.buffer.write(b"PRIVATE_FRAGMENT" * 256)
+        sys.stderr.buffer.write(b'PRIVATE_TAIL"}}')
+        if {trailing_newline!r}:
+            sys.stderr.buffer.write(b"\\nready after oversized\\n")
+        sys.stderr.flush()
+        {_contract_script()}
+        """,
+    )
+    bridge = e2ee._BridgeProcess(
+        Path(command[0]), command=command, log_stderr=log_stderr
+    )
+    try:
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
+        bridge.close()
+        bridge._stderr_thread.join(timeout=2.0)
+        assert not bridge._stderr_thread.is_alive()
+        logged = capsys.readouterr().err
+        assert "PRIVATE" not in logged
+        if log_stderr:
+            assert logged.count("discarded oversized log line") == 1
+            assert ("ready after oversized" in logged) is trailing_newline
+        else:
+            assert logged == ""
+    finally:
+        bridge.close()
+
+
+def test_bridge_stderr_keeps_draining_after_deeply_nested_json(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    command = _write_bridge_script(
+        tmp_path,
+        f"""
+        import sys
+
+        sys.stderr.buffer.write(b"[" * 2000 + b'"PRIVATE"' + b"]" * 2000 + b"\\n")
+        sys.stderr.buffer.write(b"ready after malformed\\n")
+        sys.stderr.flush()
+        {_contract_script()}
+        """,
+    )
+    bridge = e2ee._BridgeProcess(Path(command[0]), command=command, log_stderr=True)
+    try:
+        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
+        bridge.close()
+        bridge._stderr_thread.join(timeout=2.0)
+        assert not bridge._stderr_thread.is_alive()
+        logged = capsys.readouterr().err
+        assert "PRIVATE" not in logged
+        assert logged.count("discarded malformed log line") == 1
+        assert "ready after malformed" in logged
+    finally:
+        bridge.close()
+
+
 @pytest.mark.parametrize("failing_method", ["newClient", "connect", "connectE2EE"])
 def test_standalone_sender_reaps_bridge_after_handshake_failure(
     monkeypatch: pytest.MonkeyPatch,

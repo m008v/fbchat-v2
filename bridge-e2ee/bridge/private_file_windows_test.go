@@ -4,6 +4,7 @@ package bridge
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"unsafe"
@@ -21,6 +22,29 @@ func TestCreatePrivateTempFileUsesOwnerAndSystemOnly(t *testing.T) {
 		t.Fatalf("Close() error = %v", err)
 	}
 	assertPrivateWindowsACL(t, path)
+}
+
+func TestE2EEMediaTempFileIsPrivateBeforePlaintextWrite(t *testing.T) {
+	file, err := createE2EEMediaTempFile(16)
+	if err != nil {
+		t.Fatalf("createE2EEMediaTempFile() error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = file.Close()
+		_ = os.Remove(file.Name())
+	})
+	descriptor, err := windows.GetSecurityInfo(
+		windows.Handle(file.Fd()),
+		windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION,
+	)
+	if err != nil {
+		t.Fatalf("GetSecurityInfo() error = %v", err)
+	}
+	assertPrivateWindowsSecurityDescriptor(t, file.Name(), descriptor)
+	if _, err := file.Write([]byte("plaintext")); err != nil {
+		t.Fatalf("private media Write() error = %v", err)
+	}
 }
 
 func TestDeviceStoreProtectsExistingAndAtomicallyReplacedFiles(t *testing.T) {
@@ -76,6 +100,11 @@ func assertPrivateWindowsACL(t *testing.T, path string) {
 	if err != nil {
 		t.Fatalf("GetNamedSecurityInfo(%q) error = %v", path, err)
 	}
+	assertPrivateWindowsSecurityDescriptor(t, path, descriptor)
+}
+
+func assertPrivateWindowsSecurityDescriptor(t *testing.T, path string, descriptor *windows.SECURITY_DESCRIPTOR) {
+	t.Helper()
 	control, _, err := descriptor.Control()
 	if err != nil {
 		t.Fatalf("Control(%q) error = %v", path, err)

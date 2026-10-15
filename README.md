@@ -177,7 +177,7 @@ fbchat-v2/
 | Thành phần | Tối thiểu | Khuyến nghị | Ghi chú |
 |---|---|---|---|
 | Python | 3.10 | 3.11 / 3.12 | Bắt buộc |
-| Go (toolchain) | 1.26.6 | 1.26.6+ | **Chỉ cần cho E2EE** - để build `fbchat-bridge-e2ee` |
+| Go (toolchain) | 1.26.9 | 1.26.9+ | **Chỉ cần cho E2EE** - để build `fbchat-bridge-e2ee` |
 | Git | bất kỳ | latest | Cần cho `go mod tidy` kéo `mautrix/meta` |
 | Hệ điều hành | Windows / Linux / macOS | - | - |
 | RAM | 256 MB | 1 GB+ | Bridge E2EE chiếm ~80–150 MB khi chạy |
@@ -256,7 +256,7 @@ Consumer chỉ dùng API HTTP hoặc listener MQTT thường có thể bỏ qua 
 
 #### 5.1. Cài Go toolchain
 
-- Tải về: <https://go.dev/dl/> (Go ≥ 1.26.6).
+- Tải về: <https://go.dev/dl/> (Go ≥ 1.26.9).
 - Sau khi cài, mở terminal mới và kiểm tra:
 
   ```bash
