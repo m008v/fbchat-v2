@@ -1,5 +1,60 @@
 # Agent Memories
 
+## 2026-10-15 — Chuẩn bị tiếp tục sau soak, cold restart và fault mạng cô lập
+
+### Mục tiêu
+- m008v yêu cầu giữ soak chạy hết rồi kiểm cold restart sau payload và mất mạng
+  riêng bridge; chưa phát hành `2.3.3`.
+
+### Đã thực hiện
+- Giữ nguyên run `.tmp/e2ee-receive-notice-20261015-1350`, persistent device
+  `.tmp/e2ee-soak-20261015-1329/device.json`; không mở listener mới trong lượt chuẩn bị.
+- Sau khi auto-review từ chối lịch lặp, m008v cho phép rõ lịch đánh thức một lần
+  lúc 15:55 ngày 15/10/2026 Asia/Saigon. Đã tạo và kiểm tra heartbeat
+  `ki-m-soak-fbchat-v2-v-ti-p-t-c-hai-ph-p-th`, COUNT=1, đúng chat hiện tại.
+- Lịch được phép đọc report và chạy hai phép thử đã duyệt, không tự sửa source,
+  commit/push hoặc phát hành. Giữ máy và Codex mở để tác vụ cục bộ chạy được.
+- Chuẩn bị runner `scripts/recovery_e2ee.py` và CONNECT fault helper trong repo;
+  lệnh sử dụng nằm ở DOCS mục cold restart sau payload. Chưa gọi live recovery.
+
+### Quyết định kỹ thuật
+- Chỉ chạy recovery khi report soak completed, acceptance đạt và shutdown sạch;
+  không dùng hai listener cùng device. Cần opt-in/ACK mới từ peer sau READY.
+- Proxy chỉ nằm trên loopback; child environment riêng, không đổi proxy Windows,
+  firewall hoặc adapter. Fault là cắt tunnel + từ chối CONNECT 30 giây, không
+  phải blackhole. Parent/worker có report riêng; phải kiểm cả controller cleanup.
+- Giữ việc gửi ACK/chuỗi tin qua E2EE thật, không nhận xác nhận từ chat Codex
+  thay cho delivery proof và không retry uncertain send.
+
+### Kiểm tra
+- Full Python `375 passed`, gồm 38 proxy test loopback và 29 recovery test giả;
+  QA độc lập 67/67 đạt. Ruff, Black, compileall, mypy Linux/Windows mỗi bên
+  51 source file đều đạt. Chưa kiểm live cold restart/network recovery mới.
+- Chạy CLI với report soak còn running: ValueError/exit 2, chưa tạo output,
+  lease hoặc listener. Sandbox identity trả PermissionError trước đó nên đã
+  kiểm lại ngoài sandbox; không tính lỗi quyền thành bằng chứng guard đúng.
+- Root sửa test cap kết nối để chấp nhận Windows reset/abort hoặc EOF hợp lệ;
+  vẫn kiểm tunnel đang tồn tại usable và rejected counter, không bỏ kiểm tra.
+- Soak tại khoảng 14:22 đã qua 32 phút, text/media ACK true, hai socket online,
+  queue drop 0 và chưa có error event. Chưa có kết quả đủ 2 giờ/clean shutdown.
+- UTF-8 strict/mojibake và diff/secrets được kiểm trước commit; không đưa
+  config, device, log hoặc `.vs/` vào Git.
+
+### Việc còn lại
+- Lúc 15:55 đọc report cuối, không suy diễn status=completed thành acceptance.
+- Nếu đạt, dùng cùng binary/device và output mới `.tmp/e2ee-recovery-20261015`;
+  runner sẽ yêu cầu challenge mới, ảnh/file/ACK, rồi net-ready và 5 tin đánh số.
+- Trước launch kiểm process tree cũ đã thoát: snapshot 14:34 có driver `4840`,
+  Python `18076`, conhost `25060`, bridge `33628` (bridge tạo lúc 14:00:02).
+  Kiểm cả child mới nếu watchdog respawn tiếp; không kill PID đã tái sử dụng.
+  Recovery lease chỉ ngăn các recovery controller cùng cơ chế, không phải
+  universal lock cho bot/soak khác. Không chạy consumer khác cùng device.
+- Đọc challenge từ report mới khi `cold_restart_ready`; gửi peer hướng dẫn
+  READY. Lần lượt cần text/media ACK, net-ready, 5 tin riêng cách nhau 10 giây
+  và net-ok sau phục hồi. Chỉ báo đạt khi cả report.json và controller.json đạt.
+- Khi cần peer, báo READY và hỏi một lượt; không giả định sẽ có người gửi tự động.
+- Không tag, GitHub Release, PyPI publish hoặc deploy. Giữ nguyên `.vs/`.
+
 ## 2026-10-15 — Chẩn đoán canary không reply và sửa CI Linux
 
 ### Mục tiêu
@@ -36,8 +91,10 @@
   "ok rồi" sau câu hỏi xác nhận thấy notice. Sau đó nhận challenge E2EE và
   ACK nonce: `text_reply_rpc_ok` + `peer_confirmed_text` đều true.
 - Live E2EE ảnh 17.151 byte và document 17.686 byte: download/giải mã,
-  SHA-256 và echo RPC đều đạt; peer xác nhận nhận lại cả hai. ACK nonce media
-  chưa có trong report tại thời điểm ghi. Không lưu nội dung/tên file gốc.
+  SHA-256 và echo RPC đều đạt; peer xác nhận nhận lại cả hai. Sau khi gửi ACK
+  trong Messenger, report khoảng 14:05 ghi `peer_confirmed_media=true`.
+  ACK handler chỉ ghi nhận vào report, không gửi reply; im lặng sau ACK không
+  phải dấu hiệu listener lỗi. Không lưu nội dung/tên file gốc.
 - Live listener dùng harness trước media marker follow-up; happy path đã chạy
   thật, failure/uncertain-send của patch được regression-test riêng.
 - Fault lúc 14:00:00: watchdog respawn lần đầu thành công, generation 2,
@@ -46,15 +103,20 @@
   riêng từ peer cho tin sau reconnect.
 - CI của commit `19bc416` chỉ fail Python quality tại Linux mypy; 11 job khác
   đạt. Guard được tái hiện và sửa local; CI commit `fa05f0f` đạt 12/12 job,
-  run `38695150013`. Media marker follow-up cần CI mới sau push.
+  run `38695150013`. Media marker follow-up `5f56d45` cũng đạt 12/12 job,
+  run `38695991477`, xác minh qua API public sau khi ACK media được ghi nhận.
 - Đã kiểm tra UTF-8 strict và mojibake trên các file thay đổi trước commit.
 
 ### Việc còn lại
 - Run mới tự chạy 2 giờ từ ready, dự kiến kết thúc khoảng 15:50; đọc từng
   acceptance check và shutdown trước khi kết luận. Không có heartbeat đã tạo.
-- Cần ACK nonce media và kết quả đủ thời gian/clean shutdown. Bridge crash khác
+- Cần kết quả đủ thời gian/clean shutdown. Bridge crash khác
   với mất mạng thật; chưa test outage. Không suy diễn E2EE text/ảnh/file đã
   chạy được thành bằng chứng mọi kiểu message và mọi provider outage ổn định.
+- Sau soak, cold restart lại device đã nhận/gửi payload thật rồi kiểm text/media
+  để xác nhận persisted session/ratchet; identity reuse trước payload chưa đủ.
+- Tiếp theo test ngắt mạng riêng bridge có kiểm soát và đối chiếu chuỗi tin
+  đánh số trước/sau phục hồi. Đây mới là đề xuất, chưa thực hiện hai gate này.
 - Giữ version `2.3.3`; không tag, GitHub Release hay upload PyPI. Giữ `.vs/`.
 
 ## 2026-10-15 — Media ACL, bounded logs, typing cancellation và E2EE soak

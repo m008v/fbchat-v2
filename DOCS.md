@@ -1144,6 +1144,8 @@ sau khi nhận đủ ảnh và file echo, gửi mã `media-ok-...` mà bot hư�
 Hai mã này được tạo riêng từng run và chỉ gửi qua E2EE. Đây là xác nhận từ đầu bên kia, khác
 với việc RPC gửi trả thành công. Event regular và event cũ không được tính là
 bằng chứng E2EE. Timeout gửi không được tự retry.
+Hai ACK text/media chỉ cập nhật `peer_confirmed_text`/`peer_confirmed_media`
+trong report, không tạo thêm reply; im lặng sau ACK không tự động là lỗi.
 
 Khi không thấy reply, xem counter `observed` trong report: `challenge_message`
 nghĩa là mã đã tới qua Go LightSpeed regular, còn `challenge_e2eeMessage` là
@@ -1170,6 +1172,45 @@ bằng chứng/không đạt. `status=completed` riêng lẻ không đồng ngh�
 đã pass. Ctrl+C yêu cầu cleanup listener/bridge trước khi ghi report cuối.
 Nếu chạy nền, tạo file `stop.request` trong output directory để yêu cầu cùng
 luồng shutdown sạch; không xóa device để dừng bot.
+
+### Cold restart sau payload và test mất mạng riêng bridge
+
+Chạy sau khi soak kết thúc và shutdown sạch; không mở hai listener dùng cùng
+device. Kiểm tra driver/bridge con của run cũ đã thoát trước khi launch;
+recovery lease không khóa được consumer khác không dùng cùng cơ chế.
+Runner từ chối report chưa hoàn tất hoặc chưa đạt acceptance. Nó dùng
+lại device đã trao đổi payload thật, yêu cầu challenge/ACK mới và echo ảnh/file
+để kiểm chứng session được khôi phục, không chỉ so sánh identity.
+
+```powershell
+python scripts/recovery_e2ee.py `
+  --soak-report .tmp/e2ee-receive-notice-20261015-1350/report.json `
+  --binary-path .tmp/fbchat-bridge-e2ee-soak.exe `
+  --device-path .tmp/e2ee-soak-20261015-1329/device.json `
+  --output-dir .tmp/e2ee-recovery-20261015
+```
+
+Parent giữ CONNECT proxy chỉ trên loopback và truyền proxy qua environment
+riêng của tiến trình test con. Không thay proxy Windows, firewall hay network
+adapter. Proxy relay byte mã hóa, không giải TLS hoặc ghi header/payload.
+Sau khi cold restart roundtrip đạt, peer được hướng dẫn gửi chuỗi tin đánh số;
+proxy cắt các tunnel của mình và từ chối CONNECT mới trong 30 giây rồi tự mở
+lại. Đây là socket reset cộng thời gian không thể CONNECT, không phải mô phỏng
+packet blackhole hay mọi dạng mạng half-open.
+
+Phải có bằng chứng transport phục hồi, chuỗi tin đủ/không trùng và ACK E2EE mới
+sau phục hồi. Report phân biệt socket tự reconnect với watchdog tạo process
+mới; RPC gửi thành công không thay được xác nhận từ peer. Evidence không chứa
+chat ID, tên file gốc, nội dung chat hoặc khóa media. Timeout/cancellation phải
+dừng đúng child và đóng proxy trước khi kết luận cleanup đạt.
+Đọc cả `report.json` của worker và `controller.json` của parent; chỉ báo đạt
+khi acceptance của cả hai đều true. Worker hoàn tất không tự chứng minh proxy
+đã shutdown sạch. Lệnh `--help` liệt kê timeout của từng phase; output phải mới.
+Theo dõi `report.json` để lấy challenge khi `status=cold_restart_ready`; log
+worker nằm trong output directory. Hai ACK text/media vẫn được gửi trong
+Messenger. Khi bot hướng dẫn, gửi mã `net-ready-...`, rồi gửi riêng năm tin
+`netseq-...-1` đến `netseq-...-5`, cách nhau khoảng 10 giây. Cuối cùng gửi
+`net-ok-...` chỉ xuất hiện trong reply E2EE sau phục hồi.
 
 ---
 
