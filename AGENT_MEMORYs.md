@@ -47,6 +47,21 @@
 - Chưa tạo tag, GitHub Release hoặc upload PyPI theo yêu cầu của người dùng.
 - CI đa nền tảng và Go race vẫn cần chạy trên commit đã push; local Windows
   không thay thế bằng chứng đó.
+- Canary hiện chứng minh E2EE authenticated/ready và regular Go LightSpeed
+  receive/send/reconnect; chưa có bằng chứng payload E2EE hai chiều hoặc cold
+  restart dùng lại persistent device. Driver canary dùng `e2ee_memory_only=True`.
+- Ưu tiên tiếp theo: media plaintext temp dùng `createPrivateTempFile` để có
+  DACL Windows từ lúc tạo; typing dùng context có timeout từ `c.ctx`; giới hạn
+  log line/buffer ở Go writer và Python stderr reader. Mới phân tích code,
+  chưa triển khai các thay đổi này.
+
+### Git
+- Sau yêu cầu trực tiếp “push đi”, commit source
+  `31262eb70ebacf3047e5c2510624d0753b7d1417` đã push fast-forward lên
+  `origin/main`; `git ls-remote` xác nhận cùng SHA.
+- CI run `38689231679` được tạo cho đúng commit, đang chạy tại lúc kiểm tra.
+  Không dispatch release workflow, không tạo tag và không upload PyPI.
+- `.vs/` tiếp tục được giữ nguyên, không đưa vào commit.
 
 ## 2026-09-15 — Hoàn tất replacement release và PyPI v2.3.2
 
