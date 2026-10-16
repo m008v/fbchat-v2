@@ -20,7 +20,7 @@
 
 
 > [!IMPORTANT]
-> This source tree is version `2.3.3` (release name `v.2.3.3`, technical tag `v2.3.3`). Sessions and async APIs use `httpx`; a few blocking and compatibility paths still use `requests`. If you are upgrading from an older version, update your calls to use `async/await`. The older `requests` version without `async/await` is available at [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4).
+> Version 2.3.3 uses `async/await`. If you're upgrading from an older version, update your function calls using the examples below. To keep using the synchronous API, use [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4).
 
 > [!WARNING]
 > This is not an official Facebook product. For the official chatbot API, see [Messenger Platform](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` uses personal Facebook accounts and session cookies, which carries risks for your session credentials and account. Consider those risks before using it.

@@ -40,6 +40,12 @@
 - Bỏ chữ “phần” trong câu giới thiệu E2EE theo annotation của m008v. PyPI dùng
   Twine 7 và token đã lưu trong Windows keyring qua cơ chế xác thực của Twine;
   không đọc hoặc in token bằng tool. Không sửa checkout `fbchat-v2-pypi`.
+- m008v phản hồi câu mở đầu vẫn cứng: bỏ thông tin tên/tag release và thuật ngữ
+  triển khai khỏi lời hướng dẫn đầu README Việt/Anh. Thông tin HTTP/compatibility
+  vẫn có ở mục yêu cầu và API, không sửa code ví dụ.
+- Đã hủy Release run `38901988739` trước khi có GitHub Release/PyPI `2.3.3`.
+  m008v cho phép tạo lại tag `v2.3.3` để đưa README mới vào artifact; đã báo
+  người đã fetch tag cũ cần cập nhật. Tag cũ trỏ `476fd9c`, chưa dùng để publish.
 
 ## 2026-10-16 — Xác minh CI của bản offline fd731ac
 

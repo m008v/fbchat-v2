@@ -19,7 +19,7 @@
 ---
 
 > [!IMPORTANT]
-> Mã nguồn này ở phiên bản `2.3.3` (tên release `v.2.3.3`, tag kỹ thuật `v2.3.3`). Session và các API async dùng `httpx`; `requests` chỉ còn ở một số phần blocking/compatibility. Nếu chuyển từ bản cũ sang, bạn cần sửa các lời gọi sang `async/await`. Bản dùng `requests` không có `async/await` vẫn ở nhánh [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4).
+> Bản 2.3.3 dùng `async/await`. Nếu đang dùng bản cũ, bạn cần sửa cách gọi hàm theo ví dụ bên dưới. Muốn giữ code đồng bộ thì dùng bản [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4).
 
 > [!WARNING]
 > Đây không phải sản phẩm chính thức của Facebook. Nếu cần API chatbot chính thức, xem [Messenger Platform](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` dùng tài khoản và cookie Facebook cá nhân, nên có rủi ro với bảo mật phiên và tài khoản. Cân nhắc trước khi sử dụng.
