@@ -1,5 +1,31 @@
 # Agent Memories
 
+## 2026-10-16 — Xác minh CI của bản offline fd731ac
+
+### Mục tiêu
+- Kiểm tra lại CI, chỉ sửa/push nếu có lỗi; không mở live hoặc phát hành.
+- Sau khi CI đạt, m008v yêu cầu commit/push riêng phần memory đã ghi cục bộ.
+
+### Đã thực hiện
+- Đọc trang checks của đúng commit `fd731acf531e8be613a96e0559aa47ea083270d4`
+  bằng trình duyệt; CI run `38883970017` có đủ 12 job succeeded.
+- Các job đạt: Python quality; Python 3.10–3.14; Python 3.11 Windows;
+  wheel/sdist smoke; Go test/vet/race; native bridge Linux/Windows/macOS.
+- API GitHub qua shell timeout; trang Actions từ web fetch trả cache cũ nên
+  không dùng chúng làm bằng chứng trạng thái hiện tại.
+
+### Quyết định kỹ thuật
+- Không có lỗi CI nên không sửa source, không tạo commit/push mới chỉ để rerun.
+- Commit/push riêng memory theo yêu cầu tiếp theo của m008v; không thay source
+  hoặc version. Giữ nguyên `.vs/`.
+
+### Kiểm tra
+- Bằng chứng: https://github.com/m008v/fbchat-v2/actions/runs/38883970017
+- Không chạy lại listener hoặc dùng cookie/device thật. Version vẫn `2.3.3`;
+  không tag, GitHub Release, PyPI publish hoặc deploy.
+- UTF-8 strict/mojibake và diff của entry đạt. Thay đổi chỉ có tài liệu nên
+  không chạy lại test code; CI 12/12 ở trên thuộc commit `fd731ac`.
+
 ## 2026-10-16 — ACK rõ ràng và diễn tập recovery hoàn toàn offline
 
 ### Mục tiêu
