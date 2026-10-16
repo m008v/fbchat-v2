@@ -15,6 +15,7 @@ from scripts.soak_e2ee import (
     device_identity,
     positive_seconds,
     process_rss,
+    replace_pending,
     validate_device_path,
 )
 
@@ -476,3 +477,186 @@ def test_process_rss_reads_current_process() -> None:
 
     rss = process_rss(os.getpid())
     assert rss is None or rss > 0
+
+
+def media_ack_ready(canary: Canary) -> None:
+    canary.peer = ("test@msgr", "peer@msgr")
+    canary.media_ack_prompted = True
+    canary.report["media"] = [
+        {"kind": kind, "echo_rpc_ok": True, "sha256_verified": True}
+        for kind in ("image", "document")
+    ]
+
+
+def test_final_media_ack_sends_exactly_one_truthful_confirmation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canary = make_canary(tmp_path)
+    media_ack_ready(canary)
+    calls = []
+
+    def send(text: str) -> None:
+        calls.append(text)
+        checkpoint = json.loads(
+            (canary.output / "report.json").read_text(encoding="utf-8")
+        )
+        assert checkpoint["peer_confirmed_media"] is True
+        assert checkpoint["media_ack_notice_attempted"] is True
+        assert checkpoint["media_ack_notice_delivery"] == "unknown"
+
+    monkeypatch.setattr(canary, "send_text", send)
+    incoming = event(canary.media_ack, message_id="media-ack")
+    canary.handle_event(incoming)
+    canary.handle_event(incoming)
+    canary.handle_event(event(canary.media_ack, message_id="new-ack-id"))
+    assert len(calls) == 1
+    assert "Text" not in calls[0]  # No text ACK was received in this case.
+    assert canary.report["peer_confirmed_media"] is True
+    assert canary.report["peer_confirmed_text"] is False
+    assert canary.report["media_ack_notice_rpc_ok"] is True
+    assert canary.report["media_ack_notice_delivery"] == "rpc_confirmed"
+
+
+@pytest.mark.parametrize("kind", [TimeoutError, RuntimeError])
+def test_final_media_ack_notice_failure_preserves_proof_without_retry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: type[Exception],
+) -> None:
+    canary = make_canary(tmp_path)
+    media_ack_ready(canary)
+    calls = []
+
+    def send(text: str) -> None:
+        calls.append(text)
+        raise kind("private-provider-message-id")
+
+    monkeypatch.setattr(canary, "send_text", send)
+    canary.handle_event(event(canary.media_ack, message_id="ack1"))
+    canary.handle_event(event(canary.media_ack, message_id="ack2"))
+    assert len(calls) == 1
+    assert canary.report["peer_confirmed_media"] is True
+    assert canary.report["media_ack_notice_rpc_ok"] is False
+    assert canary.report["media_ack_notice_delivery"] == "unknown"
+    assert canary.report["errors"] == [
+        {"stage": "media_ack_notice", "type": kind.__name__}
+    ]
+    assert "private-provider-message-id" not in json.dumps(canary.report)
+
+
+@pytest.mark.parametrize(
+    "reason",
+    ["self", "stale", "other_peer", "not_prompted", "regular", "unverified_digest"],
+)
+def test_final_media_ack_rejects_untrusted_or_premature_events(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+) -> None:
+    canary = make_canary(tmp_path)
+    media_ack_ready(canary)
+    incoming = event(canary.media_ack)
+    if reason == "self":
+        incoming["data"]["senderId"] = "clone-self"
+    elif reason == "stale":
+        incoming["data"]["timestampMs"] = canary.minimum_event_timestamp_ms - 1
+    elif reason == "other_peer":
+        incoming["data"]["senderJid"] = "other-peer"
+    elif reason == "not_prompted":
+        canary.media_ack_prompted = False
+    elif reason == "regular":
+        incoming["type"] = "message"
+    elif reason == "unverified_digest":
+        canary.report["media"][0]["sha256_verified"] = False
+    sent = []
+    monkeypatch.setattr(canary, "send_text", sent.append)
+    canary.handle_event(incoming)
+    # A fresh prompt may be sent for the missing-prompt case, never a final notice.
+    assert not any("Đã nhận ACK" in text for text in sent)
+    assert canary.report["peer_confirmed_media"] is False
+    assert canary.report["media_ack_notice_attempted"] is False
+
+
+def test_pending_replace_retries_only_bounded_sharing_violation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts import soak_e2ee
+
+    pending, destination = tmp_path / "report.pending", tmp_path / "report.json"
+    calls = []
+
+    def replace(path: Path, target: Path) -> Path:
+        calls.append(target)
+        if len(calls) < 3:
+            raise PermissionError("synthetic sharing violation")
+        return target
+
+    monkeypatch.setattr(Path, "replace", replace)
+    monkeypatch.setattr(soak_e2ee.time, "sleep", lambda seconds: None)
+    replace_pending(pending, destination)
+    assert len(calls) == 3
+
+    def fail(path: Path, target: Path) -> Path:
+        raise PermissionError("persistent permission denied")
+
+    monkeypatch.setattr(Path, "replace", fail)
+    clock = iter([1.0, 2.1])
+    monkeypatch.setattr(soak_e2ee.time, "monotonic", lambda: next(clock))
+    with pytest.raises(PermissionError):
+        replace_pending(pending, destination)
+
+
+def test_pending_replace_never_retries_other_io_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts import soak_e2ee
+
+    def fail(path: Path, target: Path) -> Path:
+        raise FileNotFoundError("synthetic absent pending")
+
+    monkeypatch.setattr(Path, "replace", fail)
+    monkeypatch.setattr(
+        soak_e2ee.time, "sleep", lambda seconds: pytest.fail("must not retry")
+    )
+    with pytest.raises(FileNotFoundError):
+        replace_pending(tmp_path / "missing.pending", tmp_path / "report.json")
+
+
+@pytest.mark.parametrize("cleanup_raises", [False, True])
+def test_soak_startup_timeout_and_cleanup_error_are_failed_not_peer_wait(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    cleanup_raises: bool,
+) -> None:
+    from scripts import soak_e2ee
+
+    canary = make_canary(tmp_path)
+    canary.output.rmdir()  # run() owns its fresh synthetic output directory.
+
+    async def login(cookie: str) -> dict:
+        return {"FacebookID": "synthetic"}
+
+    def startup() -> None:
+        raise TimeoutError("private-provider-message")
+
+    def cleanup() -> bool:
+        if cleanup_raises:
+            raise OSError("private-cleanup-message")
+        return True
+
+    monkeypatch.setenv("FBCHAT_COOKIE", "synthetic-offline-cookie")
+    monkeypatch.setattr(soak_e2ee, "dataGetHome", login)
+    monkeypatch.setattr(canary, "start_listener", startup)
+    monkeypatch.setattr(canary, "stop_listener", cleanup)
+    assert canary.run() == 1
+    assert canary.report["status"] == canary.report["outcome"] == "failed"
+    assert canary.report["phase"] == ("shutdown" if cleanup_raises else "startup")
+    assert canary.report["reason_code"] == (
+        "cleanup_failed" if cleanup_raises else "startup_failure"
+    )
+    assert canary.report["acceptance_passed"] is False
+    assert "private-provider-message" not in json.dumps(canary.report)
+    assert "private-cleanup-message" not in json.dumps(canary.report)

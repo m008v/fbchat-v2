@@ -1,5 +1,54 @@
 # Agent Memories
 
+## 2026-10-16 — ACK rõ ràng và diễn tập recovery hoàn toàn offline
+
+### Mục tiêu
+- Hoàn thiện phản hồi ACK/chẩn đoán và integration recovery offline; commit/push
+  sau kiểm tra. Không mở lại live hoặc phát hành, giữ version `2.3.3`.
+
+### Đã thực hiện
+- `scripts/soak_e2ee.py`: ACK media hợp lệ có đúng một tin xác nhận cuối; lưu
+  peer proof và consume trước RPC. Không retry uncertain send, không nhận ACK
+  trùng/self/cũ/khác peer hoặc thiếu digest. Tin cuối chỉ xác nhận ảnh/file.
+- Worker/controller có `outcome`, `phase`, `reason_code`, `missing_evidence`,
+  `waiting_for` allowlist. Deadline thiếu peer là inconclusive, không phải pass;
+  lỗi thực thi/drop/trùng tin/cleanup/exit bất thường không bị thiếu ACK che mất.
+- Phân biệt `media_ack_notice_delivery` là `not_attempted`, `unknown` hoặc
+  `rpc_confirmed`; RPC thành công không chứng minh peer đã đọc tin cuối.
+- `scripts/recovery_e2ee.py`: thêm timing seams giữ nguyên production defaults;
+  parent đối chiếu report, exit code và cleanup. Chặn report có scope
+  `offline_simulation` làm gate live; report legacy thật chưa có scope vẫn dùng được.
+- Thêm worker fixture và 4 integration test: controller/Popen/proxy thật với hai
+  stream localhost; chỉ session/peer/RPC giả. Payload/ACK giả đi qua tunnel trước
+  handler. Kiểm cut/503/reconnect, thiếu peer, cancellation và worker treo.
+- Bài tích hợp bắt được race Windows khi reader giữ JSON đang được replace;
+  helper retry riêng PermissionError tối đa 1 giây, lỗi I/O khác vẫn nổi lên.
+- Cập nhật DOCS, không thay public API, dependency hoặc package snapshot.
+
+### Quyết định kỹ thuật
+- Giữ semantics legacy soak `status=completed` chỉ cho biết chạy hết duration;
+  phải đọc thêm outcome/acceptance. Recovery chỉ completed khi đủ acceptance.
+- ACK media thật vẫn được giữ nếu tin xác nhận cuối thất bại, nhưng toàn bộ
+  acceptance không đạt. Không yêu cầu thêm ACK cho tin xác nhận để tránh vòng lặp.
+- Offline chỉ chứng minh driver/wiring/protocol giả và cleanup cục bộ; không
+  chứng minh mật mã Messenger, cold restart hoặc provider outage live.
+- Không dùng cookie/device/binary live, không đổi proxy/firewall/adapter toàn máy.
+
+### Kiểm tra
+- Full Python suite: `413 passed` trong 41,39 giây trên Windows/Python 3.11.15.
+  Trong đó có 103 unit test soak/recovery và 4 integration offline.
+- QA độc lập trước guard exit cuối: 97 unit và 4 integration đều đạt; sau guard
+  cuối đã chạy lại full suite. Ruff, Black (125 file), compileall, canonical
+  snapshot check đạt; mypy Linux/Windows mỗi bên 51 source file và canonical
+  namespace 45 source file đạt. `uv pip check --offline`: 32 package tương thích.
+- UTF-8 strict/mojibake, diff check và phạm vi/secrets được kiểm trước commit;
+  fixture chỉ chứa dữ liệu tổng hợp. Giữ nguyên `.vs/` ngoài phạm vi.
+
+### Việc còn lại
+- Live cold restart/network vẫn hoãn theo yêu cầu m008v; chưa có bằng chứng live
+  mới. Chỉ mở lại khi m008v sẵn sàng, dùng challenge/ACK mới và một listener/device.
+- Không tag, GitHub Release, publish PyPI hoặc deploy; version vẫn `2.3.3`.
+
 ## 2026-10-15 — Chuẩn bị tiếp tục sau soak, cold restart và fault mạng cô lập
 
 ### Mục tiêu

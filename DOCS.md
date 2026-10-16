@@ -1144,8 +1144,14 @@ sau khi nhận đủ ảnh và file echo, gửi mã `media-ok-...` mà bot hư�
 Hai mã này được tạo riêng từng run và chỉ gửi qua E2EE. Đây là xác nhận từ đầu bên kia, khác
 với việc RPC gửi trả thành công. Event regular và event cũ không được tính là
 bằng chứng E2EE. Timeout gửi không được tự retry.
-Hai ACK text/media chỉ cập nhật `peer_confirmed_text`/`peer_confirmed_media`
-trong report, không tạo thêm reply; im lặng sau ACK không tự động là lỗi.
+ACK text cập nhật `peer_confirmed_text`. Khi ACK media hợp lệ xác nhận đã nhận
+đủ ảnh và file, bot gửi đúng một tin xác nhận cuối; không phản hồi lặp cho ACK
+trùng, tin của bot, event cũ hoặc peer khác. Lỗi gửi/timeout của tin xác nhận
+không xóa bằng chứng peer đã ACK và không được tự retry.
+`media_ack_notice_delivery=rpc_confirmed` chỉ xác nhận RPC gửi tin cuối trả
+thành công, không chứng minh peer đã đọc tin đó. Nếu kết quả gửi chưa rõ,
+trường này là `unknown`; acceptance vẫn không đạt dù bằng chứng ACK media
+đã được giữ lại.
 
 Khi không thấy reply, xem counter `observed` trong report: `challenge_message`
 nghĩa là mã đã tới qua Go LightSpeed regular, còn `challenge_e2eeMessage` là
@@ -1211,6 +1217,33 @@ worker nằm trong output directory. Hai ACK text/media vẫn được gửi tro
 Messenger. Khi bot hướng dẫn, gửi mã `net-ready-...`, rồi gửi riêng năm tin
 `netseq-...-1` đến `netseq-...-5`, cách nhau khoảng 10 giây. Cuối cùng gửi
 `net-ok-...` chỉ xuất hiện trong reply E2EE sau phục hồi.
+
+Report có `outcome` riêng: `running`, `passed`, `inconclusive`, `failed` hoặc
+`cancelled`. Chỉ deadline chờ bằng chứng từ peer mới có thể là `inconclusive`;
+lỗi thực thi, transport, queue drop hoặc cleanup không được che thành thiếu ACK.
+`phase`, `reason_code`, `missing_evidence` và `waiting_for` dùng tập giá trị cố
+định để chỉ đúng bước đang chờ, không sao chép nội dung chat hoặc lỗi provider.
+Controller đối chiếu kết quả worker cùng exit code và cleanup của chính nó;
+thiếu bằng chứng không bao giờ đồng nghĩa pass.
+
+### Diễn tập recovery hoàn toàn offline
+
+```powershell
+python -m pytest tests/test_recovery_offline_integration.py -q
+```
+
+Bài này chạy controller, subprocess worker và CONNECT proxy thật với hai
+stream localhost. Chỉ session, peer và bridge RPC là fixture giả; payload/ACK
+giả vẫn phải đi qua tunnel. Test đối chiếu outage, từ chối CONNECT khi bị cắt,
+reconnect, timeout/cancellation, report worker/controller và cleanup process,
+socket, device lease. Không mock `Popen` hoặc hành vi proxy trong bài tích hợp.
+
+Config/device chỉ là dữ liệu tổng hợp trong thư mục test tạm; không dùng cookie,
+device hoặc bridge live đang có của người dùng. Mọi kết nối đều là loopback,
+không thay proxy Windows, firewall hay adapter. Report diễn tập được đánh dấu
+`evidence_scope=offline_simulation`, không được dùng làm bằng chứng E2EE thật
+hoặc đưa ngược vào gate live. Bài này kiểm driver/protocol giả và wiring local,
+không kiểm mật mã Messenger hay khả năng chịu lỗi của provider.
 
 ---
 

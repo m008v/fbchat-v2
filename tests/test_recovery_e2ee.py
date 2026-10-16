@@ -90,6 +90,7 @@ def prove_cold(instance: recovery.RecoveryCanary) -> None:
         text_reply_rpc_ok=True,
         peer_confirmed_text=True,
         peer_confirmed_media=True,
+        media_ack_notice_rpc_ok=True,
         media=[
             {"kind": kind, "sha256_verified": True, "echo_rpc_ok": True}
             for kind in ("image", "document")
@@ -379,7 +380,18 @@ def test_worker_command_uses_argument_list_not_shell(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "worker_exit,proxy_clean,expected", [(0, True, 0), (2, True, 2), (0, False, 3)]
+    "worker_exit,proxy_clean,expected,worker_outcome,shutdown_clean",
+    [
+        (0, True, 0, "normal", True),
+        (2, True, 2, "normal", True),
+        (0, False, 3, "normal", True),
+        (1, True, 1, "inconclusive", True),
+        (0, True, 2, "inconclusive", True),
+        (-9, True, -9, "cancelled", True),
+        (2, True, 2, "inconclusive", False),
+        (2, True, 2, "cancelled", True),
+        (0, True, 2, "normal", False),
+    ],
 )
 def test_controller_worker_environment_cleanup_and_acceptance(
     tmp_path: Path,
@@ -387,6 +399,8 @@ def test_controller_worker_environment_cleanup_and_acceptance(
     worker_exit: int,
     proxy_clean: bool,
     expected: int,
+    worker_outcome: str,
+    shutdown_clean: bool,
 ) -> None:
     args = inputs(tmp_path)
     captured = {}
@@ -419,6 +433,37 @@ def test_controller_worker_environment_cleanup_and_acceptance(
 
         def __init__(self, command: list, **kwargs: object) -> None:
             captured.update(command=command, kwargs=kwargs)
+            completed = worker_exit == 0 and worker_outcome == "normal"
+            stale_checkpoint = worker_outcome != "normal"
+            recovery.write_object(
+                args.output_dir / "report.json",
+                {
+                    "status": (
+                        worker_outcome
+                        if stale_checkpoint
+                        else ("completed" if completed else "failed")
+                    ),
+                    "outcome": (
+                        worker_outcome
+                        if stale_checkpoint
+                        else ("passed" if completed else "failed")
+                    ),
+                    "phase": (
+                        "text"
+                        if stale_checkpoint
+                        else ("completed" if completed else "startup")
+                    ),
+                    "reason_code": (
+                        "peer_text_timeout"
+                        if stale_checkpoint
+                        else ("accepted" if completed else "startup_failure")
+                    ),
+                    "missing_evidence": ["text_challenge"] if stale_checkpoint else [],
+                    "acceptance_passed": completed,
+                    "shutdown_clean": shutdown_clean,
+                    "evidence_scope": "offline_simulation",
+                },
+            )
 
         def poll(self) -> int:
             return self.returncode
@@ -432,6 +477,16 @@ def test_controller_worker_environment_cleanup_and_acceptance(
     assert "shell" not in captured["kwargs"]
     report = recovery.read_object(args.output_dir / "controller.json")
     assert report["acceptance_passed"] is (expected == 0)
+    if proxy_clean and not shutdown_clean:
+        assert report["status"] == report["outcome"] == "failed"
+        assert report["phase"] == "shutdown"
+        assert report["reason_code"] == "cleanup_failed"
+    elif proxy_clean and worker_exit != 2 and expected != 0:
+        assert report["status"] == report["outcome"] == "failed"
+        assert report["phase"] == "controller"
+        assert report["reason_code"] == "worker_failed"
+    elif worker_outcome == "cancelled":
+        assert report["status"] == report["outcome"] == "cancelled"
     assert not args.device_path.with_name(
         args.device_path.name + ".recovery.lock"
     ).exists()
@@ -490,3 +545,224 @@ def test_outage_requires_observed_down_state_not_missing_health_rpc(
     instance.poll_network()
     assert instance.report["both_transports_observed_down"] is True
     assert not instance.report["network_transport_recovered"]
+
+
+def test_offline_report_cannot_satisfy_future_live_gate(tmp_path: Path) -> None:
+    args = inputs(tmp_path)
+    previous = recovery.read_object(args.previous_report)
+    previous["evidence_scope"] = "offline_simulation"
+    recovery.write_object(args.previous_report, previous)
+    with pytest.raises(ValueError, match="offline"):
+        recovery.validate_inputs(args)
+
+
+@pytest.mark.parametrize(
+    "progress,phase,reason,missing",
+    [
+        (
+            "none",
+            "text",
+            "peer_text_timeout",
+            ["text_challenge", "image_roundtrip", "document_roundtrip", "media_ack"],
+        ),
+        (
+            "text_send",
+            "text",
+            "peer_text_ack_timeout",
+            ["text_ack", "image_roundtrip", "document_roundtrip", "media_ack"],
+        ),
+        (
+            "text",
+            "media",
+            "peer_media_timeout",
+            ["image_roundtrip", "document_roundtrip", "media_ack"],
+        ),
+        ("media", "media_ack", "peer_media_ack_timeout", ["media_ack"]),
+    ],
+)
+def test_peer_deadlines_are_inconclusive_with_exact_missing_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    progress: str,
+    phase: str,
+    reason: str,
+    missing: list[str],
+) -> None:
+    instance = canary(tmp_path)
+    instance.args.cold_timeout = 0.15
+    instance.args.duration = 2.0
+    if progress != "none":
+        instance.report["text_reply_rpc_ok"] = True
+    if progress in {"text", "media"}:
+        instance.report["peer_confirmed_text"] = True
+    if progress == "media":
+        instance.report["media"] = [
+            {"kind": kind, "echo_rpc_ok": True, "sha256_verified": True}
+            for kind in ("image", "document")
+        ]
+
+    async def login(cookie: str) -> dict:
+        assert cookie == "synthetic-offline-cookie"
+        return {"FacebookID": "synthetic"}
+
+    monkeypatch.setenv("FBCHAT_COOKIE", "synthetic-offline-cookie")
+    monkeypatch.setattr(recovery, "dataGetHome", login)
+    monkeypatch.setattr(instance, "start_listener", lambda: None)
+    monkeypatch.setattr(instance, "stop_listener", lambda: True)
+    monkeypatch.setattr(instance, "sample", lambda: None)
+    clock = [100.0]
+
+    def tick() -> float:
+        clock[0] += 0.05
+        return clock[0]
+
+    monkeypatch.setattr(recovery.time, "monotonic", tick)
+    assert instance.run() == 2
+    assert instance.report["status"] == instance.report["outcome"] == "inconclusive"
+    assert instance.report["phase"] == phase
+    assert instance.report["reason_code"] == reason
+    assert (
+        instance.report["missing_evidence"] == instance.report["waiting_for"] == missing
+    )
+    assert instance.report["network_stage"] == "not_started"
+    assert instance.report["errors"] == []
+    assert instance.report["shutdown_clean"] is True
+    assert instance.report["acceptance_passed"] is False
+
+
+@pytest.mark.parametrize("fault", ["startup", "health", "peer_send"])
+def test_real_fault_timeouts_are_not_reported_as_missing_peer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fault: str,
+) -> None:
+    instance = canary(tmp_path)
+    instance.args.cold_timeout = 1.0
+
+    async def login(cookie: str) -> dict:
+        return {"FacebookID": "synthetic"}
+
+    monkeypatch.setenv("FBCHAT_COOKIE", "synthetic-offline-cookie")
+    monkeypatch.setattr(recovery, "dataGetHome", login)
+    monkeypatch.setattr(instance, "stop_listener", lambda: True)
+
+    def fail() -> None:
+        raise TimeoutError("private-provider-message")
+
+    monkeypatch.setattr(
+        instance, "start_listener", fail if fault == "startup" else lambda: None
+    )
+    if fault == "health":
+        monkeypatch.setattr(instance, "sample", fail)
+    if fault == "peer_send":
+        instance.record_error(
+            "peer_roundtrip", TimeoutError("private-provider-message")
+        )
+        # Worker validates the absence of an existing report, so remove only this
+        # synthetic test report written by record_error before invoking run().
+        (instance.output / "report.json").unlink()
+    assert instance.run() == 2
+    assert instance.report["status"] == instance.report["outcome"] == "failed"
+    assert instance.report["reason_code"] in {
+        "startup_failure",
+        "internal_failure",
+        "checks_failed",
+    }
+    assert instance.report["errors"]
+    assert "private-provider-message" not in json.dumps(instance.report)
+
+
+def test_controller_diagnostics_reject_arbitrary_provider_strings() -> None:
+    result = recovery.controller_diagnostic(
+        {
+            "phase": "private-chat-id",
+            "reason_code": "private-provider-message",
+            "missing_evidence": ["secret-key"],
+        }
+    )
+    assert result == {
+        "phase": "controller",
+        "reason_code": "worker_failed",
+        "missing_evidence": [],
+        "waiting_for": [],
+    }
+
+
+@pytest.mark.parametrize(
+    "known_failure", ["observer_drop", "bridge_drop", "duplicate_sequence"]
+)
+def test_known_failure_is_not_masked_by_missing_peer_timeout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    known_failure: str,
+) -> None:
+    instance = canary(tmp_path)
+    instance.args.cold_timeout = 0.001
+    if known_failure == "observer_drop":
+        instance.observer_drops = 1
+    elif known_failure == "bridge_drop":
+        instance.final_bridge_drops = 1
+    else:
+        instance.report["numbered_sequence_no_duplicates"] = False
+
+    async def login(cookie: str) -> dict:
+        return {"FacebookID": "synthetic"}
+
+    monkeypatch.setenv("FBCHAT_COOKIE", "synthetic-offline-cookie")
+    monkeypatch.setattr(recovery, "dataGetHome", login)
+    monkeypatch.setattr(instance, "start_listener", lambda: None)
+    monkeypatch.setattr(instance, "stop_listener", lambda: True)
+    monkeypatch.setattr(instance, "sample", lambda: None)
+    clock = [100.0]
+
+    def tick() -> float:
+        clock[0] += 0.05
+        return clock[0]
+
+    monkeypatch.setattr(recovery.time, "monotonic", tick)
+    assert instance.run() == 2
+    assert instance.report["status"] == instance.report["outcome"] == "failed"
+    assert instance.report["reason_code"] == "checks_failed"
+    assert instance.report["acceptance_passed"] is False
+
+
+@pytest.mark.parametrize("sequence_complete", [False, True])
+def test_network_peer_deadline_reports_sequence_or_ack_not_transport_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sequence_complete: bool,
+) -> None:
+    instance = canary(tmp_path)
+    prove_cold(instance)
+    monkeypatch.setattr(instance, "send_text", lambda text: None)
+    instance.request_outage()
+    instance.report.update(
+        network_transport_recovered=True,
+        network_stage="completed",
+        numbered_sequence_complete=sequence_complete,
+    )
+    instance.network_requested_at -= instance.args.network_timeout + 1
+    with pytest.raises(recovery.PeerWaitExpired):
+        instance.poll_network()
+    assert instance.report["phase"] == (
+        "network_ack" if sequence_complete else "network_sequence"
+    )
+    assert instance.report["reason_code"] == (
+        "network_ack_timeout" if sequence_complete else "network_sequence_timeout"
+    )
+    assert instance.report["missing_evidence"] == (
+        ["network_ack"] if sequence_complete else ["numbered_sequence"]
+    )
+
+
+def test_cleanup_failure_overrides_cancellation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    instance = canary(tmp_path)
+    monkeypatch.setattr(instance, "stop_listener", lambda: False)
+    instance.stop_requested.set()
+    assert instance.run() == 2
+    assert instance.report["status"] == instance.report["outcome"] == "failed"
+    assert instance.report["phase"] == "shutdown"
+    assert instance.report["reason_code"] == "cleanup_failed"

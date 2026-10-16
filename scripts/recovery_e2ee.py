@@ -36,12 +36,24 @@ from scripts.soak_e2ee import (  # noqa: E402
     configure_utf8_console,
     dataGetHome,
     device_identity,
+    diagnostic,
+    EVIDENCE_NAMES,
+    PHASES,
+    REASON_CODES,
     positive_seconds,
+    replace_pending,
     safe_print,
+    safe_error_type,
     utc_now,
 )
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
+
+
+class PeerWaitExpired(TimeoutError):
+    """Only an explicit local peer-evidence deadline, never an RPC timeout."""
+
+
 CONTROL_FILES = (
     "report.json",
     "report.pending",
@@ -70,7 +82,7 @@ def write_object(path: Path, data: dict[str, Any]) -> None:
     pending.write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    pending.replace(path)
+    replace_pending(pending, path)
 
 
 def validate_inputs(args: argparse.Namespace, *, worker: bool = False) -> None:
@@ -92,6 +104,8 @@ def validate_inputs(args: argparse.Namespace, *, worker: bool = False) -> None:
     elif output.exists():
         raise ValueError("Output directory phải mới; không ghi đè evidence.")
     previous = read_object(args.previous_report)
+    if previous.get("evidence_scope") == "offline_simulation":
+        raise ValueError("Bằng chứng offline không được dùng làm live soak gate.")
     if (
         previous.get("status") != "completed"
         or previous.get("acceptance_passed") is not True
@@ -151,7 +165,64 @@ class RecoveryCanary(Canary):
             numbered_sequence_no_duplicates=True,
             numbered_messages_sent_during_outage=0,
             recovery_method="not_observed",
+            network_stage="not_started",
         )
+
+    def refresh_progress(self) -> None:
+        if not self.cold_payload_proven():
+            super().refresh_progress()
+        elif not self.network_requested:
+            diagnostic(
+                self.report,
+                "network_opt_in",
+                "waiting_network_opt_in",
+                ["network_opt_in"],
+            )
+        elif not self.report["network_transport_recovered"]:
+            stage = self.report["network_stage"]
+            diagnostic(
+                self.report,
+                "network_recovery" if stage == "recovering" else "network_fault",
+                (
+                    "waiting_network_recovery"
+                    if stage == "recovering"
+                    else "waiting_network_fault"
+                ),
+                (
+                    ["network_recovery"]
+                    if stage == "recovering"
+                    else ["network_outage", "network_recovery"]
+                ),
+            )
+        elif not self.report["numbered_sequence_complete"]:
+            diagnostic(
+                self.report,
+                "network_sequence",
+                "waiting_network_sequence",
+                ["numbered_sequence"],
+            )
+        elif not self.report["post_network_peer_ack"]:
+            diagnostic(
+                self.report, "network_ack", "waiting_network_ack", ["network_ack"]
+            )
+
+    def expire_peer_wait(self) -> None:
+        self.refresh_progress()
+        reason = {
+            "waiting_peer_text": "peer_text_timeout",
+            "waiting_peer_text_ack": "peer_text_ack_timeout",
+            "waiting_peer_media": "peer_media_timeout",
+            "waiting_peer_media_ack": "peer_media_ack_timeout",
+            "waiting_network_opt_in": "network_opt_in_timeout",
+            "waiting_network_sequence": "network_sequence_timeout",
+            "waiting_network_ack": "network_ack_timeout",
+        }.get(self.report["reason_code"])
+        if reason is None:
+            raise TimeoutError("Transport/controller recovery hết hạn.")
+        diagnostic(
+            self.report, self.report["phase"], reason, self.report["missing_evidence"]
+        )
+        raise PeerWaitExpired("Peer evidence hết hạn.")
 
     def cold_payload_proven(self) -> bool:
         return bool(
@@ -215,6 +286,7 @@ class RecoveryCanary(Canary):
             and self.report["network_recovery_reply_rpc_ok"]
         ):
             self.report["post_network_peer_ack"] = True
+        self.refresh_progress()
         self.save()
 
     def prompt_network(self) -> None:
@@ -231,6 +303,7 @@ class RecoveryCanary(Canary):
             f"khoảng 10 giây: {sequence}. Bridge sẽ mất kết nối trong 30 giây."
         )
         self.report["network_prompt_rpc_ok"] = True
+        self.refresh_progress()
         safe_print("[recovery] cold payload OK; waiting for peer network opt-in")
         self.save()
 
@@ -252,6 +325,8 @@ class RecoveryCanary(Canary):
         self.network_minimum_timestamp_ms = int(time.time() * 1000)
         write_object(self.output / "outage.request", {"requested": True})
         self.report["status"] = "network_fault_requested"
+        self.report["network_stage"] = "requested"
+        self.refresh_progress()
         self.save()
 
     def network_state(self) -> dict[str, Any]:
@@ -264,10 +339,17 @@ class RecoveryCanary(Canary):
         if not self.network_requested_at:
             raise RuntimeError("Network start send chưa được xác nhận; không retry.")
         if time.monotonic() - self.network_requested_at > self.args.network_timeout:
-            raise TimeoutError("Network recovery hoặc peer sequence/ACK hết hạn.")
+            self.expire_peer_wait()
         state = self.network_state()
         if state.get("error"):
             raise RuntimeError("Controller không thể tạo fault đã cô lập.")
+        if state.get("injected") is True:
+            self.report["network_stage"] = (
+                "recovering" if state.get("completed") is True else "outage"
+            )
+            if self.report["network_transport_recovered"]:
+                self.report["network_stage"] = "completed"
+        self.refresh_progress()
         start, end = state.get("started_at_ms"), state.get("ended_at_ms")
         if type(start) is int and type(end) is int:
             self.report["numbered_messages_sent_during_outage"] = sum(
@@ -289,7 +371,7 @@ class RecoveryCanary(Canary):
             self.report["network_health_probe_failures"] = (
                 self.report.get("network_health_probe_failures", 0) + 1
             )
-            self.report["last_network_probe_error_type"] = type(error).__name__
+            self.report["last_network_probe_error_type"] = safe_error_type(error)
             return
         if state.get("completed") is not True:
             if (
@@ -309,6 +391,7 @@ class RecoveryCanary(Canary):
         same_process = bridge._proc.pid == self.before_pid
         same_generation = bridge._generation == self.before_generation
         self.report["network_transport_recovered"] = True
+        self.report["network_stage"] = "completed"
         self.report["same_bridge_process_after_fault"] = same_process
         self.report["same_bridge_generation_after_fault"] = same_generation
         self.report["recovery_method"] = (
@@ -325,6 +408,7 @@ class RecoveryCanary(Canary):
             f"Gửi đủ 5 tin rồi xác nhận qua E2EE: {self.network_ack}"
         )
         self.report["network_recovery_reply_rpc_ok"] = True
+        self.refresh_progress()
         self.save()
 
     def run(self) -> int:
@@ -364,6 +448,7 @@ class RecoveryCanary(Canary):
             self.started_at = time.monotonic()
             self.minimum_event_timestamp_ms = int(time.time() * 1000)
             self.report.update(status="cold_restart_ready", ready_at=utc_now())
+            self.refresh_progress()
             self.save()
             safe_print(
                 f"[recovery] READY; send {self.args.challenge}, image/file <=2 MiB; confirm both ACKs"
@@ -375,12 +460,12 @@ class RecoveryCanary(Canary):
                     break
                 elapsed = time.monotonic() - self.started_at
                 if elapsed > self.args.duration:
-                    raise TimeoutError("Recovery run hết hạn.")
+                    self.expire_peer_wait()
                 if (
                     not self.report["cold_restart_payload"]
                     and elapsed > self.args.cold_timeout
                 ):
-                    raise TimeoutError("Cold restart payload/ACK hết hạn.")
+                    self.expire_peer_wait()
                 try:
                     failure = self.listener_failures.get_nowait()
                 except Empty:
@@ -393,6 +478,10 @@ class RecoveryCanary(Canary):
                     pass
                 except Exception as error:
                     self.record_error("peer_roundtrip", error)
+                if self.report["errors"]:
+                    raise RuntimeError(
+                        "Roundtrip đã có lỗi; không chuyển sang fault mạng."
+                    )
                 self.prompt_network()
                 self.poll_network()
                 if elapsed >= next_sample:
@@ -420,16 +509,65 @@ class RecoveryCanary(Canary):
             if self.stop_requested.is_set():
                 self.report["status"] = "cancelled"
         except Exception as error:
-            self.report["status"] = (
-                "cancelled" if self.stop_requested.is_set() else "failed"
-            )
-            if self.report["status"] != "cancelled":
+            if self.stop_requested.is_set():
+                self.report.update(status="cancelled", outcome="cancelled")
+                diagnostic(
+                    self.report,
+                    self.report["phase"],
+                    "run_cancelled",
+                    self.report["missing_evidence"],
+                )
+            elif (
+                isinstance(error, PeerWaitExpired)
+                and not self.report["errors"]
+                and not self.bridge_error_events
+            ):
+                self.report.update(status="inconclusive", outcome="inconclusive")
+            else:
+                self.report.update(status="failed", outcome="failed")
+                reason = (
+                    "startup_failure" if not self.started_at else "internal_failure"
+                )
+                if self.report["network_stage"] in {
+                    "requested",
+                    "outage",
+                    "recovering",
+                }:
+                    reason = (
+                        "network_recovery_timeout"
+                        if isinstance(error, TimeoutError)
+                        else "transport_failure"
+                    )
+                    self.report["network_stage"] = "failed"
+                if any(
+                    item["stage"] == "media_ack_notice"
+                    for item in self.report["errors"]
+                ):
+                    reason = "media_ack_notice_failed"
+                diagnostic(
+                    self.report,
+                    (
+                        "media_ack"
+                        if reason == "media_ack_notice_failed"
+                        else self.report["phase"]
+                    ),
+                    reason,
+                    ["media_ack_notice"] if reason == "media_ack_notice_failed" else [],
+                )
                 self.record_error("run", error)
         finally:
             self.stop_requested.set()
             monitor.join(timeout=1)
-            self.report["shutdown_clean"] = self.stop_listener()
+            try:
+                self.report["shutdown_clean"] = self.stop_listener()
+            except Exception as error:
+                self.report["shutdown_clean"] = False
+                self.record_error("run", error)
             self.report["ended_at"] = utc_now()
+            if self.started_at:
+                self.report["elapsed_seconds"] = round(
+                    time.monotonic() - self.started_at, 2
+                )
             self.report["final_bridge_queue_drops"] = self.final_bridge_drops
             recovered_errors = self.report.get("bridge_errors_during_fault_recovery", 0)
             self.report["bridge_errors_outside_fault_recovery"] = (
@@ -457,15 +595,85 @@ class RecoveryCanary(Canary):
                 "no_unexpected_errors": not self.report["errors"]
                 and self.report["bridge_errors_outside_fault_recovery"] == 0,
                 "clean_shutdown": self.report["shutdown_clean"],
+                "media_ack_notice": self.report["media_ack_notice_rpc_ok"],
             }
             self.report["acceptance_passed"] = self.report[
                 "status"
             ] == "completed" and all(self.report["checks"].values())
+            if self.report["acceptance_passed"]:
+                self.report["outcome"] = "passed"
+                diagnostic(self.report, "completed", "accepted", [])
+            elif not self.report["shutdown_clean"]:
+                self.report.update(status="failed", outcome="failed")
+                diagnostic(self.report, "shutdown", "cleanup_failed", [])
+            elif self.report["status"] == "cancelled":
+                self.report["outcome"] = "cancelled"
+                diagnostic(
+                    self.report,
+                    self.report["phase"],
+                    "run_cancelled",
+                    self.report["missing_evidence"],
+                )
+            elif (
+                self.report["errors"]
+                or not self.report["shutdown_clean"]
+                or self.report["bridge_errors_outside_fault_recovery"]
+                or self.observer_drops
+                or self.final_bridge_drops
+                or not self.report["numbered_sequence_no_duplicates"]
+            ):
+                self.report.update(status="failed", outcome="failed")
+                if self.report["reason_code"] not in {
+                    "startup_failure",
+                    "internal_failure",
+                    "transport_failure",
+                    "network_recovery_timeout",
+                    "media_ack_notice_failed",
+                }:
+                    diagnostic(self.report, self.report["phase"], "checks_failed", [])
+            elif self.report["status"] != "inconclusive":
+                self.report.update(status="failed", outcome="failed")
+                diagnostic(self.report, self.report["phase"], "checks_failed", [])
             self.save()
         return 0 if self.report["acceptance_passed"] else 2
 
 
-def run_controller(args: argparse.Namespace) -> int:
+def controller_diagnostic(worker: dict[str, Any]) -> dict[str, Any]:
+    phase, reason, missing = (
+        worker.get(name) for name in ("phase", "reason_code", "missing_evidence")
+    )
+    report: dict[str, Any] = {}
+    if (
+        isinstance(phase, str)
+        and phase in PHASES
+        and isinstance(reason, str)
+        and reason in REASON_CODES
+        and isinstance(missing, list)
+        and all(isinstance(item, str) and item in EVIDENCE_NAMES for item in missing)
+    ):
+        diagnostic(report, phase, reason, missing)
+    else:
+        diagnostic(report, "controller", "worker_failed", [])
+    return report
+
+
+def run_controller(
+    args: argparse.Namespace,
+    *,
+    outage_seconds: float = 30.0,
+    controller_grace_seconds: float = 300.0,
+    stop_timeout_seconds: float = 120.0,
+    kill_timeout_seconds: float = 15.0,
+    poll_interval_seconds: float = 0.25,
+) -> int:
+    for value in (
+        outage_seconds,
+        controller_grace_seconds,
+        stop_timeout_seconds,
+        kill_timeout_seconds,
+        poll_interval_seconds,
+    ):
+        positive_seconds(str(value))
     validate_inputs(args)
     device = args.device_path.resolve(strict=True)
     lease = device.with_name(device.name + ".recovery.lock")
@@ -475,17 +683,22 @@ def run_controller(args: argparse.Namespace) -> int:
     child: subprocess.Popen[bytes] | None = None
     interrupted = False
     forced_cleanup = False
+    deadline_expired = False
 
     def cancel(*_: object) -> None:
         nonlocal interrupted
         interrupted = True
 
-    signal.signal(signal.SIGINT, cancel)
-    signal.signal(signal.SIGTERM, cancel)
+    previous_int = signal.signal(signal.SIGINT, cancel)
+    previous_term = signal.signal(signal.SIGTERM, cancel)
     try:
         args.output_dir.mkdir(parents=True, exist_ok=False)
         with LoopbackConnectProxy() as proxy:
-            state: dict[str, Any] = {"injected": False, "completed": False}
+            state: dict[str, Any] = {
+                "stage": "not_started",
+                "injected": False,
+                "completed": False,
+            }
             start = 0.0
             command = worker_command(args)
             with (
@@ -499,16 +712,17 @@ def run_controller(args: argparse.Namespace) -> int:
                     stderr=stderr,
                     start_new_session=os.name != "nt",
                 )
-                deadline = time.monotonic() + args.duration + 300
+                deadline = time.monotonic() + args.duration + controller_grace_seconds
                 while child.poll() is None:
                     if interrupted or time.monotonic() > deadline:
+                        deadline_expired = not interrupted
                         (args.output_dir / "stop.request").touch(exist_ok=True)
                         try:
-                            child.wait(timeout=120)
+                            child.wait(timeout=stop_timeout_seconds)
                         except subprocess.TimeoutExpired:
                             forced_cleanup = True
                             kill_worker_tree(child)
-                            child.wait(timeout=15)
+                            child.wait(timeout=kill_timeout_seconds)
                         break
                     if (
                         not state["injected"]
@@ -517,30 +731,86 @@ def run_controller(args: argparse.Namespace) -> int:
                         snapshot = proxy.snapshot()
                         if snapshot["active_tunnels"] < 2:
                             state["error"] = "insufficient_active_proxy_tunnels"
+                            state["stage"] = "failed"
                         else:
                             state.update(
-                                injected=True, started_at_ms=int(time.time() * 1000)
+                                injected=True,
+                                stage="outage",
+                                started_at_ms=int(time.time() * 1000),
                             )
                             start = time.monotonic()
-                            proxy.begin_outage(30.0)
+                            proxy.begin_outage(outage_seconds)
                     if (
                         state["injected"]
                         and not state["completed"]
-                        and time.monotonic() - start >= 30.0
+                        and time.monotonic() - start >= outage_seconds
                     ):
                         state.update(
-                            completed=True, ended_at_ms=int(time.time() * 1000)
+                            completed=True,
+                            stage="completed",
+                            ended_at_ms=int(time.time() * 1000),
                         )
                     state["proxy"] = proxy.snapshot()
                     write_object(args.output_dir / "network-state.json", state)
-                    time.sleep(0.25)
+                    time.sleep(poll_interval_seconds)
             proxy_clean = proxy.close()
+            worker_path = args.output_dir / "report.json"
+            try:
+                worker = read_object(worker_path) if worker_path.exists() else {}
+            except (OSError, ValueError, json.JSONDecodeError):
+                worker = {}
+            accepted = (
+                child.returncode == 0
+                and proxy_clean
+                and not forced_cleanup
+                and not interrupted
+                and not deadline_expired
+                and worker.get("acceptance_passed") is True
+                and worker.get("shutdown_clean") is True
+                and worker.get("status") == "completed"
+            )
+            result = controller_diagnostic(worker)
+            outcome = worker.get("outcome")
+            outcome = (
+                outcome
+                if isinstance(outcome, str)
+                and outcome in {"inconclusive", "failed", "cancelled"}
+                else "failed"
+            )
+            if accepted:
+                outcome = "passed"
+                diagnostic(result, "completed", "accepted", [])
+            elif deadline_expired or forced_cleanup or not proxy_clean:
+                outcome = "failed"
+                diagnostic(
+                    result,
+                    "controller",
+                    "controller_timeout" if deadline_expired else "cleanup_failed",
+                    [],
+                )
+            elif worker.get("shutdown_clean") is False:
+                outcome = "failed"
+                diagnostic(result, "shutdown", "cleanup_failed", [])
+            elif interrupted:
+                outcome = "cancelled"
+                diagnostic(
+                    result, result["phase"], "run_cancelled", result["missing_evidence"]
+                )
+            elif child.returncode != 2:
+                outcome = "failed"
+                diagnostic(result, "controller", "worker_failed", [])
             write_object(
                 args.output_dir / "controller.json",
                 {
-                    "acceptance_passed": child.returncode == 0
-                    and proxy_clean
-                    and not forced_cleanup,
+                    **result,
+                    "status": "completed" if accepted else outcome,
+                    "outcome": outcome,
+                    "evidence_scope": (
+                        "offline_simulation"
+                        if worker.get("evidence_scope") == "offline_simulation"
+                        else "live_provider"
+                    ),
+                    "acceptance_passed": accepted,
                     "worker_exit_code": child.returncode,
                     "proxy_shutdown_clean": proxy_clean,
                     "forced_cleanup": forced_cleanup,
@@ -548,17 +818,21 @@ def run_controller(args: argparse.Namespace) -> int:
                     "network": state,
                 },
             )
-            return child.returncode if proxy_clean and not forced_cleanup else 3
+            if not proxy_clean or forced_cleanup or deadline_expired:
+                return 3
+            return 0 if accepted else (child.returncode or 2)
     finally:
         if child is not None and child.poll() is None:
             (args.output_dir / "stop.request").touch(exist_ok=True)
             try:
-                child.wait(timeout=120)
+                child.wait(timeout=stop_timeout_seconds)
             except subprocess.TimeoutExpired:
                 kill_worker_tree(child)
-                child.wait(timeout=15)
+                child.wait(timeout=kill_timeout_seconds)
         if child is None or child.poll() is not None:
             lease.unlink()
+        signal.signal(signal.SIGINT, previous_int)
+        signal.signal(signal.SIGTERM, previous_term)
 
 
 def kill_worker_tree(child: subprocess.Popen[bytes]) -> None:

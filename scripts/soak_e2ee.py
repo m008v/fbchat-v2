@@ -39,10 +39,126 @@ from fbchat_v2._messaging._listening_e2ee import (  # noqa: E402
 
 MAX_MEDIA_BYTES = 2 * 1024 * 1024
 MAX_SEEN_MESSAGES = 4096
+PHASES = frozenset(
+    {
+        "startup",
+        "text",
+        "media",
+        "media_ack",
+        "soak",
+        "watchdog",
+        "network_opt_in",
+        "network_fault",
+        "network_recovery",
+        "network_sequence",
+        "network_ack",
+        "shutdown",
+        "controller",
+        "completed",
+    }
+)
+REASON_CODES = frozenset(
+    {
+        "starting",
+        "waiting_peer_text",
+        "waiting_peer_text_ack",
+        "waiting_peer_media",
+        "waiting_peer_media_ack",
+        "waiting_soak_duration",
+        "waiting_watchdog",
+        "waiting_network_opt_in",
+        "waiting_network_fault",
+        "waiting_network_recovery",
+        "waiting_network_sequence",
+        "waiting_network_ack",
+        "peer_text_timeout",
+        "peer_text_ack_timeout",
+        "peer_media_timeout",
+        "peer_media_ack_timeout",
+        "network_opt_in_timeout",
+        "network_sequence_timeout",
+        "network_ack_timeout",
+        "network_recovery_timeout",
+        "run_timeout",
+        "run_cancelled",
+        "startup_failure",
+        "transport_failure",
+        "internal_failure",
+        "checks_failed",
+        "accepted",
+        "media_ack_notice_failed",
+        "controller_timeout",
+        "worker_failed",
+        "cleanup_failed",
+    }
+)
+EVIDENCE_NAMES = frozenset(
+    {
+        "text_challenge",
+        "text_ack",
+        "image_roundtrip",
+        "document_roundtrip",
+        "media_ack",
+        "media_ack_notice",
+        "full_duration",
+        "watchdog_recovery",
+        "post_reconnect_send",
+        "network_opt_in",
+        "network_outage",
+        "network_recovery",
+        "numbered_sequence",
+        "network_ack",
+    }
+)
+
+
+def diagnostic(
+    report: dict[str, Any], phase: str, reason: str, missing: list[str]
+) -> None:
+    """Persist only local, allowlisted diagnostics, never provider data."""
+    if (
+        phase not in PHASES
+        or reason not in REASON_CODES
+        or any(item not in EVIDENCE_NAMES for item in missing)
+    ):
+        raise ValueError("Diagnostic phải thuộc allowlist nội bộ.")
+    report.update(
+        phase=phase,
+        reason_code=reason,
+        missing_evidence=list(missing),
+        waiting_for=list(missing),
+    )
+
+
+def safe_error_type(error: BaseException) -> str:
+    for kind in (
+        TimeoutError,
+        InterruptedError,
+        ValueError,
+        OSError,
+        BridgeError,
+        RuntimeError,
+    ):
+        if isinstance(error, kind):
+            return kind.__name__
+    return "Exception"
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def replace_pending(pending: Path, destination: Path) -> None:
+    """Bound Windows sharing violations while a concurrent reader holds JSON open."""
+    deadline = time.monotonic() + 1.0
+    while True:
+        try:
+            pending.replace(destination)
+            return
+        except PermissionError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.01)
 
 
 def positive_seconds(value: str) -> float:
@@ -161,6 +277,7 @@ class Canary:
         self.text_ack = f"text-ok-{secrets.token_hex(4)}"
         self.media_ack = f"media-ok-{secrets.token_hex(4)}"
         self.media_ack_prompted = False
+        self.media_ack_notice_attempted = False
         self.regular_notice_attempted = False
         self.minimum_event_timestamp_ms = int(time.time() * 1000)
         self.bridge_error_events = 0
@@ -170,12 +287,17 @@ class Canary:
         self.report: dict[str, Any] = {
             "started_at": utc_now(),
             "status": "starting",
+            "outcome": "running",
+            "evidence_scope": "live_provider",
             "challenge": args.challenge,
             "requested_seconds": args.duration,
             "cold_restart_identity_reused": False,
             "text_reply_rpc_ok": False,
             "peer_confirmed_text": False,
             "peer_confirmed_media": False,
+            "media_ack_notice_rpc_ok": False,
+            "media_ack_notice_attempted": False,
+            "media_ack_notice_delivery": "not_attempted",
             "regular_notice_rpc_ok": False,
             "post_reconnect_text_rpc_ok": False,
             "watchdog_fault_injected": False,
@@ -186,6 +308,7 @@ class Canary:
             "errors": [],
             "observed": {},
         }
+        diagnostic(self.report, "startup", "starting", [])
 
     def save(self) -> None:
         with self.observed_lock:
@@ -196,13 +319,94 @@ class Canary:
             json.dumps(self.report, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-        temporary.replace(self.output / "report.json")
+        replace_pending(temporary, self.output / "report.json")
 
     def record_error(self, stage: str, error: BaseException) -> None:
         # Provider exception text can contain IDs/URLs. Keep only allowlisted
         # local stage and exception class in persistent evidence.
-        self.report["errors"].append({"stage": stage, "type": type(error).__name__})
-        safe_print(f"[canary] {stage}: {type(error).__name__}")
+        if stage not in {"run", "peer_roundtrip", "health_sample", "media_ack_notice"}:
+            stage = "run"
+        error_type = safe_error_type(error)
+        self.report["errors"].append({"stage": stage, "type": error_type})
+        safe_print(f"[canary] {stage}: {error_type}")
+        self.save()
+
+    def media_echoes_proven(self) -> bool:
+        return all(
+            any(
+                item["kind"] == kind
+                and item.get("echo_rpc_ok")
+                and item.get("sha256_verified")
+                for item in self.report["media"]
+            )
+            for kind in ("image", "document")
+        )
+
+    def peer_diagnostic(self) -> tuple[str, str, list[str]]:
+        missing = []
+        if not self.report["text_reply_rpc_ok"]:
+            missing.append("text_challenge")
+        elif not self.report["peer_confirmed_text"]:
+            missing.append("text_ack")
+        for kind in ("image", "document"):
+            if not any(
+                item["kind"] == kind
+                and item.get("echo_rpc_ok")
+                and item.get("sha256_verified")
+                for item in self.report["media"]
+            ):
+                missing.append(f"{kind}_roundtrip")
+        if not self.report["peer_confirmed_media"]:
+            missing.append("media_ack")
+        if "text_challenge" in missing:
+            return "text", "waiting_peer_text", missing
+        if "text_ack" in missing:
+            return "text", "waiting_peer_text_ack", missing
+        if any(name.endswith("_roundtrip") for name in missing):
+            return "media", "waiting_peer_media", missing
+        if "media_ack" in missing:
+            return "media_ack", "waiting_peer_media_ack", missing
+        return "soak", "waiting_soak_duration", []
+
+    def refresh_progress(self) -> None:
+        diagnostic(self.report, *self.peer_diagnostic())
+
+    def peer_timeout(self) -> bool:
+        phase, reason, missing = self.peer_diagnostic()
+        if not missing:
+            return False
+        diagnostic(
+            self.report,
+            phase,
+            {
+                "waiting_peer_text": "peer_text_timeout",
+                "waiting_peer_text_ack": "peer_text_ack_timeout",
+                "waiting_peer_media": "peer_media_timeout",
+                "waiting_peer_media_ack": "peer_media_ack_timeout",
+            }[reason],
+            missing,
+        )
+        self.report.update(status="inconclusive", outcome="inconclusive")
+        return True
+
+    def confirm_media_ack(self) -> None:
+        if self.media_ack_notice_attempted:
+            return
+        self.media_ack_notice_attempted = True
+        self.report["media_ack_notice_attempted"] = True
+        self.report["media_ack_notice_delivery"] = "unknown"
+        # Save peer proof and consume before RPC: a timeout must never retry.
+        self.save()
+        try:
+            self.send_text(
+                "Đã nhận ACK ảnh/file E2EE. Ảnh và file đã được peer xác nhận; "
+                "không cần gửi lại mã media-ok. Kết quả soak/recovery vẫn được kiểm riêng."
+            )
+        except Exception as error:
+            self.record_error("media_ack_notice", error)
+        else:
+            self.report["media_ack_notice_rpc_ok"] = True
+            self.report["media_ack_notice_delivery"] = "rpc_confirmed"
         self.save()
 
     def on_event(self, event: dict[str, Any]) -> None:
@@ -446,31 +650,25 @@ class Canary:
             )
         if text == self.text_ack and self.report["text_reply_rpc_ok"]:
             self.report["peer_confirmed_text"] = True
-        if text == self.media_ack and all(
-            any(
-                item["kind"] == kind and item.get("echo_rpc_ok")
-                for item in self.report["media"]
-            )
-            for kind in ("image", "document")
+        if (
+            text == self.media_ack
+            and self.media_ack_prompted
+            and self.media_echoes_proven()
         ):
             self.report["peer_confirmed_media"] = True
+            self.confirm_media_ack()
         attachments = data.get("attachments", [])
         if isinstance(attachments, list):
             for attachment in attachments[:2]:
                 if isinstance(attachment, dict):
                     self.handle_media(attachment)
-        if not self.media_ack_prompted and all(
-            any(
-                item["kind"] == kind and item.get("echo_rpc_ok")
-                for item in self.report["media"]
-            )
-            for kind in ("image", "document")
-        ):
+        if not self.media_ack_prompted and self.media_echoes_proven():
             self.media_ack_prompted = True
             self.send_text(
                 "Đã echo ảnh và file E2EE. Sau khi nhận đủ cả hai, gửi lại: "
                 f"{self.media_ack}"
             )
+        self.refresh_progress()
         self.save()
 
     def handle_regular_notice(self, data: dict[str, Any]) -> None:
@@ -570,6 +768,7 @@ class Canary:
             self.minimum_event_timestamp_ms = int(time.time() * 1000)
             self.report["ready_at"] = utc_now()
             self.report["status"] = "running"
+            self.refresh_progress()
             self.save()
             safe_print(
                 f"[canary] READY; send {self.args.challenge}, image and file <=2 MiB via E2EE"
@@ -620,11 +819,22 @@ class Canary:
                 self.report["status"] = "cancelled"
             else:
                 self.report["status"] = "failed"
+                self.report["outcome"] = "failed"
+                diagnostic(
+                    self.report,
+                    self.report["phase"],
+                    "startup_failure" if not self.started_at else "internal_failure",
+                    [],
+                )
                 self.record_error("run", error)
         finally:
             self.stop_requested.set()
             shutdown_start = time.monotonic()
-            self.report["shutdown_clean"] = self.stop_listener()
+            try:
+                self.report["shutdown_clean"] = self.stop_listener()
+            except Exception as error:
+                self.report["shutdown_clean"] = False
+                self.record_error("run", error)
             self.report["shutdown_seconds"] = round(
                 time.monotonic() - shutdown_start, 2
             )
@@ -664,7 +874,59 @@ class Canary:
                 and self.bridge_error_events == 0,
                 "clean_shutdown": self.report["shutdown_clean"],
             }
+            self.report["checks"]["media_ack_notice"] = self.report[
+                "media_ack_notice_rpc_ok"
+            ]
             self.report["acceptance_passed"] = all(self.report["checks"].values())
+            if self.report["acceptance_passed"]:
+                self.report["outcome"] = "passed"
+                diagnostic(self.report, "completed", "accepted", [])
+            elif not self.report["shutdown_clean"]:
+                self.report.update(status="failed", outcome="failed")
+                diagnostic(self.report, "shutdown", "cleanup_failed", [])
+            elif self.report["status"] == "cancelled":
+                self.report["outcome"] = "cancelled"
+                diagnostic(
+                    self.report,
+                    self.report["phase"],
+                    "run_cancelled",
+                    self.report["missing_evidence"],
+                )
+            elif (
+                self.report["errors"]
+                or self.bridge_error_events
+                or any(
+                    not self.report["checks"][name]
+                    for name in (
+                        "clean_shutdown",
+                        "no_queue_drop",
+                        "health_samples_connected",
+                    )
+                )
+            ):
+                self.report["outcome"] = "failed"
+                if any(
+                    item["stage"] == "media_ack_notice"
+                    for item in self.report["errors"]
+                ):
+                    diagnostic(
+                        self.report,
+                        "media_ack",
+                        "media_ack_notice_failed",
+                        ["media_ack_notice"],
+                    )
+                elif self.report["reason_code"] not in {
+                    "startup_failure",
+                    "internal_failure",
+                    "transport_failure",
+                }:
+                    diagnostic(self.report, self.report["phase"], "checks_failed", [])
+            elif self.peer_timeout():
+                # Preserve the historical soak status=completed meaning duration ran.
+                self.report["status"] = "completed"
+            else:
+                self.report["outcome"] = "failed"
+                diagnostic(self.report, self.report["phase"], "checks_failed", [])
             self.save()
         if self.report["status"] != "completed":
             return 1
