@@ -29,7 +29,7 @@
 ## 👋 Giới thiệu
 Mình là MinhHuyDev (`m008v`), tác giả và người duy trì dự án.
 
-`fbchat-v2` là thư viện Python để gửi và nhận tin nhắn Messenger bằng tài khoản Facebook cá nhân. Thư viện dùng `async/await`; phần E2EE chạy qua bridge Go. Codebase đã được tổ chức lại từ v2.2.0 và tiếp tục được sửa theo các lỗi người dùng báo về.
+`fbchat-v2` là thư viện Python để gửi và nhận tin nhắn Messenger bằng tài khoản Facebook cá nhân. Thư viện dùng `async/await`; E2EE chạy qua bridge Go. Codebase đã được tổ chức lại từ v2.2.0 và tiếp tục được sửa theo các lỗi người dùng báo về.
 
 Cảm ơn mọi người đã góp ý và báo lỗi. Đây là API không chính thức nên một số chức năng có thể hỏng khi Facebook thay đổi. Nếu gặp lỗi, mở issue trên [GitHub](https://github.com/m008v/fbchat-v2/issues) kèm cách tái hiện và log đã che thông tin nhạy cảm, hoặc nhắn mình qua [Telegram](https://t.me/MinhHuyDev).
 

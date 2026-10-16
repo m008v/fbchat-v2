@@ -37,6 +37,9 @@
 - Không sửa ví dụ lịch sử dù một số ví dụ cũ đã khác API hiện tại; không tự
   mở rộng sang sửa TOC/link hỏng có sẵn. Giữ `.vs/` ngoài phạm vi.
 - Các lệnh kiểm thử trong lượt này không đăng nhập hay chạy listener Facebook.
+- Bỏ chữ “phần” trong câu giới thiệu E2EE theo annotation của m008v. PyPI dùng
+  Twine 7 và token đã lưu trong Windows keyring qua cơ chế xác thực của Twine;
+  không đọc hoặc in token bằng tool. Không sửa checkout `fbchat-v2-pypi`.
 
 ## 2026-10-16 — Xác minh CI của bản offline fd731ac
 
