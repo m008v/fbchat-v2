@@ -47,6 +47,30 @@
   m008v cho phép tạo lại tag `v2.3.3` để đưa README mới vào artifact; đã báo
   người đã fetch tag cũ cần cập nhật. Tag cũ trỏ `476fd9c`, chưa dùng để publish.
 
+### Kết quả phát hành
+- Đã tạo lại và push riêng tag `v2.3.3` bằng force-with-lease theo chấp thuận
+  của m008v; tag object `67b87b4c0255aee2c36f931816aac3b35a3005fb` trỏ commit
+  `c77ad702867456526225d99fc6e54d1470b00d31`. Không force branch.
+- Release run `38904158766` đạt đủ 20 job; GitHub Release đã public chín asset.
+  Tải lại đủ chín file, đối chiếu API digest, hai manifest, checksum bridge
+  nhúng trong wheel/sdist, archive layout và Twine strict đều đạt.
+- m008v yêu cầu đồng bộ thêm checkout `fbchat-v2-pypi`. Đã lấy 54 canonical
+  file và README Việt/Anh, changelog từ verified sdist; giữ cấu hình package-only,
+  cập nhật test/version/hash và PACKAGING. Cả 57 file khớp byte với sdist.
+  Commit `d35e6f6b5221e258a309df325d56a0c87fd10d2d` đã push fast-forward
+  lên `origin/pypi`.
+- Checkout PyPI: 5/5 test, Ruff, Black (45 file), mypy (45 source file),
+  compileall, build thử và dependency check đạt. Nội dung từng member wheel
+  build thử giống wheel production; không upload bản build thử.
+- Đã upload exact GitHub wheel/sdist bằng Twine 7 qua Windows keyring.
+  PyPI public `2.3.3` có đúng hai file, không yanked; tải lại khớp SHA-256:
+  wheel `10417e4bdf7d2798333e521a5897fb976cdbc399e85107ad9cd2f3773ff4680b`,
+  sdist `b571511e59e7e7a8da648c09f4fd474a6a1855eaa00ecc1128cc11240450d674`.
+- Fresh install trực tiếp public PyPI đạt version/import/public namespace và
+  dependency check (13 package). Không mở listener hoặc gọi Facebook/Messenger;
+  bằng chứng live cold restart/network vẫn còn thiếu như release note đã ghi.
+- Cập nhật memory sau phát hành không thay đổi tag hoặc artifact 2.3.3.
+
 ## 2026-10-16 — Xác minh CI của bản offline fd731ac
 
 ### Mục tiêu
