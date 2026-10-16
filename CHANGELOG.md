@@ -1,6 +1,6 @@
 # Changelog
 
-Tất cả thay đổi đáng chú ý của `fbchat-v2` sẽ được ghi lại tại đây.
+Các thay đổi đáng chú ý của `fbchat-v2`, theo từng phiên bản.
 
 Định dạng dựa trên [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/),
 phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
@@ -43,6 +43,45 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   khoảng trắng thừa đầu hero, CSS variable thiếu, V2 badge bị ẩn và layout
   contributor/preloader trên màn hình nhỏ.
 
+## [2.3.3] - 2026-10-16
+
+### Added
+
+- Che thông tin nhạy cảm trong log của Python và Go bridge: cookie, token, ID nhà
+  cung cấp, JID, tên hội thoại, URL, cursor, payload, XML crypto, prekey và chữ
+  ký; vẫn giữ `database_id` để chẩn đoán đúng luồng LightSpeed.
+- Bot thử nghiệm E2EE trả lời message group thường qua Go LightSpeed bridge,
+  không fallback sang Python MQTT.
+- Thêm canary/soak driver có opt-in peer, cold restart bằng persistent device,
+  E2EE text/media round trip, kiểm digest, fault injection watchdog và evidence
+  RSS/queue không chứa secret.
+
+### Changed
+
+- Cập nhật Messagix/LightSpeed lên flow DGW hiện hành, bổ sung sync V4 cho
+  `databaseID=1` và thích nghi API event/media/store mới.
+- Chia startup deadline thành từng phase contract, client, regular connect,
+  regular ready, E2EE connect và E2EE ready; exception gốc được giữ qua
+  `__cause__` sau khi thông tin nhạy cảm đã được che.
+- Cập nhật hướng dẫn cài đặt, tài liệu và ví dụ import theo namespace công khai
+  `fbchat_v2`; tên release là `v.2.3.3`, tag kỹ thuật là
+  `v2.3.3`.
+
+### Fixed
+
+- Lưu device đã đăng ký trước khi khởi tạo Whatsmeow client, sửa tình trạng
+  regular socket báo connected nhưng E2EE không hoàn tất pairing/readiness.
+- `wait_until_connected()` chờ watchdog reconnect sau khi bridge dừng, thay vì
+  trả `False` ngay khi trạng thái startup đã qua.
+- Driver thử nghiệm sửa thiếu `await`, giữ Unicode trên console Windows và
+  không log nội dung/định danh riêng tư theo mặc định.
+- Media E2EE dùng temp file có DACL riêng ngay từ lúc tạo trên Windows;
+  typing được hủy theo lifecycle và có deadline 10 giây.
+- Go/Python log drain giới hạn dòng 64 KiB, bỏ nguyên dòng quá cỡ và tiếp tục
+  drain thay vì giữ buffer vô hạn hoặc in fragment có secret.
+- Nâng Go lên `1.26.9` và `golang.org/x/net` lên `0.60.0` theo kết quả pinned
+  `govulncheck`; giữ nguyên vulnerability gate trong CI.
+
 ## [2.3.2] - 2026-09-15
 
 ### Added
@@ -52,15 +91,15 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 - Thêm public namespace `fbchat_v2` có thể tái tạo trực tiếp từ source chính,
   kèm exact allowlist, kiểm tra `RECORD`/`PKG-INFO`, smoke test wheel/sdist và
   kiểm tra import module lồng sâu.
-- GitHub Release đính kèm wheel, sdist và `SHA256SUMS-python` đúng từ job đã
-  verify, thay vì để artifact Python trôi sang một quy trình build khác.
+- GitHub Release đính kèm wheel, sdist và `SHA256SUMS-python` từ job đã kiểm
+  tra, không build lại artifact Python bằng một quy trình khác.
 
 ### Changed
 
 - Nâng Go lên `1.26.6` và `gorilla/websocket` lên `1.5.3` để loại các call path
   có lỗ hổng mà `govulncheck` đã phát hiện.
 - E2EE send timeout trả `deliveryStatus="unknown"`; wrapper Python trả
-  `uncertain` với `retryable=false`, không còn giả vờ rằng message đã gửi.
+  `uncertain` với `retryable=false`, không báo message đã gửi khi chưa xác nhận.
 - Queue event E2EE dùng hard limit 1.000 phần tử, drop-oldest và telemetry đã
   che payload khi chịu burst.
 
@@ -78,7 +117,8 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   không còn kế thừa `PSModulePath` không tương thích từ PowerShell 7.
 - Standalone E2EE sender dọn bridge ở mọi handshake failure; Go bridge rollback
   partial E2EE client, giới hạn RPC/media trước full allocation và xóa temp file.
-- Bot không cache/log message timeout như delivered và khóa `/unsend` khi chưa
+- Bot không cache/log message timeout như delivered; khóa `/unsend` khi chưa
+  cấu hình admin.
 - Bot giới hạn độ dài và quota `/search`; console log giữ được Unicode trên
   Windows nhưng không làm lộ query hoặc payload nhạy cảm.
 - Runtime version không còn bị một distribution cũ trong môi trường local ghi
@@ -87,8 +127,8 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 ### Packaging and CI
 
 - Đồng bộ package, bridge, workflow, verifier, tài liệu và test lên `2.3.2`.
-- Wheel/sdist PyPI phải là chính các byte đã được quality gate kiểm tra, ghi
-  checksum và gắn provenance; không rebuild thủ công ở checkout khác.
+- Wheel/sdist PyPI dùng đúng byte đã qua quality gate, có checksum và
+  provenance; không rebuild thủ công ở checkout khác.
 - Release workflow khóa immutable commit SHA, recheck tag trước upload, từ chối
   asset cũ/thừa và pin toàn bộ third-party action bằng commit SHA.
 
@@ -151,7 +191,7 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 - Chuyển feature HTTP sang transport `httpx` sync/async dùng chung; legacy
   adapter chỉ còn ở boundary nội bộ có lý do rõ.
 - Viết lại bot mẫu, listener thường, listener E2EE và bridge actions theo
-  lifecycle async có startup, readiness, cancellation, shutdown và cleanup rõ.
+  lifecycle async, gồm startup, readiness, cancellation, shutdown và cleanup.
 - Quản lý E2EE bridge theo generation với total deadline, exponential backoff,
   recovery tuần tự, writer queue riêng và timeout cho process/pipe treo.
 - Chỉ công bố readiness khi socket thường đã kết nối và E2EE đã đăng nhập;
@@ -179,7 +219,7 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 - Khôi phục delivery tin nhắn thường và E2EE từ live upsert; lọc typing,
   read-receipt, reaction cùng event phụ trước queue, giới hạn queue và chống
-  replay/dedupe placeholder.
+  replay và dedupe placeholder.
 - Sửa async `disconnect()` không await shutdown, cleanup startup nằm ngoài
   `finally`, bridge response sai kiểu, short write, stale generation và race
   giữa close/reconnect.
@@ -274,13 +314,13 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 ## [2.2.0-beta] - 2026-07-06
 
 ### ✨ Added
-- Dual API (Sync & Async) cho toàn bộ `_messaging`: Hỗ trợ native `async`/`await` cho tất cả các hành động (`send`, `unsend`, `react`, ...).
-- Hỗ trợ `httpx` cho HTTP async: Các API async dùng `httpx`; endpoint legacy được cô lập sau adapter riêng thay vì lộ ra API public.
-- Type Hints đầy đủ: Tích hợp kiểu dữ liệu (`TypedDict`, `Literal`) cho 11 module core và messaging (giảm thiểu lỗi type runtime).
-- E2EE Bridge Auto-Respawn: Cơ chế tự động hồi sinh Bridge E2EE (`_listening_e2ee.py`) với exponential backoff (2s -> 32s) khi mất kết nối đột ngột hoặc crash.
+- Thêm API sync và async cho `_messaging`; các hành động `send`, `unsend`, `react`, ... có thể dùng `async`/`await`.
+- Dùng `httpx` cho HTTP async; endpoint legacy được giữ sau adapter nội bộ.
+- Bổ sung type hint (`TypedDict`, `Literal`) cho 11 module core và messaging.
+- Tự respawn E2EE bridge trong `_listening_e2ee.py` với exponential backoff (2s -> 32s) khi mất kết nối hoặc crash.
 
 ### 🛠 Changed
-- Module `_core._session.py` và `_utils.py` hiện tại sử dụng helper `send_request` và `send_request_async`.
+- Module `_core._session.py` và `_utils.py` chuyển sang helper `send_request` và `send_request_async`.
 
 ---
 
@@ -317,15 +357,15 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
     `100012345678` -> `100012345678@msgr`.
   - `api.send(...)` chấp nhận cả JID đầy đủ lẫn user ID; input sai trả
     `invalid_chat_jid` rõ ràng hơn.
-  - `api.send_to_user(...)` là entry point tiện dụng cho flow chủ động.
+  - `api.send_to_user(...)` là entry point để gửi chủ động theo user ID.
 - `src/_e2ee_send_test.py`: test script giờ tự resolve `--device-path` relative
   về root `fbchat-v2`, nên không còn phụ thuộc cwd hiện tại khi spawn bridge.
-- `bridge-e2ee`: fix gốc cho proactive E2EE send.
-  - `Client.sendE2EEMessage(...)` sẽ ensure encrypted DM thread trước khi gửi.
+- `bridge-e2ee`: sửa lỗi gửi E2EE chủ động khi chưa có session.
+  - `Client.sendE2EEMessage(...)` tạo hoặc xác nhận encrypted DM thread trước khi gửi.
   - `DeviceStore.GetManySessions()` trả đủ session address được hỏi để
     `whatsmeow` nhận ra device chưa có session và tự fetch prekey.
   - `NewDeviceStore(...)` tạo luôn thư mục cha của file device nếu chưa tồn tại,
-    giúp path như `./src/e2ee_device.json` không bị fail khi lưu mới.
+    để lưu được vào đường dẫn như `./src/e2ee_device.json`.
 
 ### 📝 Documentation
 
@@ -344,7 +384,7 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 ### ✨ Added
 
 - `src/_e2ee_send_test.py` - script test riêng cho `_messaging/_send_e2ee.py`.
-  - Chạy không tham số sẽ hỏi interactive `UID/JID người nhận` và `nội dung cần gửi`.
+  - Chạy không tham số sẽ hỏi `UID/JID người nhận` và `nội dung cần gửi` trên console.
   - `--dry-run` kiểm tra normalize Facebook numeric ID -> `<id>@msgr` mà không
     cần cookie/bridge.
   - Chế độ gửi thật đọc cookie từ `FBCHAT_COOKIE` hoặc `src/config.json`, tự
@@ -438,28 +478,28 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
     - `checkNote(dataFB)` - lấy note hiện tại (`msgr_user_rich_status`).
     - `createNote(dataFB, text, privacy="FRIENDS")` - tạo note text 24h.
     - `deleteNote(dataFB, noteID)` - xoá note theo `rich_status_id`.
-    - `recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS")` - xoá +
-      tạo lại nguyên tử (fail-fast nếu bước nào lỗi thì abort).
+    - `recreateNote(dataFB, oldNoteID, newText, privacy="FRIENDS")` - xóa rồi
+      tạo lại; dừng nếu một bước trả lỗi.
   - Entry point thống nhất:
     `func(...)` với `action="check"|"create"|"delete"|"recreate"` và keyword arguments.
-  - Mỗi call hit một GraphQL `friendly_name` / `doc_id` riêng - không share
-    mutation, lỗi ở `delete` không cascade sang `create`:
+  - Mỗi thao tác gọi GraphQL `friendly_name` / `doc_id` riêng, không dùng chung
+    mutation giữa `delete` và `create`:
     - `MWInboxTrayNoteCreationDialogQuery` (doc_id `30899655739648624`)
     - `MWInboxTrayNoteCreationDialogCreationStepContentMutation`
       (doc_id `24060573783603122`)
     - `useMWInboxTrayDeleteNoteMutation` (doc_id `9532619970198958`)
-  - Privacy mapping (`PRIVACY_ALIASES`): `EVERYONE` / `PUBLIC` đều bị
-    normalize về `FRIENDS` (Messenger Notes hiện chỉ hỗ trợ scope FRIENDS).
-    Input tự uppercase, các giá trị khác forward as-is.
-  - Resilience: `timeout=(connect=10s, read=45s)` + 2 retries cho
-    lỗi timeout / lỗi transport (tổng <= 3 lần thử).
+  - Privacy mapping (`PRIVACY_ALIASES`): `EVERYONE` / `PUBLIC` được đổi về
+    `FRIENDS`, scope Messenger Notes hỗ trợ ở bản này.
+    Input được chuyển thành chữ hoa; các giá trị khác được gửi nguyên trạng.
+  - Dùng `timeout=(connect=10s, read=45s)` và retry tối đa 2 lần cho lỗi
+    timeout/transport (tổng <= 3 lần thử ở bản này).
   - Tự strip prefix `for (;;);` trước khi `json.loads`.
   - `client_mutation_id` random `0-10`; `session_id` sinh nội bộ qua
     `generate_client_id()` - caller không cần truyền.
   - Schema return chuẩn fbchat-v2:
     - ✅ `{"success": 1, "messages": "...", "data": {...}}`
     - ❌ `{"error": 1, "messages": "...", "details" | "raw": ...}`
-  - Hard-coded `duration = 86400s` (24h) - Messenger web flow chưa hỗ trợ
+  - Cố định `duration = 86400s` (24h) - Messenger web flow chưa hỗ trợ
     duration tuỳ ý.
 
 ### 📝 Documentation
@@ -526,7 +566,7 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ### 📝 Documentation
 
-- `DOCS.md` được viết lại hoàn toàn bằng tiếng Anh + bổ sung section FAQ
+- Viết lại `DOCS.md` bằng tiếng Anh, bổ sung FAQ
   ~20 câu hỏi (cookie expiry, `BridgeError`, `chat_jid` vs `threadID`,
   phân biệt `_send.api` vs `_send_e2ee.api`, persist Signal keys, v.v.).
 - `src/_messaging/README.md` + `README_EN.md`: thêm mục `_send_e2ee.py` vào
@@ -546,9 +586,8 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [2.1.1] - 2026-05-12
 
-> Bản vá tài liệu & hạ tầng phân phối. Không thay đổi runtime; chủ yếu
-> hoàn thiện tài liệu trên website, README và đẩy gói lên PyPI để
-> `pip install fbchat-v2` hoạt động chính thức.
+> Bản vá tài liệu và cách phân phối, không thay đổi runtime. Cập nhật website,
+> README và phát hành lên PyPI để cài bằng `pip install fbchat-v2`.
 
 ### ✨ Added
 
@@ -597,9 +636,9 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [2.1.0] - 2026-05-12
 
-> Bản cập nhật lớn: chính thức hỗ trợ giải mã End-to-End Encryption (E2EE)
-> cho tin nhắn cá nhân Messenger. Schema event giữ nguyên tương thích ngược 100%
-> với `_listening.py` cũ - chỉ cần đổi import là chạy.
+> Thêm giải mã End-to-End Encryption (E2EE) cho tin nhắn cá nhân Messenger.
+> Schema event giữ các field của `_listening.py` để ứng dụng dùng lại phần
+> xử lý tin nhắn; listener E2EE cần bridge Go.
 
 ### ✨ Added
 
@@ -682,7 +721,7 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 - Tái cấu trúc toàn bộ codebase thành 3 tầng `_core` / `_features` /
   `_messaging`.
 - Listener MQTT WebSocket cho tin nhắn nhóm (`_listening.py`).
-- Bộ tính năng đầy đủ: gửi tin / sticker / attachment, react, unsend, message
+- Thêm các tính năng gửi tin / sticker / attachment, react, unsend, message
   transport HTTP, quản lý nhóm (admin / nickname / emoji / poll), facebook
   features (post, bio, search, marketplace, professional…).
 - Đăng nhập bằng cookie hoặc username/password (kèm 2FA TOTP).
@@ -692,7 +731,8 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ---
 
-[Unreleased]: https://github.com/m008v/fbchat-v2/compare/v2.3.2...HEAD
+[Unreleased]: https://github.com/m008v/fbchat-v2/compare/v2.3.3...HEAD
+[2.3.3]: https://github.com/m008v/fbchat-v2/compare/v2.3.2...v2.3.3
 [2.3.2]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.2
 [2.3.1]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.1
 [2.3.0]: https://github.com/m008v/fbchat-v2/releases/tag/v2.3.0

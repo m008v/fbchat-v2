@@ -15,19 +15,19 @@ from fbchat_v2._messaging import _listening_e2ee as e2ee
 
 EXPECTED_BRIDGE_SHA256 = {
     "fbchat-bridge-e2ee-darwin-amd64": (
-        "57438de5b4ad91d5940c06a6375816849add946eb1f1eaec902e7c049f401343"
+        "3d5462238b62b75fdc5cddd43eb440af8127105350eb6b4b5a8c48713b90cd9d"
     ),
     "fbchat-bridge-e2ee-darwin-arm64": (
-        "f20492cb258012c17c3626b9dced469b04d3dd205fcb30afc3cb7df2d454c8f7"
+        "24559a362b3c7d17c0f57ed53e0f0f7da1bcf3d9afcf80d0049670798ef5fd5d"
     ),
     "fbchat-bridge-e2ee-linux-amd64": (
-        "6a724d0d5799405dead1354b28fed69a989efc2785a0ebcf7bf66cfb1a4c6985"
+        "c0ef9d5f6a897bc983a0a2d4c3847f4f661b3151e7ad4debdb0a329387921e75"
     ),
     "fbchat-bridge-e2ee-linux-arm64": (
-        "82d98374cccfee83e2d5b7e40782dcdc3dfa3821282cb178c69d87c1d123026e"
+        "f3eab15ec258abd4046e21e940332577c6a3073682f20e1e7ed9bcf6855b8ef6"
     ),
     "fbchat-bridge-e2ee-windows-amd64.exe": (
-        "2216fc299df618b6c1aeee1c00bcf9e1ab55aed1073588bff6fb7ecd142f95fe"
+        "80c2f09179a1cc431d996ff3615bd44c47373869357d92b33d406cdafedb7054"
     ),
 }
 
@@ -69,7 +69,7 @@ class _StreamResponse:
 
 
 def test_public_namespace_and_version_are_stable() -> None:
-    assert fbchat_v2.__version__ == version("fbchat-v2") == "2.3.2"
+    assert fbchat_v2.__version__ == version("fbchat-v2") == "2.3.3"
     assert callable(_unFriend.func)
 
 
@@ -92,13 +92,13 @@ def test_blocking_sequence_refresh_never_calls_async_transport(monkeypatch) -> N
 
 def test_release_bridge_checksums_are_bound(monkeypatch: pytest.MonkeyPatch) -> None:
     assert e2ee._BRIDGE_RELEASE_REPOSITORY == "m008v/fbchat-v2"
-    assert e2ee.BRIDGE_RELEASE_VERSION == "2.3.2"
+    assert e2ee.BRIDGE_RELEASE_VERSION == "2.3.3"
     assert e2ee.BRIDGE_SHA256 == EXPECTED_BRIDGE_SHA256
 
     binary_name = "fbchat-bridge-e2ee-windows-amd64.exe"
-    monkeypatch.setattr(e2ee, "_PACKAGE_VERSION", "2.3.2")
+    monkeypatch.setattr(e2ee, "_PACKAGE_VERSION", "2.3.3")
     assert e2ee._release_version_and_digest(binary_name) == (
-        "2.3.2",
+        "2.3.3",
         EXPECTED_BRIDGE_SHA256[binary_name],
     )
 
@@ -110,7 +110,7 @@ def test_namespaced_checkout_resolves_source_and_installed_paths(
     module_path.parent.mkdir(parents=True)
     module_path.touch()
     (tmp_path / "pyproject.toml").write_text(
-        '[project]\nname = "fbchat-v2"\nversion = "2.3.2"\n', encoding="utf-8"
+        '[project]\nname = "fbchat-v2"\nversion = "2.3.3"\n', encoding="utf-8"
     )
 
     monkeypatch.setattr(e2ee, "__file__", str(module_path))
@@ -119,26 +119,26 @@ def test_namespaced_checkout_resolves_source_and_installed_paths(
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
 
     assert e2ee._is_source_checkout() is True
-    assert e2ee._expected_package_version() == "2.3.2"
+    assert e2ee._expected_package_version() == "2.3.3"
     assert e2ee._default_binary_path() == (
         tmp_path / "build" / "fbchat-bridge-e2ee.exe"
     )
 
-    monkeypatch.setattr(e2ee, "_PACKAGE_VERSION", "2.3.2")
+    monkeypatch.setattr(e2ee, "_PACKAGE_VERSION", "2.3.3")
     assert e2ee._release_version_and_digest("fbchat-bridge-e2ee-windows-amd64.exe") == (
-        "2.3.2",
+        "2.3.3",
         EXPECTED_BRIDGE_SHA256["fbchat-bridge-e2ee-windows-amd64.exe"],
     )
 
     (tmp_path / "pyproject.toml").unlink()
     assert e2ee._is_source_checkout() is False
-    assert e2ee._expected_package_version() == "2.3.2"
+    assert e2ee._expected_package_version() == "2.3.3"
     assert e2ee._default_binary_path() == (
         tmp_path
         / "cache"
         / "fbchat-v2"
         / "bridge"
-        / "v2.3.2"
+        / "v2.3.3"
         / "fbchat-bridge-e2ee.exe"
     )
 
@@ -146,7 +146,7 @@ def test_namespaced_checkout_resolves_source_and_installed_paths(
 def test_download_bridge_accepts_canonical_release_owner(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    version_number = "2.3.2"
+    version_number = "2.3.3"
     binary_name = "fbchat-bridge-e2ee-windows-amd64.exe"
     content = b"verified bridge payload"
     expected_digest = hashlib.sha256(content).hexdigest()

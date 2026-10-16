@@ -1,5 +1,44 @@
 # Agent Memories
 
+## 2026-10-16 — Đồng bộ source đóng gói 2.3.3
+
+### Mục tiêu
+- So sánh checkout `fbchat-v2-pypi`, đồng bộ bản 2.3.3, push nhánh `pypi`
+  và publish PyPI theo yêu cầu m008v. Không mở lại Facebook/Messenger live.
+
+### Đã thực hiện
+- Lấy 54 file `src/fbchat_v2` và README Việt/Anh, changelog từ verified sdist
+  của GitHub Release `v2.3.3`, source commit `c77ad702867456526225d99fc6e54d1470b00d31`.
+  Cả 57 file khớp byte với sdist; so với 2.3.2 có 12 file canonical thay đổi,
+  gồm tám README và bốn file runtime/version/checksum.
+- Cập nhật version và URL repository trong `pyproject.toml`, fixture version
+  cùng năm hash bridge trong test, và hướng dẫn `PACKAGING.md`.
+- Giữ cấu hình mypy package-only, Black exclude cho checksum generated,
+  `.gitignore`, `MANIFEST.in` và lịch sử riêng của branch `pypi`.
+- Bỏ cụm tên release/tag khỏi đoạn mở đầu README Việt/Anh theo yêu cầu.
+
+### Quyết định kỹ thuật
+- Không copy checksum placeholder từ main; dùng năm hash đã bind trong sdist
+  và đối chiếu manifest, GitHub asset digest trước khi đồng bộ.
+- Chỉ upload wheel/sdist tải từ GitHub Release. Build thử cục bộ không dùng
+  để phát hành, dù tên member và nội dung wheel khớp production.
+- Artifact đã xác minh nằm trong `.artifacts/release-2.3.3-20261016/assets/`;
+  không đưa artifact, virtualenv, cookie hoặc dữ liệu chat vào Git.
+
+### Kiểm tra
+- GitHub Release run `38904158766` đạt đủ 20 job. Chín asset public khớp
+  SHA-256 từ API GitHub và cả hai manifest; embedded bridge checksums,
+  archive layout/metadata và Twine 7 strict đều đạt.
+- Checkout PyPI: `5 passed`; Ruff, Black (45 file), mypy (45 source file),
+  compileall, build wheel/sdist và dependency check (34 package) đạt.
+- Fresh wheel install/import đúng 2.3.3; QA độc lập xác nhận 57/57 file khớp
+  sdist, test không nới assertion. UTF-8 strict, mojibake và diff check đạt.
+
+### Việc còn lại
+- Push commit đồng bộ rồi upload exact artifact bằng Twine qua Windows
+  keyring; xác minh hash public PyPI và clean-install sau upload.
+- Chưa có thêm bằng chứng live cold restart/network; các ca này vẫn hoãn.
+
 ## 2026-09-15 — Đồng bộ source đóng gói v2.3.2
 
 ### Mục tiêu

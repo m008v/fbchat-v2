@@ -51,7 +51,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from queue import Empty, Full, Queue
-from typing import Any, Optional, TypeGuard
+from typing import Any, Optional, TypeGuard, TypeVar
 from urllib.parse import unquote, urlparse
 
 import httpx
@@ -94,6 +94,189 @@ _BRIDGE_REQUIRED_CAPABILITIES = frozenset(
 _BRIDGE_STATE_EVENT = "__bridge_state__"
 _BRIDGE_RELEASE_REPOSITORY = "m008v/fbchat-v2"
 DELIVERY_STATUS_UNKNOWN = "unknown"
+_T = TypeVar("_T")
+
+_BRIDGE_REDACTED = "<redacted>"
+_BRIDGE_COOKIE_PATTERN = re.compile(
+    r"(?i)\b(c_user|xs|fr|datr|sb|presence|access_token)=([^;\s]+)"
+)
+_BRIDGE_JID_PATTERN = re.compile(
+    r"\b[0-9]{5,}:[0-9]+@[A-Za-z0-9._-]+\b|\b[0-9]{5,}@[A-Za-z0-9._-]+\b"
+)
+_BRIDGE_LONG_ID_PATTERN = re.compile(r"\b[0-9]{7,}\b")
+_BRIDGE_UUID_PATTERN = re.compile(
+    r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
+    r"[89ab][0-9a-f]{3}-[0-9a-f]{12}\b"
+)
+_BRIDGE_URL_QUERY_PATTERN = re.compile(r"(https?://[^\s?\"']+)\?[^\s\"']+")
+_BRIDGE_SENSITIVE_KV_PATTERN = re.compile(
+    r"(?i)([\"']?(?:cookie|cookies|cookieFacebook|access_token|token|secret|"
+    r"authorization|id|(?!(?:database_id|stream_id)\b)[A-Za-z][A-Za-z0-9_-]*id|"
+    r"fbid|facebook_id|user_id|sender_id|thread_id|message_id|"
+    r"chat_jid|sender_jid|jid|device_id|registration_id|epoch_id|session_id|"
+    r"name|thread_name|threadname|sender_name|sendername|user_name|username|"
+    r"display_name|displayname|url|image_url|imageurl|profile_url|profileurl|"
+    r"attachments|"
+    r"cursor|new_cursor|current_cursor|last_applied_cursor|payload|body|text|"
+    r"content|raw|request|response|data|val|value|config|configs|sync_params|"
+    r"database|block_response|full_block|ptks|key|prekey|identity|identity_key|"
+    r"signature|registration|routing_info)"
+    r"[\"']?\s*[:=]\s*)([^,}\]]+)"
+)
+_BRIDGE_CONSOLE_SENSITIVE_FIELD_START_PATTERN = re.compile(
+    r"\b((?:cookie|cookies|cookieFacebook|access_token|token|secret|"
+    r"authorization|id|(?!(?:database_id|stream_id)\b)[A-Za-z][A-Za-z0-9_-]*id|"
+    r"fbid|facebook_id|user_id|sender_id|thread_id|message_id|"
+    r"chat_jid|sender_jid|jid|device_id|registration_id|epoch_id|session_id|"
+    r"name|thread_name|threadname|sender_name|sendername|user_name|username|"
+    r"display_name|displayname|url|image_url|imageurl|profile_url|profileurl|"
+    r"attachments|"
+    r"[A-Za-z0-9_-]*cursor[A-Za-z0-9_-]*|payload|body|text|content|raw|request|"
+    r"response|data|val|value|config|configs|database|sync_params|block_response|"
+    r"full_block|ptks|key|prekey|identity|identity_key|signature|registration|"
+    r"routing_info))(\s*=\s*)",
+    re.IGNORECASE,
+)
+_BRIDGE_DATABASE_ID_PATTERN = re.compile(r"\bdatabase_id=(-?\d+)\b")
+_BRIDGE_XML_TAG_PATTERN = re.compile(r"</?[A-Za-z][^>]*>")
+
+
+def _is_sensitive_bridge_log_key(key: str) -> bool:
+    normalized = key.lower().replace("_", "").replace("-", "")
+    if normalized.endswith("id") and normalized not in {"databaseid", "streamid"}:
+        return True
+    if any(
+        marker in normalized
+        for marker in ("cookie", "token", "secret", "password", "authorization")
+    ):
+        return True
+    if "cursor" in normalized or "prekey" in normalized:
+        return True
+    return normalized in {
+        "id",
+        "fbid",
+        "facebookid",
+        "userid",
+        "senderid",
+        "threadid",
+        "messageid",
+        "chatjid",
+        "senderjid",
+        "jid",
+        "deviceid",
+        "registrationid",
+        "epochid",
+        "sessionid",
+        "name",
+        "threadname",
+        "sendername",
+        "username",
+        "displayname",
+        "url",
+        "imageurl",
+        "profileurl",
+        "attachments",
+        "payload",
+        "body",
+        "text",
+        "content",
+        "raw",
+        "request",
+        "response",
+        "data",
+        "val",
+        "value",
+        "config",
+        "configs",
+        "database",
+        "syncparams",
+        "blockresponse",
+        "fullblock",
+        "ptks",
+        "key",
+        "identity",
+        "identitykey",
+        "signature",
+        "registration",
+        "routinginfo",
+    }
+
+
+def _redact_bridge_log_value(value: Any, *, key: str | None = None) -> Any:
+    if key is not None and _is_sensitive_bridge_log_key(key):
+        return _BRIDGE_REDACTED
+    if isinstance(value, dict):
+        return {
+            str(nested_key): _redact_bridge_log_value(nested_value, key=str(nested_key))
+            for nested_key, nested_value in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_bridge_log_value(item) for item in value]
+    if isinstance(value, str):
+        return _redact_bridge_text_fallback(value)
+    return value
+
+
+def _redact_bridge_text_fallback(value: str) -> str:
+    xml_tag = _BRIDGE_XML_TAG_PATTERN.search(value)
+    if xml_tag is not None:
+        return _BRIDGE_REDACTED
+    value = _BRIDGE_COOKIE_PATTERN.sub(
+        lambda match: f"{match.group(1)}={_BRIDGE_REDACTED}", value
+    )
+    value = _BRIDGE_URL_QUERY_PATTERN.sub(
+        lambda match: f"{match.group(1)}?{_BRIDGE_REDACTED}", value
+    )
+    sensitive_field = _BRIDGE_CONSOLE_SENSITIVE_FIELD_START_PATTERN.search(value)
+    if sensitive_field is not None:
+        database_id = _BRIDGE_DATABASE_ID_PATTERN.search(
+            value, pos=sensitive_field.end()
+        )
+        safe_suffix = (
+            f" database_id={database_id.group(1)}" if database_id is not None else ""
+        )
+        return (
+            f"{value[: sensitive_field.start()]}{sensitive_field.group(1)}="
+            f"{_BRIDGE_REDACTED}{safe_suffix}"
+        )
+    value = _BRIDGE_SENSITIVE_KV_PATTERN.sub(
+        lambda match: f"{match.group(1)}{_BRIDGE_REDACTED}", value
+    )
+    value = _BRIDGE_JID_PATTERN.sub(_BRIDGE_REDACTED, value)
+    value = _BRIDGE_UUID_PATTERN.sub(_BRIDGE_REDACTED, value)
+    return _BRIDGE_LONG_ID_PATTERN.sub(_BRIDGE_REDACTED, value)
+
+
+def _redact_bridge_text(value: object) -> str:
+    text = str(value)
+    try:
+        decoded = json.loads(text)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return _redact_bridge_text_fallback(text)
+    return json.dumps(
+        _redact_bridge_log_value(decoded),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
+def _format_exception_chain(error: BaseException) -> str:
+    parts: list[str] = []
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        detail = _redact_bridge_text(str(current))
+        parts.append(
+            f"{type(current).__name__}: {detail}" if detail else type(current).__name__
+        )
+        if current.__cause__ is not None:
+            current = current.__cause__
+        elif not current.__suppress_context__:
+            current = current.__context__
+        else:
+            current = None
+    return " <- ".join(parts)
 
 
 def _is_valid_bridge_event(event: object) -> TypeGuard[dict[str, Any]]:
@@ -457,6 +640,19 @@ class BridgeError(RuntimeError):
     """Bridge trả về `ok:false` hoặc lỗi truyền tải."""
 
 
+class BridgeStartupError(BridgeError):
+    """Một phase startup thất bại; exception gốc nằm trong ``__cause__``."""
+
+    def __init__(self, phase: str, cause: BaseException) -> None:
+        self.phase = phase
+        self.cause_type = type(cause).__name__
+        detail = _redact_bridge_text(str(cause))
+        suffix = f": {detail}" if detail else ""
+        super().__init__(
+            f"bridge startup phase '{phase}' failed ({self.cause_type}){suffix}"
+        )
+
+
 @dataclass(slots=True)
 class _WriteRequest:
     line: bytes
@@ -480,13 +676,20 @@ class _BridgeProcess:
     HEALTH_RPC_TIMEOUT: float = 5.0
     UNHEALTHY_CHECK_LIMIT: int = 3
     STABLE_UPTIME: float = 60.0
+    CONTRACT_TIMEOUT: float = 5.0
+    NEW_CLIENT_TIMEOUT: float = 30.0
+    REGULAR_CONNECT_TIMEOUT: float = 120.0
     REGULAR_READY_TIMEOUT: float = 90.0
+    E2EE_CONNECT_TIMEOUT: float = 60.0
     E2EE_READY_TIMEOUT: float = 60.0
+    STARTUP_TIMEOUT_MARGIN: float = 30.0
     CONNECTION_POLL_INTERVAL: float = 0.25
     CLOSE_WRITE_LOCK_TIMEOUT: float = 0.1
     CLOSE_GRACEFUL_TIMEOUT: float = 1.0
     MAX_RPC_REQUEST_BYTES: int = 150 * 1024 * 1024
     MAX_EVENT_QUEUE_SIZE: int = 1000
+    MAX_STDERR_LINE_BYTES: int = 64 * 1024
+    STDERR_READ_CHUNK_BYTES: int = 4 * 1024
 
     def __init__(
         self,
@@ -625,13 +828,61 @@ class _BridgeProcess:
     # ------------------------------------------------------------------
     def _drain_stderr(self, proc: subprocess.Popen[bytes]) -> None:
         assert proc.stderr is not None
-        for raw in proc.stderr:
+        pending = bytearray()
+        discarding = False
+        while True:
             try:
-                line = raw.decode("utf-8", errors="replace").rstrip()
-            except Exception:  # noqa: BLE001
+                chunk = proc.stderr.read(self.STDERR_READ_CHUNK_BYTES)
+            except (OSError, ValueError):
+                # Đóng pipe trong shutdown có thể đánh thức reader bằng lỗi.
+                if self._log_stderr and not self._stop_event.is_set():
+                    _safe_print(
+                        "[bridge stderr] read failed (details hidden)", file=sys.stderr
+                    )
+                return
+            if not chunk:
+                break
+            if not self._log_stderr:
                 continue
-            if self._log_stderr:
-                _safe_print(f"[bridge stderr] {line}", file=sys.stderr)
+
+            start = 0
+            while start < len(chunk):
+                newline = chunk.find(b"\n", start)
+                end = len(chunk) if newline < 0 else newline
+                if not discarding:
+                    if len(pending) + end - start > self.MAX_STDERR_LINE_BYTES:
+                        pending.clear()
+                        discarding = True
+                        # Không log prefix/tail: secret có thể nằm qua ranh giới
+                        # chunk hoặc là field của một JSON line chưa hoàn chỉnh.
+                        _safe_print(
+                            "[bridge stderr] discarded oversized log line "
+                            "(content hidden)",
+                            file=sys.stderr,
+                        )
+                    else:
+                        pending.extend(chunk[start:end])
+                if newline < 0:
+                    break
+                if not discarding:
+                    self._log_stderr_line(pending)
+                pending.clear()
+                discarding = False
+                start = newline + 1
+
+        if pending and not discarding:
+            self._log_stderr_line(pending)
+
+    @staticmethod
+    def _log_stderr_line(raw: bytearray) -> None:
+        # Decode cả dòng để không làm hỏng UTF-8 bị chia giữa hai lần đọc.
+        line = raw.decode("utf-8", errors="replace").rstrip()
+        try:
+            redacted = _redact_bridge_text(line)
+        except RecursionError:
+            # JSON lồng quá sâu vẫn có thể nhỏ hơn giới hạn byte của dòng.
+            redacted = "discarded malformed log line (content hidden)"
+        _safe_print(f"[bridge stderr] {redacted}", file=sys.stderr)
 
     @staticmethod
     def _fail_queued_writes(
@@ -745,7 +996,9 @@ class _BridgeProcess:
                     msg = json.loads(raw)
                 except (json.JSONDecodeError, UnicodeDecodeError) as exc:
                     detail = (
-                        f"{exc} :: {raw!r}" if self._log_stderr else "details hidden"
+                        _redact_bridge_text(f"{exc} :: {raw!r}")
+                        if self._log_stderr
+                        else "details hidden"
                     )
                     _safe_print(
                         f"[bridge] bad json ({len(raw)} bytes): {detail}",
@@ -754,7 +1007,11 @@ class _BridgeProcess:
                     continue
 
                 if not isinstance(msg, dict):
-                    detail = repr(msg) if self._log_stderr else "details hidden"
+                    detail = (
+                        _redact_bridge_text(repr(msg))
+                        if self._log_stderr
+                        else "details hidden"
+                    )
                     _safe_print(
                         f"[bridge] expected a JSON object: {detail}", file=sys.stderr
                     )
@@ -763,7 +1020,11 @@ class _BridgeProcess:
                 if "event" in msg:
                     event = msg.get("event")
                     if not _is_valid_bridge_event(event):
-                        detail = repr(event) if self._log_stderr else "details hidden"
+                        detail = (
+                            _redact_bridge_text(repr(event))
+                            if self._log_stderr
+                            else "details hidden"
+                        )
                         _safe_print(
                             f"[bridge] invalid event shape: {detail}", file=sys.stderr
                         )
@@ -789,7 +1050,9 @@ class _BridgeProcess:
                 if pending is not None:
                     pending[1].put(msg)
         except (OSError, ValueError) as exc:
-            detail = str(exc) if self._log_stderr else "details hidden"
+            detail = (
+                _redact_bridge_text(str(exc)) if self._log_stderr else "details hidden"
+            )
             _safe_print(f"[bridge] stdout read failed: {detail}", file=sys.stderr)
         finally:
             self._mark_generation_exited(proc, generation, writer_queue)
@@ -988,7 +1251,8 @@ class _BridgeProcess:
 
     def _validate_contract(self, *, health_probe: bool = False) -> dict[str, Any]:
         call = self._call_blocking_impl if health_probe else self.call_blocking
-        hello = call("hello", None, self.HEALTH_RPC_TIMEOUT)
+        timeout = self.HEALTH_RPC_TIMEOUT if health_probe else self.CONTRACT_TIMEOUT
+        hello = call("hello", None, timeout)
         protocol_version = hello.get("protocolVersion")
         if (
             type(protocol_version) is not int
@@ -1034,22 +1298,66 @@ class _BridgeProcess:
         """Validate contract and establish every requested transport."""
         self._begin_recovery_transaction()
         try:
-            self._validate_contract()
-            self.call_blocking("newClient", connect_cfg)
-            info = self.call_blocking("connect", timeout=120)
-            self._wait_for_connection(
-                require_e2ee=False,
-                timeout=self.REGULAR_READY_TIMEOUT,
+            self._run_startup_phase("contract", self._validate_contract)
+            self._run_startup_phase(
+                "new client",
+                lambda: self.call_blocking(
+                    "newClient", connect_cfg, timeout=self.NEW_CLIENT_TIMEOUT
+                ),
+            )
+            info = self._run_startup_phase(
+                "regular connect",
+                lambda: self.call_blocking(
+                    "connect", timeout=self.REGULAR_CONNECT_TIMEOUT
+                ),
+            )
+            self._run_startup_phase(
+                "regular ready",
+                lambda: self._wait_for_connection(
+                    require_e2ee=False,
+                    timeout=self.REGULAR_READY_TIMEOUT,
+                ),
             )
             if enable_e2ee:
-                self.call_blocking("connectE2EE", timeout=self.E2EE_READY_TIMEOUT)
-                self._wait_for_connection(
-                    require_e2ee=True,
-                    timeout=self.E2EE_READY_TIMEOUT,
+                self._run_startup_phase(
+                    "E2EE connect",
+                    lambda: self.call_blocking(
+                        "connectE2EE", timeout=self.E2EE_CONNECT_TIMEOUT
+                    ),
+                )
+                self._run_startup_phase(
+                    "E2EE ready",
+                    lambda: self._wait_for_connection(
+                        require_e2ee=True,
+                        timeout=self.E2EE_READY_TIMEOUT,
+                    ),
                 )
             return info
         finally:
             self._end_recovery_transaction()
+
+    @classmethod
+    def startup_timeout(cls, *, enable_e2ee: bool) -> float:
+        """Hard ceiling above the sum of bounded startup phases."""
+        timeout = (
+            cls.CONTRACT_TIMEOUT
+            + cls.NEW_CLIENT_TIMEOUT
+            + cls.REGULAR_CONNECT_TIMEOUT
+            + cls.REGULAR_READY_TIMEOUT
+            + cls.STARTUP_TIMEOUT_MARGIN
+        )
+        if enable_e2ee:
+            timeout += cls.E2EE_CONNECT_TIMEOUT + cls.E2EE_READY_TIMEOUT
+        return timeout
+
+    @staticmethod
+    def _run_startup_phase(phase: str, action: Callable[[], _T]) -> _T:
+        try:
+            return action()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as exc:
+            raise BridgeStartupError(phase, exc) from exc
 
     def _probe_health(self) -> bool | None:
         _, generation = self._snapshot_process()
@@ -1215,7 +1523,11 @@ class _BridgeProcess:
                 except Exception as exc:  # noqa: BLE001
                     if spawned_proc is not None:
                         self._terminate_process(spawned_proc)
-                    detail = str(exc) if self._log_stderr else type(exc).__name__
+                    detail = (
+                        _format_exception_chain(exc)
+                        if self._log_stderr
+                        else type(exc).__name__
+                    )
                     _safe_print(f"[{datetime.datetime.now()}] Respawn failed: {detail}")
             return False, failures
         finally:
@@ -1387,8 +1699,13 @@ class listeningE2EEEvent:
 
     def get_last_seq_id(self):
         self.lastSeqID = self.fbt.get("last_seq_id")
-        _safe_print(f"[{datetime.datetime.now()}] last_seq_id: {self.lastSeqID}")
+        _safe_print(f"[{datetime.datetime.now()}] last_seq_id đã được cập nhật")
         return self.lastSeqID
+
+    @property
+    def startup_timeout(self) -> float:
+        """Safety ceiling for callers; each bridge phase still owns its timeout."""
+        return _BridgeProcess.startup_timeout(enable_e2ee=self.enable_e2ee)
 
     def wait_until_connected(
         self, timeout: float = 60.0, *, require_e2ee: bool = False
@@ -1405,19 +1722,16 @@ class listeningE2EEEvent:
         if not self._startup_done.wait(timeout):
             return False
         if self._startup_error is not None:
-            raise RuntimeError(
-                "E2EE listener failed to start."
-            ) from self._startup_error
-        if not self._connected.is_set():
+            raise self._startup_error
+        remaining = max(0.0, deadline - time.monotonic())
+        if not self._connected.wait(remaining):
             return False
         if not require_e2ee or not self.enable_e2ee:
             return True
         remaining = max(0.0, deadline - time.monotonic())
         if not self._e2ee_connected.wait(remaining):
             if self._startup_error is not None:
-                raise RuntimeError(
-                    "E2EE listener failed during E2EE handshake."
-                ) from self._startup_error
+                raise self._startup_error
             return False
         return True
 
@@ -1477,8 +1791,7 @@ class listeningE2EEEvent:
             if self.device_path:
                 cfg["devicePath"] = self.device_path
 
-            info = bridge.connect_client(cfg, enable_e2ee=self.enable_e2ee)
-            user = info.get("user", {})
+            bridge.connect_client(cfg, enable_e2ee=self.enable_e2ee)
             # Khởi động watchdog — auto-respawn khi bridge crash
             bridge.start_watchdog(connect_cfg=cfg, enable_e2ee=self.enable_e2ee)
             with self._lifecycle_lock:
@@ -1489,10 +1802,7 @@ class listeningE2EEEvent:
                     self._e2ee_connected.set()
                 self._startup_done.set()
 
-            _safe_print(
-                f"[{datetime.datetime.now()}] Logged in as "
-                f"{user.get('name')} ({user.get('id')})"
-            )
+            _safe_print(f"[{datetime.datetime.now()}] Bridge login succeeded")
             if self.enable_e2ee:
                 _safe_print(f"[{datetime.datetime.now()}] E2EE connected")
 
@@ -1561,7 +1871,11 @@ class listeningE2EEEvent:
                 if event_type == "bridge_fatal":
                     self._connected.clear()
                     self._e2ee_connected.clear()
-                    detail = evt.get("error") if self.debug_errors else "details hidden"
+                    detail = (
+                        _redact_bridge_text(evt.get("error"))
+                        if self.debug_errors
+                        else "details hidden"
+                    )
                     _safe_print(f"[{datetime.datetime.now()}] bridge_fatal: {detail}")
                     raise BridgeError("bridge watchdog exhausted its retry budget")
 
@@ -1605,17 +1919,23 @@ class listeningE2EEEvent:
         elif etype == "e2eeConnected":
             _safe_print(f"[{datetime.datetime.now()}] e2eeConnected")
         elif etype == "disconnected":
-            detail = f": {data}" if self.debug_errors else ""
+            detail = f": {_redact_bridge_text(data)}" if self.debug_errors else ""
             _safe_print(f"[{datetime.datetime.now()}] disconnected{detail}")
         elif etype == "error":
-            detail = str(data) if self.debug_errors else "payload hidden"
+            detail = (
+                _redact_bridge_text(data) if self.debug_errors else "payload hidden"
+            )
             _safe_print(f"[{datetime.datetime.now()}] bridge error ({detail})")
 
         if self._on_message:
             try:
                 self._on_message(evt)
             except Exception as exc:  # noqa: BLE001
-                detail = str(exc) if self.debug_errors else "details hidden"
+                detail = (
+                    _redact_bridge_text(str(exc))
+                    if self.debug_errors
+                    else "details hidden"
+                )
                 _safe_print(
                     f"[{datetime.datetime.now()}] handler raised: "
                     f"{type(exc).__name__} ({detail})"

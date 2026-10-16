@@ -4,15 +4,15 @@
 
 ### Async-first Python library for the unofficial Facebook Messenger API
 
-[![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/MinhHuyDev/fbchat-v2)
+[![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/m008v/fbchat-v2)
 [![PyPI](https://img.shields.io/pypi/v/fbchat-v2?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/fbchat-v2/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-2.3.2-blue)](https://github.com/MinhHuyDev/fbchat-v2/releases)
-[![Issues](https://img.shields.io/github/issues/MinhHuyDev/fbchat-v2?color=orange)](https://github.com/MinhHuyDev/fbchat-v2/issues)
+[![Version](https://img.shields.io/badge/version-2.3.3-blue)](https://github.com/m008v/fbchat-v2/releases)
+[![Issues](https://img.shields.io/github/issues/m008v/fbchat-v2?color=orange)](https://github.com/m008v/fbchat-v2/issues)
 [![License](https://img.shields.io/badge/license-See%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
 
-[🇻🇳 Tiếng Việt](README.md) · [📖 Documents](DOCS.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Flowchart](FLOWCHART.md) · [🐛 Report bugs](https://github.com/MinhHuyDev/fbchat-v2/issues)
+[🇻🇳 Tiếng Việt](README.md) · [📖 Documentation](DOCS.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Flowchart](FLOWCHART.md) · [🐛 Report bugs](https://github.com/m008v/fbchat-v2/issues)
 
 </div>
 
@@ -20,20 +20,20 @@
 
 
 > [!IMPORTANT]
-> This is version `v2.3.2`, which uses *httpx.Client* instead of the old *requests* flow and now ships with **async/await** support. Because of that, code syntax may change or conflict with the version you are currently using. If you still want to use **requests** (*no async/await*), click here: [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4)
+> Version 2.3.3 uses `async/await`. If you're upgrading from an older version, update your function calls using the examples below. To keep using the synchronous API, use [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4).
 
 > [!WARNING]
-> **Disclaimer** - This is **not** an official Facebook product. Facebook already provides an official chatbot API [here](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` is different because it authenticates with a **real Facebook user account / cookie**, which comes with security risks. Think carefully before using it.
+> This is not an official Facebook product. For the official chatbot API, see [Messenger Platform](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` uses personal Facebook accounts and session cookies, which carries risks for your session credentials and account. Consider those risks before using it.
 
 ---
 
 ## 👋 Introduction
 
-Hello, I am **MinhHuyDev** (*m008v*) - the author and maintainer of this project.
+I'm MinhHuyDev (`m008v`), the author and maintainer of this project.
 
-First of all, thank you sincerely to all users in Vietnam and abroad who have contributed ideas and reported bugs for this project. In this **major v2.2.0 update**, the codebase has been **fully restructured**, most small legacy bugs have been addressed, and strong *async/await* support has been added.
+`fbchat-v2` is a Python library for sending and receiving Messenger messages through a personal Facebook account. It uses `async/await`, with a Go bridge for E2EE. The codebase was reorganized in v2.2.0 and has continued to receive fixes based on user reports.
 
-Of course, there may still be small bugs that are hard to find, or parts of the code that are not fully consistent yet. If you discover a ***problem***, open an issue on [GitHub](https://github.com/MinhHuyDev/fbchat-v2/issues) or message me directly on [Telegram](https://t.me/MinhHuyDev).
+Thanks to everyone who has shared ideas and reported bugs. This is an unofficial API, so features can break when Facebook changes. If you run into a problem, open an issue on [GitHub](https://github.com/m008v/fbchat-v2/issues) with reproduction steps and redacted logs, or reach me on [Telegram](https://t.me/MinhHuyDev).
 
 ---
 
@@ -60,55 +60,55 @@ Of course, there may still be small bugs that are hard to find, or parts of the 
 
 ## ✨ Features
 
-`fbchat-v2` takes a completely different direction from the official SDK. Instead of running only on a fan page with an `access_token`, this library controls a **real Facebook account** through cookies or login credentials, unlocking the full Messenger surface.
+The library uses a personal account's cookies or login credentials rather than the Page `access_token` used by the official chatbot API. It includes the following features:
 
 ### Authentication
 
-- 🔐 Log in with **username / password** or a **session cookie** (*)
-- 🍪 Reuse login sessions - no need to log in again every time the program starts
+- Log in with a username/password or session cookie (*).
+- Reuse a session instead of logging in every time the program starts.
 
 ### Messaging
 
-- 📥 Read messages from both **users** and **group chats (threads)**
-- 🔐 **E2EE listener** for Messenger personal messages (Secret Conversations / Labyrinth) through the Go bridge
-- 📤 Send text, **attachments**, **stickers**, and **user mentions**
-- 🔍 Search messages and conversation threads
-- ✏️ Edit sent messages, react, unsend, and handle message requests
-- 🎨 Change Messenger thread theme / background and manage 24-hour **Messenger Notes**
-- 📡 **Real-time listener** - respond to user commands instantly
+- Read messages from users and group chats (threads).
+- Receive E2EE personal messages (Secret Conversations / Labyrinth) through the Go bridge.
+- Send text, attachments, stickers, and user mentions.
+- Search messages and conversations.
+- Edit sent messages, react, unsend, and handle message requests.
+- Change thread themes/backgrounds and manage 24-hour Messenger Notes.
+- Receive events in real time for bot command handling.
 
 ### Threads & Groups
 
-- 👥 Create groups, add admins, change group names / emojis / nicknames
-- 📊 Create polls and fetch full thread metadata
+- Create groups, add admins, and change group names/emojis/nicknames.
+- Create polls and fetch thread metadata.
 
 ### Facebook Features (`_features._facebook`)
 
-- ❤️ **React and unreact to timeline posts** ([`_reactionPost`](src/_features/_facebook/README_EN.md#-spotlight-_reactionpostpy-post-reactions): Like, Love, Care, Haha, Wow, Sad, Angry, Undo)
-- 📝 Create posts (`_createPost`), archive posts (`_archivePost`), delete posts (`_deletePost`)
-- 👤 Search users (`_search`), fetch profile info (`_get_user_info`), manage notifications (`_notification`)
-- 🚫 Block / unblock (`_blocking`), unfriend users (`_unFriend`), manage Marketplace and Professional Mode
-- 📖 *See full details in [Facebook Features Documentation](src/_features/_facebook/README_EN.md)*
+- React and unreact to timeline posts ([`_reactionPost`](src/fbchat_v2/_features/_facebook/README_EN.md#-spotlight-_reactionpostpy-post-reactions): Like, Love, Care, Haha, Wow, Sad, Angry, Undo).
+- Create posts (`_createPost`), archive posts (`_archivePost`), and delete posts (`_deletePost`).
+- Search users (`_search`), fetch profile info (`_get_user_info`), and manage notifications (`_notification`).
+- Block/unblock (`_blocking`), unfriend users (`_unFriend`), and manage Marketplace and Professional Mode.
+- See the [Facebook Features Documentation](src/fbchat_v2/_features/_facebook/README_EN.md) for usage details.
 
 ### Recently Updated
 
-- ⚡ Full **`async` / `await`** support
-- 📦 E2EE bridge released as prebuilt binaries for Windows / Linux / macOS
+- The main APIs use `async/await`; some compatibility paths are still blocking.
+- The E2EE bridge has a binary build and distribution workflow for Windows, Linux, and macOS.
 
 > [!CAUTION]
-> (*) May present potential security risks;
+> (*) Cookies and login credentials grant access to your account. Keep them out of source code, issues, and public logs.
 
 ---
 
 ## 📂 Architecture Overview
 
-The codebase is split into 3 layers. Feature modules must not manage sessions by themselves, and messaging modules must not hardcode credentials.
+The codebase has three layers. Core manages sessions and HTTP transport; feature and messaging modules reuse them rather than storing credentials in code.
 
 | Layer | Path | Responsibility |
 |---|---|---|
-| Core | `src/_core/` | HTTP transport, session, storage, login, and utilities |
-| Features | `src/_features/` | Facebook business features and thread administration |
-| Messaging | `src/_messaging/` | Send, listen, E2EE, attachment, reaction, theme, and notes |
+| Core | `src/fbchat_v2/_core/` | HTTP transport, session, storage, login, and utilities |
+| Features | `src/fbchat_v2/_features/` | Facebook business features and thread administration |
+| Messaging | `src/fbchat_v2/_messaging/` | Send, listen, E2EE, attachment, reaction, theme, and notes |
 
 ```mermaid
 flowchart LR
@@ -124,7 +124,7 @@ flowchart LR
     G --> J
 ```
 
-📊 The full flowchart is available in [FLOWCHART.md](FLOWCHART.md).
+See [FLOWCHART.md](FLOWCHART.md) for the full flow.
 
 ---
 
@@ -183,7 +183,7 @@ fbchat-v2/
 | Component | Minimum | Recommended | Notes |
 |---|---|---|---|
 | Python | 3.10 | 3.11 / 3.12 | Required |
-| Go (toolchain) | 1.26.6 | 1.26.6+ | **Only required for E2EE** - used to build `fbchat-bridge-e2ee` |
+| Go (toolchain) | 1.26.9 | 1.26.9+ | **Only required for E2EE** - used to build `fbchat-bridge-e2ee` |
 | Git | any | latest | Needed for `go mod tidy` to pull `mautrix/meta` |
 | OS | Windows / Linux / macOS | - | - |
 | RAM | 256 MB | 1 GB+ | The E2EE bridge uses about 80-150 MB while running |
@@ -200,18 +200,18 @@ dependencies = [
 ]
 ```
 
-`httpx` is the main transport for sessions and async features. `requests` remains only at the blocking boundary for credential login and compatibility upload.
+`httpx` handles HTTP for sessions and async features. Credential login and compatibility upload still use `requests` in blocking code.
 
 ---
 
 ## 📦 Installation
 
-> Summary: **Steps 1-4 are required** for every user. **Step 5 is only required if you want to receive 1-1 messages (E2EE)**.
+> These steps install the project from source. The virtual environment in step 2 is optional; step 5 is required for the `src/main.py` sample bot or any E2EE usage.
 
 ### 1. Clone the source
 
 ```bash
-git clone https://github.com/MinhHuyDev/fbchat-v2
+git clone --recurse-submodules https://github.com/m008v/fbchat-v2.git
 cd fbchat-v2
 ```
 
@@ -248,7 +248,7 @@ python -c "import fbchat_v2; from fbchat_v2._features._facebook import _unFriend
 
 ### 4. Verify the installed packages
 
-Both editable installs and wheels must expose the public `fbchat_v2` namespace:
+Check that the installed package exposes the public `fbchat_v2` namespace. This applies to both editable installs and wheels:
 
 ```bash
 python scripts/verify_distribution.py
@@ -256,13 +256,13 @@ python scripts/verify_distribution.py
 
 You do not need `PYTHONPATH=src`, and imports must not use a `src.` prefix.
 
-### 5. *(Optional)* Build the E2EE bridge - for 1-1 messages
+### 5. Build the E2EE bridge - required for the sample bot
 
-If you only need to receive group messages, **skip this step**. Personal messages (E2EE) require the Go binary `fbchat-bridge-e2ee`.
+You can skip this step if you only use HTTP APIs or the regular MQTT listener. The `src/main.py`, `_e2ee_listening_test.py`, and `_e2ee_send_test.py` entrypoints need the Go `fbchat-bridge-e2ee` binary: if the bridge is not ready, they stop instead of falling back to Python MQTT.
 
 #### 5.1. Install the Go toolchain
 
-- Download it from: <https://go.dev/dl/> (Go >= 1.26.6).
+- Download it from: <https://go.dev/dl/> (Go >= 1.26.9).
 - After installation, open a new terminal and check:
 
   ```bash
@@ -271,13 +271,13 @@ If you only need to receive group messages, **skip this step**. Personal message
 
 #### 5.2. Pull the `mautrix/meta` source
 
-The repo already declares `bridge-e2ee/meta` in `.gitmodules`, so prefer using the submodule:
+The repo declares `bridge-e2ee/meta` in `.gitmodules`. For a Git checkout, use the submodule:
 
 ```bash
 git submodule update --init --recursive bridge-e2ee/meta
 ```
 
-If you are building manually from a source copy without `.gitmodules`, use this fallback clone:
+If you are building from a source copy without `.gitmodules`, clone it manually:
 
 ```bash
 cd bridge-e2ee
@@ -289,7 +289,8 @@ git clone https://github.com/mautrix/meta.git ./meta
 #### 5.3. Download dependencies & build
 
 ```bash
-go mod tidy
+cd bridge-e2ee
+go mod download
 
 # Windows
 go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee.exe .
@@ -305,9 +306,9 @@ The first build may take a few minutes and about 300 MB of Go module cache. Afte
 ```bash
 cd ..
 # Windows
-.\build\fbchat-bridge-e2ee.exe --help
+python scripts/smoke_bridge_rpc.py .\build\fbchat-bridge-e2ee.exe --expected-version 2.3.3
 # Linux/macOS
-./build/fbchat-bridge-e2ee --help
+python scripts/smoke_bridge_rpc.py ./build/fbchat-bridge-e2ee --expected-version 2.3.3
 ```
 
 If the binary is not in the default location, set the environment variable:
@@ -331,13 +332,13 @@ Copy [`src/config.example.json`](src/config.example.json) to `src/config.json`, 
 python src/main.py
 ```
 
-If the console prints account information plus `last_seq_id`, the setup is complete.
+When the console prints `E2EE listener đã sẵn sàng`, the bot has connected its listener. This does not yet prove that sending and receiving messages works. The sample bot does not print account IDs, cookies, or `last_seq_id` metadata.
 
 ---
 
 ## ⚙️ Configuration
 
-Copy the local template:
+Create a local configuration file from the template:
 
 ```powershell
 Copy-Item src\config.example.json src\config.json
@@ -369,7 +370,7 @@ Example:
 | `prefix` | No | Command prefix, defaults to `/` |
 | `admins` | No | List of Facebook IDs allowed to use admin commands |
 | `log_message_content` | No | Allow plaintext message logging; defaults to `false` for privacy |
-| `debug_errors` | No | Print detailed payloads/tracebacks; defaults to `false` |
+| `debug_errors` | No | Print redacted bridge diagnostics; defaults to `false` |
 | `botName` | No | Config metadata, currently unused by the sample bot |
 | `version` | No | Config metadata, currently unused by the sample bot |
 
@@ -437,7 +438,7 @@ result = await sender.send(
     threadID="100012345678"
 )
 if result.get("error"):
-    raise RuntimeError(result["payload"]["error-decription"])
+    raise RuntimeError(result["payload"]["error-description"])
 ```
 
 `threadID` can be a single ID or a list of IDs when `typeChat="user"`. When sending an attachment, `typeAttachment` and `attachmentID` must be passed together.
@@ -457,7 +458,7 @@ async with httpx.AsyncClient(timeout=30) as client:
     )
 ```
 
-If the caller creates the client, the caller is responsible for closing it. Do not reuse a closed client, and do not pass a sync `httpx.Client` into the `client=` parameter of an async API.
+If you create the client, close it when you are done. Do not reuse a closed client or pass a sync `httpx.Client` to the `client=` parameter of an async API.
 
 ### Upload an attachment
 
@@ -497,13 +498,13 @@ finally:
     await listener_task
 ```
 
-Read each event through `get_message()`. `bodyResults` is only a compatibility snapshot and may miss bursts.
+Read each event through `get_message()`. `bodyResults` keeps a snapshot for compatibility with older code, so it can miss events when messages arrive in bursts.
 
 ---
 
 ## 🔐 E2EE Listener
 
-`listeningE2EEEvent` spawns the Go bridge and exchanges JSON-RPC through stdin/stdout. Bridge callbacks run outside the event loop, so asyncio applications should move events into an `asyncio.Queue` with `loop.call_soon_threadsafe`.
+`listeningE2EEEvent` starts the Go bridge and exchanges JSON-RPC through stdin/stdout. Bridge callbacks run outside the event loop. In an asyncio application, use `loop.call_soon_threadsafe` to put events into an `asyncio.Queue`, as shown below.
 
 ```python
 import asyncio
@@ -529,7 +530,7 @@ async def run_listener(data_fb: dict) -> None:
     try:
         ready = await asyncio.to_thread(
             listener.wait_until_connected,
-            90,
+            listener.startup_timeout,
             require_e2ee=True,
         )
         if not ready:
@@ -560,13 +561,13 @@ Main events:
 | `error` | bridge/transport error | Should be logged and monitored |
 | `bridge_fatal` | retry count | Watchdog gave up |
 
-Advanced actions such as edit, unsend, typing, mark-read, sending images/audio, and downloading media live in `BridgeActions`. See the [messaging documentation](src/_messaging/README.md).
+`BridgeActions` provides edit, unsend, typing, mark-read, image/audio sending, and media download actions. See the [messaging documentation](src/fbchat_v2/_messaging/README.md) for usage details.
 
 ---
 
 ## 🤖 Sample Bot
 
-[`src/main.py`](src/main.py) is a complete example of an async lifecycle:
+[`src/main.py`](src/main.py) brings these pieces together in an async bot:
 
 1. Read config with `FileSessionStorage`.
 2. Call `await dataGetHome(...)` and validate required fields.
@@ -574,10 +575,10 @@ Advanced actions such as edit, unsend, typing, mark-read, sending images/audio, 
 4. Start `listeningE2EEEvent.connect_mqtt()` as a task.
 5. Move bridge callbacks into a thread-safe `asyncio.Queue`.
 6. Parse commands and ignore messages sent by the bot itself.
-7. Reply through E2EE when `chatJid` exists, and fall back to regular sending when only `threadId` exists.
+7. Reply through E2EE when `chatJid` exists, or send a regular message when only `threadId` exists.
 8. Stop the bridge, await the task, and close the HTTP client during shutdown.
 
-The bot queue is limited to 1000 events and drops the oldest event when full. This policy keeps the bot alive under bursts; it is not an absolute delivery guarantee.
+The bot queue holds up to 1000 events and drops the oldest event when full. This bounds memory use during bursts, but events can be lost; it is not a delivery guarantee.
 
 ---
 
@@ -586,9 +587,9 @@ The bot queue is limited to 1000 events and drops the oldest event when full. Th
 | Documentation | Content |
 |---|---|
 | [DOCS.md](DOCS.md) | Full API and workflow guide |
-| [Core](src/_core/README.md) | Session, HTTP, storage, and login |
-| [Features](src/_features/README.md) | Facebook features and threads |
-| [Messaging](src/_messaging/README.md) | Send, listener, attachment, and E2EE |
+| [Core](src/fbchat_v2/_core/README.md) | Session, HTTP, storage, and login |
+| [Features](src/fbchat_v2/_features/README.md) | Facebook features and threads |
+| [Messaging](src/fbchat_v2/_messaging/README.md) | Send, listener, attachment, and E2EE |
 | [Bridge E2EE](bridge-e2ee/README.md) | Build, binary discovery, and JSON-RPC |
 | [Flowchart](FLOWCHART.md) | Session, HTTP, MQTT, E2EE, and shutdown flow |
 | [Mindmap](mindmap-mermaid.md) | Codebase-wide module map |
@@ -597,13 +598,13 @@ The bot queue is limited to 1000 events and drops the oldest event when full. Th
 
 ## ✅ Quality Checks
 
-Run the same command as CI:
+Run the test command used by CI:
 
 ```bash
 pytest tests/ -v --tb=short
 ```
 
-Recommended gates before committing:
+Before committing, run these checks as well:
 
 ```bash
 python -m compileall -q src tests scripts
@@ -611,7 +612,7 @@ ruff check src tests scripts
 black --check src tests scripts
 mypy
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.2-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.3-py3-none-any.whl
 git diff --check
 ```
 
@@ -625,13 +626,13 @@ go test ./...
 go vet ./...
 ```
 
-Vietnamese documentation must be real UTF-8. If PowerShell displays strange characters, inspect codepoints or read the file with `encoding="utf-8"` before doing bulk edits.
+Save Vietnamese documentation as UTF-8. If PowerShell displays strange characters, inspect the codepoints or read the file with `encoding="utf-8"` before editing it; a terminal display problem does not necessarily mean the file is corrupted.
 
 ---
 
 ## 🌟 Credits
 
-After **4 years** of development, this project could not exist without the community. Thank you from the bottom of my heart to everyone who contributed ideas, reported bugs, and kept `fbchat` alive until today.
+Over 4 years of development, people have shared ideas, reported bugs, and helped maintain `fbchat`. Thanks to everyone who has put time into the project.
 
 ### 👥 Community Contributors
 
@@ -648,7 +649,7 @@ After **4 years** of development, this project could not exist without the commu
 - Kareem Adel Abomandor
 - @lluevy · @phuncnheo · @minhphatnw · @khanh235a · @chapesh1 · @klongg13 · @seafibrahem · @agent1047 · @stefekdziura
 
-> If you have contributed before but do not see your name here, open an issue or PR. I would be honored to add you to the list.
+> If you have contributed but your name is missing, open an issue or PR so I can add it.
 
 ---
 
@@ -658,6 +659,6 @@ This project is distributed under the terms in [LICENSE](LICENSE). The bridge in
 
 <div align="center">
 
-[MinhHuyDev](https://github.com/MinhHuyDev) | [Telegram](https://t.me/MinhHuyDev)
+[MinhHuyDev](https://github.com/m008v) | [Telegram](https://t.me/MinhHuyDev)
 
 </div>

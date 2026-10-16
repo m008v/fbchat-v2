@@ -1,7 +1,8 @@
 # fbchat-v2 - PyPI distribution
 
-> Folder này là phiên bản **đóng gói lại** của repo gốc (`../fbchat-v2`) để publish lên [PyPI](https://pypi.org/).
-> Code logic giữ nguyên - chỉ tái cấu trúc layout + đổi import thành package `fbchat_v2`.
+Checkout này lưu source của package [`fbchat-v2`](https://pypi.org/project/fbchat-v2/)
+trên nhánh `pypi`. Package dùng namespace `fbchat_v2`; source được lấy từ sdist
+đã xác minh của GitHub Release, không merge trực tiếp nhánh `main`.
 
 ---
 
@@ -29,9 +30,13 @@ fbchat-v2-pypi/
 
 ## 🚧 Trạng thái
 
-Nhánh `pypi` đang đồng bộ runtime async-first `v2.3.2` từ verified sdist của
-GitHub Release tương ứng.
-Code module đã đổi import sang namespace `fbchat_v2.*` để chạy đúng sau khi cài qua `pip`.
+Nhánh `pypi` đồng bộ package `2.3.3` từ sdist của
+[GitHub Release `v2.3.3`](https://github.com/m008v/fbchat-v2/releases/tag/v2.3.3).
+Các module dùng import `fbchat_v2.*` để chạy sau khi cài qua `pip`.
+
+Giữ cấu hình mypy cho layout package-only và không format lại file checksum
+do workflow release sinh ra. Hai artifact dùng để phát hành phải giữ nguyên
+bytes tải từ GitHub Release; build cục bộ chỉ để kiểm tra.
 
 Nguồn: [`../fbchat-v2/CHANGELOG.md`](../fbchat-v2/CHANGELOG.md).
 
@@ -46,12 +51,12 @@ python -m venv .venv
 pip install --upgrade pip build twine
 
 # Build thử vào thư mục rỗng riêng cho đúng version
-python -m build --outdir .artifacts/v2.3.2-local
+python -m build --outdir .artifacts/v2.3.3-local
 
-# Kết quả nằm ở .artifacts/v2.3.2-local/
-ls .artifacts/v2.3.2-local/
-# fbchat_v2-2.3.2-py3-none-any.whl
-# fbchat_v2-2.3.2.tar.gz
+# Kết quả nằm ở .artifacts/v2.3.3-local/
+ls .artifacts/v2.3.3-local/
+# fbchat_v2-2.3.3-py3-none-any.whl
+# fbchat_v2-2.3.3.tar.gz
 ```
 
 ## 🧪 Test cài thử
@@ -60,39 +65,51 @@ ls .artifacts/v2.3.2-local/
 deactivate
 python -m venv .venv-test
 .venv-test\Scripts\activate
-pip install .artifacts/v2.3.2-local/fbchat_v2-2.3.2-py3-none-any.whl
+pip install .artifacts/v2.3.3-local/fbchat_v2-2.3.3-py3-none-any.whl
 
 python -c "import fbchat_v2; print(fbchat_v2.__version__)"
 ```
 
 ## 🚀 Upload
 
-### TestPyPI (làm trước cho chắc)
+### TestPyPI
+
+Nếu cần kiểm tra thao tác upload bằng bản build thử, dùng TestPyPI riêng.
+Kết quả này không thay thế việc xác minh artifact production.
 
 ```powershell
-twine upload --repository testpypi .artifacts/v2.3.2-local/fbchat_v2-2.3.2-py3-none-any.whl .artifacts/v2.3.2-local/fbchat_v2-2.3.2.tar.gz
+twine upload --repository testpypi .artifacts/v2.3.3-local/fbchat_v2-2.3.3-py3-none-any.whl .artifacts/v2.3.3-local/fbchat_v2-2.3.3.tar.gz
 pip install --index-url https://test.pypi.org/simple/ fbchat-v2
 ```
 
 ### PyPI thật
 
+Tải đúng wheel và sdist từ GitHub Release vào `.artifacts/v2.3.3/`.
+Đối chiếu cả hai file với `SHA256SUMS-python`, kiểm tra metadata bằng Twine 7
+và xác nhận checksum bridge nhúng trong package khớp `SHA256SUMS` của release
+trước khi upload. Chỉ truyền đúng hai đường dẫn dưới đây, không dùng wildcard
+trên thư mục có thể chứa artifact cũ.
+
 ```powershell
-twine upload .artifacts/v2.3.2/fbchat_v2-2.3.2-py3-none-any.whl .artifacts/v2.3.2/fbchat_v2-2.3.2.tar.gz
+twine check --strict .artifacts/v2.3.3/fbchat_v2-2.3.3-py3-none-any.whl .artifacts/v2.3.3/fbchat_v2-2.3.3.tar.gz
+twine upload --non-interactive -u __token__ .artifacts/v2.3.3/fbchat_v2-2.3.3-py3-none-any.whl .artifacts/v2.3.3/fbchat_v2-2.3.3.tar.gz
 ```
 
-> Production chỉ upload đúng hai artifact đã tải từ GitHub Release vào
-> `.artifacts/v2.3.2/`; không rebuild từ checkout này. Token API được giữ trong
-> keyring, không ghi vào repository hoặc command log.
+Không rebuild hai artifact production từ checkout này. Dùng credential đã
+lưu trong keyring; không đưa token vào source, tham số lệnh hoặc log.
+Sau upload, kiểm tra lại tên, kích thước và SHA-256 của file trên PyPI so với
+artifact GitHub, rồi cài thử trong môi trường mới. Những bước này kiểm tra
+package và phát hành, không phải bằng chứng Facebook/Messenger live.
 
 ---
 
 ## 🔗 E2EE bridge
 
-Binary Go `fbchat-bridge-e2ee` **không** được đóng gói trong wheel. Bản `v2.3.2`
-nhúng checksum của đúng năm binary từ GitHub Release `v2.3.2` và tự tải asset
-phù hợp vào cache khi cần. Downloader pin repository, tag, asset path, host,
-redirect, kích thước và SHA-256; trường hợp không khớp sẽ fail-closed. User vẫn
-có thể tự build bridge cùng version và trỏ thủ công qua `FBCHAT_E2EE_BIN`.
+Wheel không chứa binary Go `fbchat-bridge-e2ee`. Package `2.3.3` nhúng checksum
+của năm binary từ GitHub Release `v2.3.3` và tải asset phù hợp vào cache khi cần.
+Downloader kiểm tra repository, tag, đường dẫn asset, host, redirect, kích thước
+và SHA-256; nếu không khớp, nó dừng thay vì dùng binary chưa xác minh.
+Có thể tự build bridge cùng version và trỏ qua `FBCHAT_E2EE_BIN`.
 
 ```bash
 pip install fbchat-v2          # core + async/httpx runtime
