@@ -154,4 +154,4 @@ mindmap
       Changelog
 ```
 
-Mindmap thể hiện ownership, không phải call graph chính xác. Xem [FLOWCHART.md](FLOWCHART.md) để theo dõi trình tự runtime và [DOCS.md](DOCS.md) để xem chữ ký API.
+Mindmap cho biết mỗi phần phụ trách việc gì, không mô tả từng lời gọi hàm. Xem [FLOWCHART.md](FLOWCHART.md) để theo dõi luồng chạy và [DOCS.md](DOCS.md) để tra chữ ký API.

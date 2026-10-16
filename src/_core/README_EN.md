@@ -1,6 +1,6 @@
 # `_core` - Async foundation layer
 
-> Sessions, HTTP transport, storage, credential login, and shared utilities for `fbchat-v2`.
+> Session management, HTTP transport, cookie storage, and login for `fbchat-v2`.
 
 [![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-0b8ecf?style=flat-square)](README.md)
 [![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
@@ -24,17 +24,17 @@
 
 ## 🎯 Responsibilities
 
-`_core` is the foundation of the codebase:
+`_core` provides shared components for the rest of the library:
 
 - Build a Facebook session from a cookie.
 - Normalize HTTP requests through `httpx`.
 - Build GraphQL and regular form payloads.
 - Parse cookies, `for (;;);` JSON, and HTML tokens.
-- Store cookies behind a storage abstraction.
+- Store cookies through a common storage interface.
 - Support credential login and two-factor authentication.
 - Generate IDs used by Messenger requests.
 
-Modules in `_features` and `_messaging` should not bootstrap their own sessions, disable TLS, or create unrelated ad-hoc transports.
+Modules in `_features` and `_messaging` should reuse these components rather than create separate sessions or transports. Keep TLS verification enabled.
 
 ---
 
@@ -71,7 +71,7 @@ from fbchat_v2._core._session import dataGetHome
 from fbchat_v2._core._storage import EnvSessionStorage, FileSessionStorage
 ```
 
-Application code usually needs only `dataGetHome`, a storage implementation, and a public feature. Low-level helpers are intended for new modules or special integrations.
+Most applications need only `dataGetHome`, a storage implementation, and the public features. Use the low-level helpers when writing a module or a custom integration.
 
 ---
 
@@ -103,7 +103,7 @@ Fields required by `_session.REQUIRED_SESSION_FIELDS`:
 `cookieFacebook` is added after parsing and is required by most HTTP features and the bridge.
 
 > [!WARNING]
-> Treat the whole dictionary as a secret. The cookie and CSRF values may be enough to perform account actions. Never log it, send it to analytics, or expose it through a public exception.
+> Treat the whole dictionary as sensitive. The cookie and CSRF values may be enough to perform account actions. Do not log it, send it to analytics, or include it in an exception shown to users.
 
 ---
 
@@ -146,7 +146,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-The function returns `None` for an empty cookie, request errors, HTTP status errors, or missing tokens. Those are ordinary authentication failures that the caller is expected to handle.
+The function returns `None` for an empty cookie, request errors, HTTP status errors, or missing tokens. It does not raise for these ordinary session failures; check the result before continuing.
 
 ---
 
@@ -175,7 +175,7 @@ Behavior:
 - Preserves unrelated JSON keys when updating a cookie.
 - Returns `None` for a missing file, invalid JSON, or a non-string value.
 - Rejects an empty cookie with `ValueError`.
-- Writes a temporary file in the same directory and replaces atomically.
+- Writes to a temporary file in the same directory, then atomically replaces the destination.
 - Applies mode `0600` to the temporary file on Unix systems.
 
 Atomic writes reduce corruption risk but do not encrypt the cookie. Configure appropriate file permissions or ACLs.
@@ -220,10 +220,10 @@ The transport:
 - Copies kwargs before normalization.
 - Extracts `url`, `verify`, and `timeout`.
 - Removes the old `requests`-style `proxies` key.
-- Creates and closes a temporary client when no client is injected.
+- Creates and closes a temporary client when none is supplied.
 - Never disables TLS implicitly.
 
-When the caller injects a client, TLS configuration belongs to that client. A request dictionary cannot reconfigure an already-created client.
+If you supply a client, configure TLS when creating it. The request dictionary cannot change that client's TLS settings.
 
 ---
 
@@ -237,7 +237,7 @@ When the caller injects a client, TLS configuration belongs to that client. A re
 | `send_request_async(req_kwargs, client=None)` | Send POST and return `httpx.Response` |
 | `send_get_request_async(req_kwargs, client=None)` | Send GET and return a response |
 | `post_form_json_async(...)` | POST form, validate status, parse JSON |
-| `parse_json_response(text, strip_for_loop_prefix=False)` | Parse optional-prefixed JSON |
+| `parse_json_response(text, strip_for_loop_prefix=False)` | Parse JSON, optionally stripping its prefix |
 
 ```python
 from fbchat_v2._core._utils import formAll, post_form_json_async
@@ -259,7 +259,7 @@ payload = await post_form_json_async(
 
 `formAll(dataFB, friendlyName, docID, requireGraphql=True)` adds common session tokens and Facebook metadata. Pass `requireGraphql=False` for non-GraphQL form endpoints.
 
-Never mutate a shared request form between concurrent coroutines. Build a new dictionary for every call.
+Build a new form dictionary for each request. Do not modify a form shared by concurrent coroutines.
 
 ### Cookie, parser, and ID helpers
 
@@ -274,7 +274,7 @@ Never mutate a shared request form between concurrent coroutines. Build a new di
 | `generate_client_id` | Client mutation/session ID |
 | `str_base` | Convert an integer to another base |
 
-These IDs are protocol values, not cryptographic tokens or database identifiers.
+These IDs are protocol values. Do not use them as security tokens or database keys that must be unique.
 
 ---
 
@@ -292,7 +292,7 @@ login = loginFacebook(
 result = await login.main()
 ```
 
-`main()` moves `main_blocking()` to a worker thread. The underlying legacy FB4A flow still uses `requests`.
+`main()` runs `main_blocking()` on a worker thread. The underlying FB4A login flow still uses legacy forms and `requests`.
 
 ### Two-factor authentication
 
@@ -301,7 +301,7 @@ result = await login.main()
 - A current 6 to 8 digit OTP.
 - A TOTP shared secret processed locally with `pyotp`.
 
-The module never sends a shared secret to an external OTP service. Invalid base32 input returns a safe error without logging the secret.
+The module does not send the shared secret to an external OTP service. It removes spaces when normalizing input; an invalid base32 secret returns an error without logging the secret.
 
 ### Configuration
 
@@ -312,11 +312,11 @@ $env:FBCHAT_API_KEY = "<override>"
 $env:FBCHAT_APP_ACCESS_TOKEN = "<override>"
 ```
 
-Do not hardcode real overrides in source. `proxies` exists for the legacy login path; async features use the proxy configuration of their `httpx.AsyncClient`.
+Keep override values out of source code. `proxies` is used only by the legacy login path; async features use their `httpx.AsyncClient` proxy configuration.
 
 ### Checkpoint failures
 
-Credential login may encounter a 2FA continuation, a device checkpoint, a new error subcode, or a malformed response such as code `-1`. Read the sanitized description and prefer a cookie session when the private login endpoint is unstable. Mocked validation is not proof that a live account flow works.
+Login with a username and password may require 2FA or a device checkpoint. It can also return an unfamiliar error subcode or a malformed response such as code `-1`. Read the sanitized description and use a cookie session if the private login endpoint is unstable. Passing mock tests does not prove that login works with a real account.
 
 ---
 
@@ -368,4 +368,4 @@ flowchart TD
 | Login code `-1` | Malformed response or transport error | Read description, check overrides, prefer cookie login |
 | File storage returns `None` | Invalid JSON or wrong key | Validate UTF-8 JSON and the `cookies` key |
 
-Session diagnostics must stop at safe metadata. Printing the complete cookie is not debugging; it is an account leak with extra steps.
+Limit session diagnostics to non-sensitive metadata, such as missing field names. Do not print cookie values to the terminal or logs.

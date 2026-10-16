@@ -1,13 +1,13 @@
 # fbchat-v2 - Bridge E2EE
 
-Bridge Go cho Facebook Messenger thường và chat cá nhân E2EE. Binary chạy như subprocess, nhận JSON-RPC từng dòng qua stdin, trả response/event từng dòng qua stdout.
+Bridge Go cho tin nhắn Messenger thường và chat cá nhân E2EE. Python chạy binary như tiến trình con: gửi JSON-RPC từng dòng qua stdin, rồi đọc kết quả và event qua stdout.
 
 [![docs](https://img.shields.io/badge/docs-main-3b3b3b?style=flat-square)](../README.md)
 [![Messaging DOCS](https://img.shields.io/badge/Messaging-DOCS-2563eb?style=flat-square)](../src/fbchat_v2/_messaging/README.md)
 [![Flowchart](https://img.shields.io/badge/Flowchart-runtime-0b8ecf?style=flat-square)](../FLOWCHART.md)
 
 > [!IMPORTANT]
-> Application Python nên dùng `await listeningE2EEEvent.connect_mqtt()`, `await listener.send_e2ee_message()` và các method async của `BridgeActions`. Giao thức stdin/stdout bên dưới dành cho việc tích hợp và debug bridge.
+> Nếu viết ứng dụng Python, dùng `await listeningE2EEEvent.connect_mqtt()`, `await listener.send_e2ee_message()` và các hàm async của `BridgeActions`. Phần stdin/stdout bên dưới dành cho việc tích hợp hoặc debug bridge trực tiếp.
 
 ## 📋 Mục lục
 
@@ -41,12 +41,12 @@ flowchart LR
     G <--> H[Messenger]
 ```
 
-Mục tiêu của boundary subprocess:
+Bridge chạy trong tiến trình riêng để:
 
-- Tách state và protocol E2EE khỏi Python process.
-- Crash Go không làm sập ngay event loop Python.
-- Giao tiếp đơn giản, dễ mock bằng JSON line.
-- Cho phép watchdog respawn và replay connection state.
+- Tách trạng thái và giao thức E2EE khỏi tiến trình Python.
+- Không để crash của bridge làm crash trực tiếp tiến trình Python.
+- Dùng JSON từng dòng, thuận tiện cho việc giả lập khi test.
+- Cho phép watchdog khởi động lại bridge và thiết lập lại kết nối.
 
 `bridge-e2ee/meta` là Git submodule. `go.mod` dùng:
 
@@ -54,7 +54,7 @@ Mục tiêu của boundary subprocess:
 replace go.mau.fi/mautrix-meta => ./meta
 ```
 
-Thiếu thư mục `meta` thì build sẽ fail.
+Build sẽ lỗi nếu thiếu thư mục `meta`.
 
 ---
 
@@ -74,7 +74,7 @@ go version
 git --version
 ```
 
-Go version thấp hơn directive trong `go.mod` có thể từ chối build hoặc tự tải toolchain tùy cấu hình `GOTOOLCHAIN`.
+Nếu Go đang cài thấp hơn phiên bản ghi trong `go.mod`, lệnh build có thể bị từ chối hoặc tự tải toolchain, tùy cấu hình `GOTOOLCHAIN`.
 
 ---
 
@@ -116,7 +116,7 @@ cd ..
 chmod +x build/fbchat-bridge-e2ee
 ```
 
-Không cần chạy `go mod tidy` mỗi lần build. `go mod download` giữ `go.mod`/`go.sum` ổn định; chỉ dùng `tidy` khi dependency graph thật sự thay đổi và review diff sau đó.
+Không cần chạy `go mod tidy` mỗi lần build. Dùng `go mod download` để tải dependency mà không cập nhật `go.mod`/`go.sum`. Chỉ chạy `tidy` khi thay đổi dependency và kiểm tra diff sau đó.
 
 ### Build từ source archive không có `.gitmodules`
 
@@ -130,13 +130,13 @@ mkdir -p ../build
 go build -o ../build/fbchat-bridge-e2ee .
 ```
 
-Pin revision phù hợp với submodule của repository nếu muốn build reproducible.
+Để có thể build lại cùng một bản, dùng đúng revision mà submodule của repo đang trỏ tới.
 
 ---
 
 ## 🔍 Binary discovery và auto-download
 
-Python wrapper resolve binary theo thứ tự:
+Python wrapper tìm binary theo thứ tự:
 
 1. `binary_path=` trong `listeningE2EEEvent`.
 2. Biến môi trường `FBCHAT_E2EE_BIN`.
@@ -157,18 +157,18 @@ $env:FBCHAT_E2EE_BIN = "C:\tools\fbchat-bridge-e2ee.exe"
 export FBCHAT_E2EE_BIN=/opt/fbchat/fbchat-bridge-e2ee
 ```
 
-Khi `binary_path` hoặc env override được đặt mà file không tồn tại, wrapper raise `FileNotFoundError`. Nó không lặng lẽ tải một binary khác.
+Nếu bạn đặt `binary_path` hoặc biến môi trường nhưng file không tồn tại, wrapper báo `FileNotFoundError`, không tự tải binary khác.
 
-Auto-download hiện có các guard:
+Khi tự tải binary, wrapper kiểm tra:
 
-- Chỉ gọi GitHub Releases API qua HTTPS và endpoint tag đã pin.
-- Kiểm tra host HTTPS ở toàn bộ redirect chain và asset phải thuộc đúng release/tag.
-- Stream response thay vì load cả file vào RAM.
+- Chỉ gọi GitHub Releases API qua HTTPS, với tag đã chỉ định.
+- Kiểm tra host HTTPS ở mọi bước chuyển hướng và asset phải thuộc đúng release/tag.
+- Đọc response theo từng phần, không nạp cả file vào RAM.
 - Giới hạn 200 MiB.
-- Ghi file tạm rồi atomic replace.
+- Ghi file tạm rồi thay file đích bằng thao tác atomic.
 - File tạm có tên duy nhất để nhiều process tải đồng thời không đè nhau.
 - Chỉ tải đúng release trùng với phiên bản package Python.
-- Bắt buộc checksum SHA-256 được đóng gói độc lập trong wheel; thiếu checksum thì fail closed.
+- Bắt buộc có checksum SHA-256 được đóng gói độc lập trong wheel. Nếu thiếu checksum, wrapper dừng: không chạy binary trong cache được quản lý và không tải binary mới.
 - Xác minh lại checksum của binary cache trước mỗi lần thực thi; cache bị sửa sẽ
   bị loại bỏ và tải lại.
 - Workflow release tạo build-provenance attestation cho từng binary và manifest `SHA256SUMS`.
@@ -205,12 +205,13 @@ RPC `newClient` nhận:
 | `e2eeMemoryOnly` | Không persist E2EE device state khi `true` |
 | `devicePath` | Path state khi persistence được bật |
 
-Nếu dùng `devicePath`, file này là secret vì có thể chứa device/session state. Không commit hoặc chia sẻ nó.
+File tại `devicePath` có thể chứa trạng thái thiết bị và phiên mã hóa. Hãy bảo vệ nó như cookie: không commit hoặc chia sẻ.
 
-Ở Python wrapper, `debug_errors=False` là mặc định: stderr vẫn được drain để
-tránh deadlock nhưng nội dung diagnostic, payload lỗi và exception bị ẩn. Khi
-bật `debug_errors=True`, logger Go và stderr drain vẫn redact cookie, token,
-provider ID/JID và query string; tuy vậy chỉ nên bật trong môi trường kiểm soát.
+Python wrapper mặc định dùng `debug_errors=False`. Nó vẫn đọc stderr để tránh
+deadlock, nhưng ẩn nội dung chẩn đoán, payload lỗi và exception. Khi bật
+`debug_errors=True`, logger Go và bộ đọc stderr vẫn che cookie, token,
+provider ID/JID và query string. Chỉ bật tùy chọn này khi cần debug trong môi
+trường được kiểm soát.
 
 ---
 
@@ -222,34 +223,34 @@ Mỗi request là một JSON object trên đúng một dòng:
 {"id":1,"method":"isConnected","params":{}}
 ```
 
-Success response:
+Kết quả thành công:
 
 ```json
 {"id":1,"ok":true,"data":{"connected":true}}
 ```
 
-Error response:
+Kết quả lỗi:
 
 ```json
 {"id":1,"ok":false,"error":"not connected"}
 ```
 
-Async event không có request ID:
+Event bất đồng bộ không có request ID:
 
 ```json
 {"event":{"type":"e2eeMessage","data":{"id":"...","text":"ping"}}}
 ```
 
-Protocol rules:
+Quy ước giao thức:
 
 - UTF-8 JSON.
 - Một object mỗi dòng.
-- Request ID là số và được echo trong response.
+- Request ID là số; response trả lại đúng ID đó.
 - Response có `ok: true` hoặc `ok: false`.
 - Event nằm trong key `event` và không có `id`.
 - Không in log thường lên stdout vì sẽ phá JSON stream; log đi stderr.
 
-Python `_BridgeProcess` giới hạn request JSON-RPC ở 150 MiB. Media base64 làm payload lớn hơn source bytes.
+Python `_BridgeProcess` giới hạn request JSON-RPC ở 150 MiB. Dữ liệu media sau khi chuyển sang base64 sẽ lớn hơn dữ liệu gốc.
 
 ---
 
@@ -286,8 +287,8 @@ Python `_BridgeProcess` giới hạn request JSON-RPC ở 150 MiB. Media base64 
 | `sendE2EEAudio` | Audio/voice E2EE |
 | `sendE2EEImage` | Image E2EE |
 
-Các request đặt `isE2EE=true` sẽ trả `ErrE2EENotConnected` nếu phiên mã hóa chưa
-sẵn sàng; bridge không tự hạ cấp nội dung sang transport thường.
+Request có `isE2EE=true` trả `ErrE2EENotConnected` nếu phiên mã hóa chưa sẵn
+sàng. Bridge không tự chuyển nội dung đó sang kết nối thường.
 
 ### Mutation và state
 
@@ -308,7 +309,7 @@ sẵn sàng; bridge không tự hạ cấp nội dung sang transport thường.
 | `downloadMedia` | Tải media thường và trả base64 |
 | `downloadE2EEMedia` | Tải, verify và giải mã media E2EE |
 
-Không phải mọi Go RPC đều có public convenience method Python. `BridgeActions` hiện expose nhóm edit, unsend, typing, mark-read, E2EE image/audio và download media; các method khác có thể cần wrapper mới.
+Python chưa có hàm bọc công khai cho mọi Go RPC. `BridgeActions` hỗ trợ edit, unsend, typing, mark-read, ảnh/audio E2EE và tải media. Các RPC còn lại có thể cần thêm wrapper.
 
 ---
 
@@ -352,7 +353,7 @@ Ví dụ `e2eeMessage`:
 }
 ```
 
-Bridge áp dụng backpressure khi đẩy event sang Python reader thay vì silently drop trong Go channel. Application Python vẫn cần queue bounded và overflow policy riêng.
+Bridge chờ khi kênh chuyển event sang Python đầy, thay vì tự bỏ event trong Go channel. Ứng dụng Python vẫn cần giới hạn queue và chọn cách xử lý khi queue đầy.
 
 ---
 
@@ -401,7 +402,7 @@ await actions.unsend_e2ee_message(
 )
 ```
 
-Application không nên import `_BridgeProcess` trực tiếp. Nó là private implementation detail dù `BridgeActions` nhận instance bridge từ listener.
+Ứng dụng không nên import `_BridgeProcess` trực tiếp; đây là lớp nội bộ. `BridgeActions` vẫn nhận instance bridge đang có trên listener.
 
 ---
 
@@ -409,14 +410,14 @@ Application không nên import `_BridgeProcess` trực tiếp. Nó là private i
 
 Watchdog:
 
-1. Phát hiện subprocess exit.
-2. Đợi backoff 2, 4, 8, 16, 32 giây.
-3. Respawn process.
-4. Replay `newClient`, `connect`, `connectE2EE`.
-5. Reset retry khi success.
-6. Emit `bridge_fatal` sau tối đa 5 lần fail.
+1. Phát hiện tiến trình con đã thoát.
+2. Chờ lần lượt 2, 4, 8, 16, 32 giây giữa các lần thử.
+3. Khởi động lại tiến trình.
+4. Gọi lại `newClient`, `connect`, `connectE2EE`.
+5. Đặt lại số lần thử sau khi bridge chạy đủ `STABLE_UPTIME` với kết quả kiểm tra sức khỏe tốt.
+6. Phát `bridge_fatal` sau tối đa 5 lần thất bại.
 
-Watchdog không thể sửa cookie hết hạn hoặc binary incompatible. Application phải giám sát stderr, listener task và fatal event.
+Watchdog không sửa được cookie hết hạn hoặc binary không tương thích. Ứng dụng cần theo dõi stderr, listener task và event lỗi nghiêm trọng.
 
 Shutdown Python:
 
@@ -425,7 +426,7 @@ listener.stop()
 await listener_task
 ```
 
-`_BridgeProcess.close()` gửi `disconnect`, đóng stdin, đợi process và kill khi timeout. Không bỏ process orphan sau event loop shutdown.
+`_BridgeProcess.close()` gửi `disconnect`, đóng stdin, chờ tiến trình thoát và buộc dừng nếu quá thời gian. Cần hoàn tất bước này trước khi đóng event loop để không để lại tiến trình con.
 
 ---
 
@@ -433,13 +434,13 @@ await listener_task
 
 - Không log cookie trong request `newClient`.
 - Không commit `devicePath` state.
-- Không đọc binary từ URL tùy ý trong auto-download.
+- Không tự tải binary từ URL tùy ý.
 - Không tắt TLS trong bridge hoặc Python wrapper.
-- Pin submodule revision và review `go.sum` khi dependency đổi.
-- Media key, SHA và encrypted path là dữ liệu nhạy cảm của message; không đưa vào log public.
-- Giới hạn input size trước khi base64 để tránh bơm RAM.
+- Giữ cố định revision của submodule và kiểm tra `go.sum` khi đổi dependency.
+- Media key, SHA và đường dẫn mã hóa là dữ liệu nhạy cảm của tin nhắn; không đưa vào log công khai.
+- Giới hạn kích thước đầu vào trước khi chuyển sang base64 để tránh dùng quá nhiều RAM.
 - Không chạy bridge với quyền admin/root nếu không cần.
-- Production nên đặt binary và device state trong directory có ACL chặt.
+- Khi triển khai, đặt binary và trạng thái thiết bị trong thư mục có quyền truy cập hạn chế.
 
 ---
 
@@ -460,12 +461,12 @@ pytest tests/ -v --tb=short
 Khi thêm RPC:
 
 1. Thêm case trong `main.go`.
-2. Implement/đấu nối trong `bridge/`.
-3. Thêm validation cho params.
+2. Viết phần xử lý tương ứng trong `bridge/`.
+3. Kiểm tra tính hợp lệ của tham số.
 4. Thêm Go test.
-5. Thêm async method hoặc wrapper Python nếu public.
-6. Thêm Python mock test cho method/result/error.
-7. Cập nhật README bridge và messaging docs.
+5. Thêm hàm async hoặc wrapper Python nếu cần cung cấp cho ứng dụng.
+6. Thêm test Python cho lời gọi, kết quả và lỗi bằng dữ liệu giả.
+7. Cập nhật tài liệu bridge và messaging.
 
 ---
 
@@ -496,30 +497,30 @@ Trên PowerShell dùng `Get-Content bridge-e2ee\go.mod -TotalCount 5`.
 
 ### Python báo không tìm thấy binary
 
-- Kiểm tra file trong `build/` đúng tên theo OS.
+- Kiểm tra file trong `build/` có đúng tên theo hệ điều hành hay không.
 - Kiểm tra execute bit trên Unix.
-- Kiểm tra `FBCHAT_E2EE_BIN` có trỏ tới path cũ không.
-- Nếu override đã set, wrapper không auto-download fallback.
+- Kiểm tra `FBCHAT_E2EE_BIN` có trỏ tới đường dẫn cũ không.
+- Nếu đã chỉ định đường dẫn riêng, wrapper không tự tải binary khác.
 
 ### Bridge start nhưng không ready
 
 - Cookie thiếu `c_user`, `xs`, `datr`, `fr`.
 - Tài khoản checkpoint.
-- Binary và source Python lệch version.
-- Network chặn Messenger transport.
+- Binary và mã nguồn Python khác phiên bản.
+- Mạng chặn kết nối Messenger.
 - `connectE2EE` lỗi trong stderr.
 
 ### `coroutine '_BridgeProcess.call' was never awaited`
 
-Application gọi async RPC như sync. Dùng `await bridge.call(...)`. Code blocking nội bộ dùng `call_blocking(...)`.
+Bạn đang gọi RPC async như hàm đồng bộ. Dùng `await bridge.call(...)`; phần blocking nội bộ dùng `call_blocking(...)`.
 
 ### Bridge stdout có JSON lỗi
 
-Log/debug text đã bị in ra stdout. Chuyển log sang stderr. Stdout chỉ dành cho protocol JSON line.
+Có log hoặc nội dung debug bị in ra stdout. Chuyển chúng sang stderr; stdout chỉ dành cho các dòng JSON của giao thức.
 
 ### Media request vượt giới hạn
 
-Base64 làm payload tăng kích thước. Giảm file, dùng upload flow khác hoặc implement streaming RPC; không tăng giới hạn mù vì process sẽ ăn RAM theo payload.
+Base64 làm payload lớn hơn file gốc. Giảm kích thước file, dùng luồng upload khác hoặc bổ sung RPC truyền theo từng phần. Tăng giới hạn request cũng làm tăng lượng RAM cần dùng.
 
 ---
 

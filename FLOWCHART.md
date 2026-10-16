@@ -2,7 +2,7 @@
 
 [README](README.md) | [Tài liệu API](DOCS.md) | [Mindmap](mindmap-mermaid.md)
 
-Tài liệu này mô tả đường đi của dữ liệu trong runtime hiện tại. Worker thread chỉ xuất hiện ở boundary thư viện blocking; HTTP feature chạy native async qua `httpx`.
+Các sơ đồ dưới đây mô tả đường đi của dữ liệu khi ứng dụng chạy. Worker thread được dùng ở những chỗ gọi thư viện blocking; các feature HTTP chạy async qua `httpx`.
 
 ## 1. 🛤️ Luồng thư mục và dependency
 
@@ -26,7 +26,7 @@ flowchart TD
     Tests --> Messaging
 ```
 
-Dependency phải đi một chiều. `_core` không import ngược `_features` hoặc `_messaging`.
+Chiều phụ thuộc đi từ feature/messaging xuống core. `_core` không import ngược `_features` hoặc `_messaging`.
 
 ## 2. 💾 Session bootstrap
 
@@ -46,7 +46,7 @@ flowchart TD
     K --> M[_messaging]
 ```
 
-`dataFB` chứa cookie và CSRF token. Mọi nhánh sau đó phải coi object này là secret.
+`dataFB` chứa cookie và CSRF token; không ghi object này vào log hoặc chia sẻ trong báo lỗi.
 
 ## 3. 🌍 HTTP feature async
 
@@ -75,7 +75,7 @@ sequenceDiagram
     Feature-->>App: success hoặc error dict
 ```
 
-Nếu caller không truyền client, transport tạo client tạm và đóng sau call. Với workflow nhiều request, caller nên sở hữu một `AsyncClient` dùng chung.
+Nếu không truyền client, transport tạo client tạm và đóng sau mỗi call. Khi gọi nhiều request, ứng dụng nên tạo một `AsyncClient` dùng chung và đóng khi dùng xong.
 
 ## 4. 💬 Gửi tin thường
 
@@ -93,7 +93,7 @@ flowchart TD
     I -- Không --> K[error + description + code]
 ```
 
-Form không được lưu làm mutable state dùng chung. `sender.results` chỉ là snapshot compatibility.
+Mỗi call có form riêng, không sửa chung một object giữa các request. `sender.results` chỉ giữ snapshot cho code tương thích cũ.
 
 ## 5. 📎 Upload attachment
 
@@ -114,7 +114,7 @@ flowchart TD
     I --> L
 ```
 
-`uploadID` và `attachmentID` là hai giá trị khác nhau. Chỉ `attachmentID` hợp lệ mới được đưa vào send.
+`uploadID` khác `attachmentID`. Khi gửi tin, dùng `attachmentID` hợp lệ từ kết quả upload.
 
 ## 6. 📡 Listener MQTT thường
 
@@ -143,7 +143,7 @@ sequenceDiagram
     Listener->>Worker: signal stop
 ```
 
-Reconnect xảy ra ở vòng ngoài của listener. Callback chỉ signal state; không tự gọi đệ quy connection setup.
+Vòng ngoài của listener xử lý reconnect. Callback chỉ cập nhật trạng thái, không gọi lại connection setup bằng đệ quy.
 
 ## 7. 🔐 E2EE startup
 
@@ -177,7 +177,7 @@ sequenceDiagram
     Listener-->>App: True
 ```
 
-Send trước bước readiness là race. `wait_until_connected` là blocking event wait nên application async gọi nó qua `asyncio.to_thread`.
+Gửi trước readiness có thể đụng lúc bridge chưa kết nối xong. `wait_until_connected` là hàm blocking; ứng dụng async gọi qua `asyncio.to_thread`.
 
 ## 8. 🔐 E2EE event delivery
 
@@ -204,7 +204,7 @@ sequenceDiagram
     Bot->>Bot: filter, dedupe, dispatch command
 ```
 
-Callback không `await` handler. Việc chuyển về event loop là responsibility của application, như pattern trong `src/main.py`.
+Callback không `await` handler. Ứng dụng phải chuyển event về event loop, như cách làm trong `src/main.py`.
 
 ## 9. 🔐 E2EE send/action
 
@@ -228,7 +228,7 @@ flowchart LR
     F --> A
 ```
 
-Binary media được base64 tại RPC boundary. JSON-RPC request bị giới hạn 150 MiB.
+Dữ liệu media được encode Base64 khi gửi qua RPC. Giới hạn JSON-RPC request là 150 MiB.
 
 ## 10. 🌉 Bridge watchdog
 
@@ -248,7 +248,7 @@ flowchart TD
     K --> D
 ```
 
-Application vẫn phải monitor listener task và `bridge_fatal`; watchdog không biến lỗi credential hoặc binary hỏng thành kết nối khỏe.
+Ứng dụng vẫn cần theo dõi listener task và `bridge_fatal`. Watchdog không sửa được credential hết hạn hoặc binary hỏng.
 
 ## 11. 🤖 Bot command flow
 
@@ -293,7 +293,7 @@ sequenceDiagram
     App->>Client: exit async context
 ```
 
-Không đóng client trước khi handler đang dùng xong. Không bỏ listener task chạy nền sau khi event loop kết thúc.
+Chờ handler dùng xong rồi mới đóng client. Dừng và đợi listener task kết thúc trước khi thoát event loop.
 
 ## 13. 🩺 Error boundary
 
@@ -315,4 +315,4 @@ flowchart TD
     K --> L[Log không chứa secret + quyết định retry/reply]
 ```
 
-Không catch `Exception` rồi trả `{}`. Error boundary phải giữ đủ thông tin để caller phân biệt input, network, auth và schema failure.
+Không bắt mọi `Exception` rồi trả `{}`: caller sẽ không biết input sai, mất mạng, lỗi xác thực hay response sai schema. Giữ thông tin phân loại lỗi, nhưng không kèm secret.

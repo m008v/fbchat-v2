@@ -1,6 +1,6 @@
-# 🚀 fbchat-v2 v2.1.0 - Messenger E2EE đã chính thức landed!
+# fbchat-v2 v2.1.0 - Listener E2EE cho Messenger
 
-> Tài liệu lịch sử của v2.1.0. Snippet bên dưới đã được cập nhật theo API async hiện hành để người đọc không copy nhầm code blocking cũ. Xem [`README.md`](../README.md) và [`DOCS.md`](../DOCS.md) để biết workflow đầy đủ.
+> Đây là ghi chú phát hành của v2.1.0. Ví dụ bên dưới đã được chuyển sang API async ở lần cập nhật tài liệu sau đó. Khi dùng phiên bản mới, xem [`README.md`](../README.md) và [`DOCS.md`](../DOCS.md).
 
 > *Release date: 2026-05-12*
 
@@ -8,7 +8,7 @@
 
 > *Author: MinhHuyDev*
 
-Sau 18 tháng kể từ khi Facebook bật E2EE mặc định cho Messenger (11/2024) và làm "đứt" toàn bộ luồng đọc tin nhắn 1-1 của các thư viện account-based, hôm nay `fbchat-v2` chính thức mở khoá lại khả năng đó - và tất cả những gì bạn cần làm là đổi 1 dòng import.
+`v2.1.0` thêm listener cho tin nhắn Messenger 1-1 dùng E2EE. Listener giữ schema event của `_listening.py` để ứng dụng có thể dùng lại phần xử lý tin nhắn. Phần giải mã chạy qua bridge Go, cần được build và cấu hình riêng.
 
 ---
 
@@ -16,25 +16,25 @@ Sau 18 tháng kể từ khi Facebook bật E2EE mặc định cho Messenger (11/
 
 ### 🔓 E2EE Listener cho tin nhắn 1-1
 - Class mới [`listeningE2EEEvent`](../src/_messaging/_listening_e2ee.py) - listener bridge cho event thường và E2EE.
-- Phơi `bodyResults` với đúng schema của `_listening.py` cũ (`body`, `timestamp`, `userID`, `messageID`, `replyToID`, `type`, `attachments.id`, `attachments.url`).
-- Bonus: `e2eeBodyResults` chứa metadata Signal (`chatJid`, `senderJid`).
-- Tự suy luận `type = "user" / "thread"` - code xử lý event của bạn không cần sửa.
+- Cung cấp `bodyResults` theo schema của `_listening.py` cũ (`body`, `timestamp`, `userID`, `messageID`, `replyToID`, `type`, `attachments.id`, `attachments.url`).
+- Thêm `e2eeBodyResults` để lấy metadata Signal (`chatJid`, `senderJid`).
+- Tự suy luận `type = "user" / "thread"`, giữ cách phân biệt tin cá nhân và tin nhóm của listener cũ.
 
 ### 🌉 Bridge Go độc lập (`bridge-e2ee/`)
 - Binary Go single-file (`fbchat-bridge-e2ee[.exe]`, ~25-40 MB) đóng gói:
   - Signal Protocol (Curve25519, Double Ratchet, Sender Keys, AES-GCM, HKDF, Noise XX) qua `whatsmeow`.
   - Meta Labyrinth / Lightspeed qua `mautrix-meta`.
 - Giao tiếp Python ↔ Go bằng JSON-RPC line-delimited trên stdin/stdout.
-- Chạy ở subprocess riêng -> bridge crash không kéo Python crash theo.
-- Override path bằng env var `FBCHAT_E2EE_BIN`.
+- Chạy ở subprocess riêng để tách lỗi process của bridge khỏi Python.
+- Có thể đặt đường dẫn binary qua biến môi trường `FBCHAT_E2EE_BIN`.
 
 ### 📚 Tài liệu cài đặt từ đầu đến cuối
-- README gốc (VI + EN) viết lại §Cài đặt thành 7 bước rõ ràng, kèm:
+- README gốc (VI + EN) chia phần cài đặt thành 7 bước, kèm:
   - Bảng yêu cầu mở rộng (Python / Go / Git / RAM / Network).
   - Sanity check `python -c "import httpx, paho.mqtt.client, pyotp; print('OK')"`.
   - Smoke test `python src/main.py`.
 - README `_messaging` có mục Cài đặt riêng + Module Reference cho `_listening_e2ee.py`.
-- README `bridge-e2ee/` mô tả RPC contract đầy đủ.
+- README `bridge-e2ee/` mô tả RPC contract.
 
 ---
 
@@ -44,8 +44,8 @@ Sau 18 tháng kể từ khi Facebook bật E2EE mặc định cho Messenger (11/
 |---|---|
 | Chỉ đọc được tin nhắn nhóm | Đọc cả tin nhắn nhóm + tin nhắn 1-1 (E2EE) |
 | `type` chỉ có giá trị legacy | Vẫn `"user" / "thread"` - không breaking |
-| Không có hướng dẫn build native dep | Hướng dẫn Go toolchain step-by-step |
-| Bridge prototype DLL/ctypes (rủi ro crash) | Subprocess JSON-RPC an toàn, có thể đóng gói exe đơn |
+| Chưa có hướng dẫn build native dependency | Có hướng dẫn cài Go và build bridge |
+| Bridge prototype dùng DLL/ctypes chung process | Bridge dùng JSON-RPC trong subprocess riêng |
 
 ---
 
@@ -97,15 +97,15 @@ async def run(data_fb: dict) -> None:
             await task
 ```
 
-> 💡 Không cần build E2EE - Tiếp tục `from _messaging._listening import listeningEvent` như cũ - không có gì thay đổi.
+> Nếu không dùng E2EE, vẫn có thể dùng `from _messaging._listening import listeningEvent` như trước mà không build bridge.
 
 ---
 
 ## 🔧 Nâng cấp từ 2.0.x
 
-- ✅ Không có breaking change với code đang dùng `_listening.py`.
-- 🆕 Để build source E2EE hiện tại: cài Go 1.26.5 + Git và build binary một lần (xem [`bridge-e2ee/README.md`](../bridge-e2ee/README.md)).
-- 🧹 Có thể xoá thư mục `meta-messenger.js/` (nếu còn) - bridge mới hoàn toàn độc lập.
+- Bản v2.1.0 không đổi API của code dùng `_listening.py`.
+- Ghi chú build trong tài liệu này dùng Go 1.26.5 + Git. Khi build source mới, dùng Go version trong `bridge-e2ee/go.mod` và làm theo [`bridge-e2ee/README.md`](../bridge-e2ee/README.md).
+- Bridge không còn phụ thuộc thư mục `meta-messenger.js/`; có thể xóa thư mục này nếu ứng dụng không dùng đến.
 
 ```powershell
 git pull
@@ -144,8 +144,8 @@ So sánh diff: [`v2.0.x...v2.1.0`](https://github.com/m008v/fbchat-v2/compare/v2
 
 ## 🙏 Cảm ơn
 
-- Cộng đồng đã kiên nhẫn chờ đợi suốt 18 tháng kể từ khi Messenger bật E2EE.
-- Dự án [`mautrix/meta`](https://github.com/mautrix/meta) và [`tulir/whatsmeow`](https://github.com/tulir/whatsmeow) - nền tảng giúp việc giải mã trở nên khả thi.
+- Cộng đồng đã chờ đợi, thử nghiệm và báo lỗi khi Messenger chuyển sang E2EE.
+- Dự án [`mautrix/meta`](https://github.com/mautrix/meta) và [`tulir/whatsmeow`](https://github.com/tulir/whatsmeow), được dùng cho kết nối Meta và Signal Protocol.
 - Dự án [`yumi-team/meta-messenger.js`](https://github.com/yumi-team/meta-messenger.js) - tham chiếu thiết kế bridge.
 - Tất cả contributor và upstream được liệt kê ở [README - Vinh danh](../README.md#vinh-danh).
 

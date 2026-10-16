@@ -1,6 +1,6 @@
 # `_core` - Tầng nền tảng async
 
-> Session, HTTP transport, storage, login credential và utility dùng chung cho toàn bộ `fbchat-v2`.
+> Quản lý session, HTTP, lưu cookie và đăng nhập cho `fbchat-v2`.
 
 [![English](https://img.shields.io/badge/English-0b8ecf?style=flat-square)](README_EN.md)
 [![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
@@ -24,17 +24,17 @@
 
 ## 🎯 Vai trò
 
-`_core` là nền móng của codebase:
+`_core` cung cấp các thành phần dùng chung:
 
 - Tạo session Facebook từ cookie.
 - Chuẩn hóa HTTP request bằng `httpx`.
-- Build form GraphQL và request form thường.
-- Parse cookie, JSON có prefix `for (;;);` và token HTML.
-- Lưu cookie qua abstraction storage.
-- Hỗ trợ credential login và 2FA.
-- Sinh ID dùng cho Messenger request.
+- Tạo form cho request GraphQL và request thông thường.
+- Đọc cookie, JSON có tiền tố `for (;;);` và token trong HTML.
+- Lưu cookie qua interface storage.
+- Hỗ trợ đăng nhập bằng tài khoản, mật khẩu và 2FA.
+- Sinh ID dùng trong request Messenger.
 
-Feature trong `_features` và `_messaging` không nên tự dựng session, tự tắt TLS hoặc tạo một transport ad-hoc khác.
+Các module trong `_features` và `_messaging` nên dùng lại những thành phần này, không tự tạo session hoặc transport riêng và không tắt kiểm tra TLS.
 
 ---
 
@@ -63,7 +63,7 @@ src/fbchat_v2/_core/
 __all__ = ["_session", "_utils", "_facebookLogin", "__version__"]
 ```
 
-Storage và HTTP transport vẫn import trực tiếp từ module:
+Import storage và HTTP transport trực tiếp từ module tương ứng:
 
 ```python
 from fbchat_v2._core._http import get_async, post_async
@@ -71,13 +71,13 @@ from fbchat_v2._core._session import dataGetHome
 from fbchat_v2._core._storage import EnvSessionStorage, FileSessionStorage
 ```
 
-Application code thường chỉ cần `dataGetHome`, storage và public feature. Helper cấp thấp phù hợp khi viết module mới hoặc integration đặc biệt.
+Ứng dụng thường chỉ cần `dataGetHome`, storage và các feature công khai. Các helper cấp thấp dành cho việc viết module mới hoặc tích hợp riêng.
 
 ---
 
 ## 📝 Hợp đồng `dataFB`
 
-`dataFB` là dict session chung giữa ba tầng:
+`dataFB` là dict chứa session, được dùng chung ở cả ba tầng:
 
 ```python
 {
@@ -92,7 +92,7 @@ Application code thường chỉ cần `dataGetHome`, storage và public feature
 }
 ```
 
-Field bắt buộc do `_session.REQUIRED_SESSION_FIELDS` quy định:
+Các field bắt buộc được liệt kê trong `_session.REQUIRED_SESSION_FIELDS`:
 
 - `fb_dtsg`
 - `jazoest`
@@ -100,10 +100,10 @@ Field bắt buộc do `_session.REQUIRED_SESSION_FIELDS` quy định:
 - `FacebookID`
 - `clientRevision`
 
-`cookieFacebook` được thêm vào sau khi parse. Hầu hết feature HTTP và bridge đều cần nó.
+`cookieFacebook` được thêm sau bước đọc cookie. Hầu hết feature HTTP và bridge đều cần field này.
 
 > [!WARNING]
-> Toàn bộ dict là secret. `fb_dtsg` và cookie có thể đủ để thực hiện action trên tài khoản. Không log, serialize ra analytics hoặc đưa vào exception public.
+> Toàn bộ dict chứa thông tin nhạy cảm. `fb_dtsg` và cookie có thể đủ để thực hiện thao tác trên tài khoản. Không ghi dict này vào log, gửi sang analytics hoặc đưa vào exception trả cho người dùng.
 
 ---
 
@@ -119,15 +119,15 @@ async def dataGetHome(
     ...
 ```
 
-Workflow:
+Cách xử lý:
 
-1. Dùng `setCookies` nếu được truyền.
+1. Dùng `setCookies` nếu có.
 2. Nếu không, gọi `storage.load()`.
-3. Parse cookie string thành cookie jar.
-4. GET `https://www.facebook.com/` bằng transport async.
+3. Chuyển chuỗi cookie thành cookie jar.
+4. Gửi GET đến `https://www.facebook.com/` bằng transport async.
 5. Gọi `raise_for_status()`.
-6. Parse token cần thiết từ HTML.
-7. Validate field và `FacebookID` dạng số.
+6. Đọc các token cần thiết từ HTML.
+7. Kiểm tra các field và xác nhận `FacebookID` là dạng số.
 8. Trả `dataFB` hoặc `None`.
 
 Ví dụ:
@@ -148,7 +148,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Hàm trả `None` cho cookie rỗng, request lỗi, HTTP status lỗi hoặc thiếu token. Nó không raise cho các lỗi session thông thường để caller có thể xử lý như một bước xác thực.
+Hàm trả `None` khi cookie rỗng, request hoặc HTTP status lỗi, hay thiếu token. Các lỗi session thông thường không được ném ra dưới dạng exception; bên gọi cần kiểm tra kết quả để xử lý xác thực.
 
 ---
 
@@ -156,7 +156,7 @@ Hàm trả `None` cho cookie rỗng, request lỗi, HTTP status lỗi hoặc thi
 
 ### `SessionStorage`
 
-Abstract interface:
+Interface trừu tượng:
 
 ```python
 class SessionStorage(ABC):
@@ -176,13 +176,13 @@ storage.clear()
 
 Đặc điểm:
 
-- Giữ lại các key JSON khác khi update cookie.
+- Giữ lại các key JSON khác khi cập nhật cookie.
 - Trả `None` nếu file thiếu, JSON lỗi hoặc key không phải chuỗi hợp lệ.
-- Reject cookie rỗng bằng `ValueError`.
+- Báo `ValueError` nếu cookie rỗng.
 - Ghi file tạm trong cùng thư mục rồi `os.replace()`.
-- Đặt mode `0600` trên hệ Unix sau khi tạo file tạm.
+- Đặt quyền `0600` trên hệ Unix sau khi tạo file tạm.
 
-Atomic write giảm nguy cơ file hỏng nhưng không phải encryption. Trên máy nhiều user, vẫn phải đặt ACL phù hợp.
+Ghi nguyên tử giảm nguy cơ file hỏng nhưng không mã hóa cookie. Trên máy dùng chung, vẫn cần đặt ACL phù hợp.
 
 ### `EnvSessionStorage`
 
@@ -191,7 +191,7 @@ storage = EnvSessionStorage("FB_COOKIES")
 data_fb = await dataGetHome(storage=storage)
 ```
 
-`save()` chỉ thay đổi environment của process hiện tại; nó không ghi vĩnh viễn vào system environment.
+`save()` chỉ thay đổi biến môi trường của process hiện tại, không lưu vào môi trường hệ thống.
 
 ---
 
@@ -201,10 +201,10 @@ Transport dùng chung:
 
 | Hàm | Loại client | Mục đích |
 |---|---|---|
-| `post_async` | `httpx.AsyncClient` | POST không block event loop |
-| `get_async` | `httpx.AsyncClient` | GET không block event loop |
-| `post_blocking` | `httpx.Client` | Compatibility boundary |
-| `get_blocking` | `httpx.Client` | Compatibility boundary |
+| `post_async` | `httpx.AsyncClient` | POST không chặn event loop |
+| `get_async` | `httpx.AsyncClient` | GET không chặn event loop |
+| `post_blocking` | `httpx.Client` | Dành cho code blocking tương thích cũ |
+| `get_blocking` | `httpx.Client` | Dành cho code blocking tương thích cũ |
 
 ```python
 request = {
@@ -221,13 +221,13 @@ response.raise_for_status()
 
 Transport:
 
-- Copy kwargs trước khi normalize.
-- Tách `url`, `verify`, `timeout` khỏi kwargs gửi cho method.
+- Sao chép kwargs trước khi chuẩn hóa.
+- Tách `url`, `verify`, `timeout` khỏi kwargs gửi cho method HTTP.
 - Loại key `proxies` kiểu cũ của `requests`.
-- Tạo client tạm nếu caller không inject client.
+- Tạo client tạm nếu bên gọi không truyền client.
 - Không tự tắt TLS.
 
-Khi truyền client do caller sở hữu, config `verify` thuộc về client. Không kỳ vọng `verify` trong request dict có thể thay đổi một client đã tạo.
+Nếu tự truyền client, hãy cấu hình `verify` khi tạo client đó. Giá trị `verify` trong request dict không thay đổi cấu hình của client đã có.
 
 ---
 
@@ -240,8 +240,8 @@ Khi truyền client do caller sở hữu, config `verify` thuộc về client. K
 | `mainRequests(url, dataForm, setCookies)` | Tạo kwargs POST form chuẩn |
 | `send_request_async(req_kwargs, client=None)` | Gửi POST và trả `httpx.Response` |
 | `send_get_request_async(req_kwargs, client=None)` | Gửi GET và trả response |
-| `post_form_json_async(...)` | POST form, `raise_for_status`, parse JSON |
-| `parse_json_response(text, strip_for_loop_prefix=False)` | Parse JSON có optional prefix |
+| `post_form_json_async(...)` | POST form, gọi `raise_for_status`, đọc JSON |
+| `parse_json_response(text, strip_for_loop_prefix=False)` | Đọc JSON, có thể bỏ tiền tố nếu được yêu cầu |
 
 ```python
 from fbchat_v2._core._utils import formAll, post_form_json_async
@@ -263,14 +263,14 @@ payload = await post_form_json_async(
 
 `formAll(dataFB, friendlyName, docID, requireGraphql=True)` thêm token session và metadata Facebook thường dùng. Với endpoint form không phải GraphQL, truyền `requireGraphql=False`.
 
-Không mutate dict form dùng chung giữa nhiều coroutine. Tạo dict mới cho mỗi request.
+Tạo dict form mới cho mỗi request; không sửa dict đang được nhiều coroutine dùng chung.
 
 ### Cookie và parser
 
 | Hàm | Mô tả |
 |---|---|
 | `parse_cookie_string(cookie_str)` | Chuyển chuỗi cookie thành dict |
-| `dataSplit(...)` | Parse token từ HTML legacy |
+| `dataSplit(...)` | Đọc token từ HTML theo định dạng cũ |
 | `clearHTML(text)` | Làm sạch một số HTML entity/markup |
 | `formatResults(type, text)` | Kết quả success/error đơn giản |
 
@@ -279,12 +279,12 @@ Không mutate dict form dùng chung giữa nhiều coroutine. Tạo dict mới c
 | Hàm | Mục đích |
 |---|---|
 | `gen_threading_id()` | Offline/message threading ID |
-| `generate_session_id()` | Session ID random |
+| `generate_session_id()` | Session ID ngẫu nhiên |
 | `generate_client_id()` | Client mutation/session ID |
-| `str_base(number, base)` | Đổi số sang base tùy chọn |
-| `digitToChar(digit)` | Ký tự cho digit base |
+| `str_base(number, base)` | Đổi số sang cơ số tùy chọn |
+| `digitToChar(digit)` | Đổi chữ số thành ký tự trong cơ số tương ứng |
 
-Các ID này chỉ phục vụ protocol client; không dùng làm security token hoặc unique database key.
+Các ID này chỉ dùng cho giao thức client, không phải token bảo mật hay khóa cơ sở dữ liệu bảo đảm duy nhất.
 
 ---
 
@@ -302,38 +302,38 @@ login = loginFacebook(
 result = await login.main()
 ```
 
-`main()` bọc `main_blocking()` bằng worker thread. Luồng login bên dưới vẫn dùng FB4A form legacy và `requests`.
+`main()` chạy `main_blocking()` trên worker thread. Phần đăng nhập bên dưới vẫn dùng form FB4A cũ và `requests`.
 
 ### 2FA
 
 `AuthenticationGoogleCode` hỗ trợ:
 
 - OTP trực tiếp 6 đến 8 chữ số.
-- TOTP secret được tính local bằng `pyotp`.
+- TOTP secret để tính mã trên máy bằng `pyotp`.
 
-Không gửi TOTP secret sang API ngoài. Nếu secret có khoảng trắng hoặc định dạng base32 sai, module trả lỗi thay vì log secret.
+TOTP secret không được gửi sang API bên ngoài. Module bỏ khoảng trắng khi chuẩn hóa đầu vào; nếu secret sai định dạng base32, nó trả lỗi mà không ghi secret vào log.
 
 ### Cấu hình
 
-FB4A API key và app access token mặc định có sẵn trong module. Override tùy chọn:
+Module có sẵn FB4A API key và app access token mặc định. Có thể thay bằng biến môi trường:
 
 ```powershell
 $env:FBCHAT_API_KEY = "<override>"
 $env:FBCHAT_APP_ACCESS_TOKEN = "<override>"
 ```
 
-Không hardcode override vào source. `proxies` là compatibility input cho flow login cũ; feature async dùng proxy config của `httpx.AsyncClient` thay vì dict `requests` này.
+Không ghi trực tiếp giá trị thay thế vào source. `proxies` chỉ phục vụ luồng đăng nhập cũ; các feature async dùng cấu hình proxy của `httpx.AsyncClient`, không dùng dict theo kiểu `requests` này.
 
 ### Lỗi checkpoint
 
-Credential login có thể gặp:
+Đăng nhập bằng tài khoản và mật khẩu có thể gặp:
 
 - Yêu cầu 2FA.
 - Checkpoint xác nhận thiết bị.
-- Error subcode mới.
-- Response thiếu field hoặc code `-1`.
+- Mã lỗi phụ mới.
+- Response thiếu field hoặc có code `-1`.
 
-Đọc error description đã sanitize và ưu tiên cookie session khi endpoint login không còn ổn định. Không tuyên bố login live hoạt động chỉ dựa trên mocked test.
+Đọc mô tả lỗi đã loại thông tin nhạy cảm và ưu tiên session cookie khi endpoint đăng nhập không ổn định. Test giả lập không chứng minh được luồng đăng nhập với tài khoản thật.
 
 ---
 
@@ -355,7 +355,7 @@ flowchart TD
     K --> D
 ```
 
-`_core` không import `_features` hoặc `_messaging`. Giữ dependency một chiều để tránh circular import.
+`_core` không import `_features` hoặc `_messaging`. Giữ hướng phụ thuộc này để tránh import vòng.
 
 ---
 
@@ -363,10 +363,10 @@ flowchart TD
 
 - Public API có I/O mới phải async-first.
 - HTTP async phải dùng `httpx.AsyncClient`, không bọc `requests` mới bằng `to_thread` nếu không có lý do protocol cụ thể.
-- Chấp nhận `client=` khi workflow có thể tái sử dụng connection pool.
+- Nhận `client=` khi bên gọi có thể dùng lại connection pool.
 - Đặt timeout hữu hạn và gọi `raise_for_status()`.
-- Tách build request, transport và parser để test riêng.
-- Không mutate input dict hoặc state module global cho mỗi request.
+- Tách phần tạo request, transport và parser để kiểm thử riêng.
+- Không sửa dict đầu vào hoặc dùng state toàn cục để lưu dữ liệu từng request.
 - Không tắt TLS verification.
 - Không log cookie, password, OTP, access token hoặc toàn bộ `dataFB`.
 - Helper blocking phải có hậu tố `_blocking`; không tạo alias `_sync` hoặc `_async` dư thừa.
@@ -379,10 +379,10 @@ flowchart TD
 |---|---|---|
 | `dataGetHome()` trả `None` | Cookie hết hạn hoặc token HTML đổi | Kiểm tra tên cookie và field thiếu, không log giá trị |
 | HTTP 401/403 | Session hoặc token không hợp lệ | Làm mới cookie, kiểm tra checkpoint |
-| HTTP timeout | Mạng, proxy hoặc endpoint chậm | Dùng timeout rõ ràng và retry có giới hạn ở application |
-| JSON parse lỗi | Prefix hoặc schema đổi | Giữ excerpt đã sanitize, kiểm tra `for (;;);` |
+| HTTP timeout | Mạng, proxy hoặc endpoint chậm | Đặt timeout rõ ràng và giới hạn số lần retry ở ứng dụng |
+| JSON parse lỗi | Tiền tố hoặc schema đổi | Giữ đoạn trích đã loại thông tin nhạy cảm, kiểm tra `for (;;);` |
 | `coroutine was never awaited` | Gọi API async như sync | Thêm `await` hoặc `create_task` |
-| Login code `-1` | Response không chuẩn hoặc transport lỗi | Đọc description, kiểm tra env override, thử cookie |
-| File storage trả `None` | JSON lỗi hoặc key sai | Validate file UTF-8 và key `cookies` |
+| Login code `-1` | Response không chuẩn hoặc transport lỗi | Đọc mô tả lỗi, kiểm tra biến môi trường thay thế, thử cookie |
+| File storage trả `None` | JSON lỗi hoặc key sai | Kiểm tra file UTF-8 và key `cookies` |
 
-Chẩn đoán session phải dừng ở metadata an toàn. Đừng sửa lỗi bằng cách in cả cookie ra terminal, kiểu đó không debug mà là tự leak tài khoản.
+Khi chẩn đoán session, chỉ ghi metadata không nhạy cảm, chẳng hạn tên field bị thiếu. Không in giá trị cookie ra terminal hoặc log.

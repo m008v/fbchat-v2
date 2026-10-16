@@ -1,6 +1,6 @@
 # Tài liệu ngôn ngữ
 
-`fbchat-v2` duy trì tài liệu người dùng và tài liệu module theo hai ngôn ngữ:
+Tài liệu tổng quan và module có bản tiếng Việt và tiếng Anh:
 
 | Phạm vi | Tiếng Việt | English |
 |---|---|---|
@@ -13,21 +13,21 @@
 
 ## 📏 Quy tắc cập nhật
 
-- Khi public API đổi, cập nhật cả bản Việt và Anh trong cùng commit.
-- Ví dụ mạng mới phải dùng `async`/`await` và `httpx.AsyncClient` đúng hợp đồng hiện tại.
-- Giữ tên module, function, parameter và result key giống source; không dịch identifier.
+- Khi đổi public API, cập nhật cả bản Việt và Anh trong cùng commit.
+- Ví dụ gọi mạng mới dùng `async`/`await` và `httpx.AsyncClient` theo API hiện tại.
+- Giữ nguyên tên module, hàm, tham số và result key như trong source; không dịch identifier.
 - Chuỗi tiếng Việt viết đủ dấu và lưu UTF-8.
 - Không dùng em dash; dùng dấu gạch ngang `-`.
-- Kiểm tra internal link, code fence và Mermaid syntax trước push.
+- Kiểm tra liên kết nội bộ, code fence và cú pháp Mermaid trước khi push.
 - Không đưa cookie, token, password, TOTP secret hoặc `dataFB` thật vào ví dụ.
 
 ## 🧪 Kiểm tra encoding
 
-PowerShell có thể hiển thị sai tiếng Việt dù file vẫn là UTF-8. Trước khi sửa hàng loạt, đọc file với encoding rõ ràng hoặc kiểm tra codepoint. Quét tối thiểu:
+PowerShell đôi khi hiển thị sai tiếng Việt dù file là UTF-8. Trước khi sửa hàng loạt, đọc với encoding cụ thể hoặc kiểm tra codepoint. Cần kiểm tra:
 
-- UTF-8 invalid.
-- U+FFFD replacement character.
+- Byte không hợp lệ theo UTF-8.
+- Ký tự thay thế U+FFFD.
 - NUL.
 - Các chuỗi mojibake phổ biến.
 
-Chỉ xác nhận tài liệu sạch sau khi kiểm tra bytes/codepoint, không dựa riêng vào cách terminal render.
+Kiểm tra byte/codepoint trước khi kết luận file bị lỗi; cách terminal hiển thị chưa đủ để xác định encoding.

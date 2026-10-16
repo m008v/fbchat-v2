@@ -1,6 +1,6 @@
 # `_features._facebook` — Tính năng tài khoản cá nhân Facebook
 
-> Các thao tác tương tác tài khoản cá nhân Facebook (Timeline, Profile, Bạn bè, Marketplace) được xây dựng trên `dataFB` và transport `httpx` async.
+> Thao tác với bài viết, trang cá nhân, bạn bè và Marketplace bằng `dataFB` và transport `httpx` async.
 
 [![English](https://img.shields.io/badge/English-0b8ecf?style=flat-square)](README_EN.md)
 [![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../../DOCS.md)
@@ -11,7 +11,7 @@
 
 | Module | Chức năng | GraphQL Mutation / Endpoint |
 |---|---|---|
-| **`_reactionPost.py`** | **Thả cảm xúc hoặc gỡ cảm xúc trên bài viết** | `CometUFIFeedbackReactMutation` |
+| `_reactionPost.py` | Thả hoặc gỡ cảm xúc trên bài viết | `CometUFIFeedbackReactMutation` |
 | `_createPost.py` | Đăng bài viết mới lên Timeline | `ComposerStoryCreateMutation` |
 | `_archivePost.py` | Lưu trữ bài viết cá nhân | `useCometArchivePostMutation` |
 | `_deletePost.py` | Xóa bài viết (chuyển vào thùng rác) | `useCometTrashPostMutation` |
@@ -29,7 +29,7 @@
 
 ## 🌟 Tiêu điểm: `_reactionPost.py` (Tương tác cảm xúc)
 
-Module [`_reactionPost.py`](_reactionPost.py) cho phép tài khoản thả cảm xúc (hoặc gỡ cảm xúc) trực tiếp lên bài viết Facebook của bạn bè trên Timeline.
+Module [`_reactionPost.py`](_reactionPost.py) dùng để thả hoặc gỡ cảm xúc trên bài viết Facebook.
 
 ### 1. Cú pháp gọi hàm
 
@@ -46,7 +46,7 @@ result = await _reactionPost.func(
 
 ### 2. Các loại cảm xúc hỗ trợ
 
-Module hỗ trợ chuỗi không phân biệt hoa thường (`case-insensitive`):
+Tên cảm xúc không phân biệt hoa thường:
 
 | Cảm xúc | Giá trị truyền vào | Alias hỗ trợ |
 |---|---|---|
@@ -57,12 +57,13 @@ Module hỗ trợ chuỗi không phân biệt hoa thường (`case-insensitive`)
 | 😮 Wow | `"WOW"` | `"wow"`, `"Wow"` |
 | 😢 Buồn | `"SAD"` | `"SORRY"`, `"sad"`, `"sorry"` |
 | 😡 Phẫn nộ | `"ANGRY"` | `"ANGER"`, `"angry"`, `"anger"` |
-| 🔄 **Gỡ cảm xúc** | `"UNDO"` | `"UNREACT"`, `"NONE"`, `"0"` |
+| 🔄 **Gỡ cảm xúc** | `"UNDO"` | `"UNREACT"`, `"NONE"` |
 
 ### 3. Cơ chế xử lý & Ưu điểm
-- **Tự động chuẩn hóa Target ID**: Nhận diện chuỗi ID bài viết thô và tự động encode Base64 định dạng `feedback:<postID>`. Nếu ID truyền vào đã là token Base64 feedback hợp lệ, hàm sẽ giữ nguyên nhằm chống lỗi lặp prefix.
-- **Telemetry an toàn**: Sử dụng attribution dynamic epoch milliseconds kèm actor ID thật và referrer `/{actor_id}` hợp lệ, loại bỏ hoàn toàn nguy cơ bị Facebook gắn cờ bot hoặc checkpoint tài khoản.
-- **Fault-tolerant**: Toàn bộ thao tác mạng được bọc `try-except` đầy đủ, trả về dictionary `{"error": 1, "messages": ...}` thay vì làm crash listener bot khi gặp sự cố kết nối.
+
+- ID bài viết được mã hóa Base64 theo định dạng `feedback:<postID>`. Nếu đã là token Base64 feedback hợp lệ, hàm giữ nguyên để tránh mã hóa lặp.
+- Attribution dùng timestamp hiện tại theo mili giây, actor ID của tài khoản và referrer `/{actor_id}`. Các giá trị này không bảo đảm tài khoản tránh bị gắn cờ bot hoặc checkpoint.
+- Lỗi HTTP, dữ liệu không hợp lệ và phản hồi GraphQL lỗi được trả dưới dạng dict `{"error": 1, "messages": ...}`. Bên gọi vẫn cần kiểm tra kết quả trước khi tiếp tục.
 
 ### 4. Code ví dụ thực tế
 

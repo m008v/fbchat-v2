@@ -1,6 +1,6 @@
 # `_features._facebook` — Facebook Personal Account Features
 
-> Operations and interactions for personal Facebook accounts (Timeline, Profile, Friends, Marketplace) built on `dataFB` and async `httpx` transport.
+> Work with posts, profiles, friends, and Marketplace using `dataFB` and async `httpx` transport.
 
 [![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-0b8ecf?style=flat-square)](README.md)
 [![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../../DOCS.md)
@@ -11,7 +11,7 @@
 
 | Module | Function | GraphQL Mutation / Endpoint |
 |---|---|---|
-| **`_reactionPost.py`** | **React to or unreact on a Facebook post** | `CometUFIFeedbackReactMutation` |
+| `_reactionPost.py` | Add or remove a reaction on a Facebook post | `CometUFIFeedbackReactMutation` |
 | `_createPost.py` | Create a new timeline post | `ComposerStoryCreateMutation` |
 | `_archivePost.py` | Archive a personal timeline post | `useCometArchivePostMutation` |
 | `_deletePost.py` | Delete a post (move to trash) | `useCometTrashPostMutation` |
@@ -29,7 +29,7 @@
 
 ## 🌟 Spotlight: `_reactionPost.py` (Post Reactions)
 
-The [`_reactionPost.py`](_reactionPost.py) module allows your account to react to (or unreact from) any public or friend's timeline post.
+Use [`_reactionPost.py`](_reactionPost.py) to add or remove reactions on Facebook posts.
 
 ### 1. Function Syntax
 
@@ -46,7 +46,7 @@ result = await _reactionPost.func(
 
 ### 2. Supported Reactions
 
-Case-insensitive string input with rich alias support:
+Reaction names are case-insensitive:
 
 | Reaction | Input Value | Supported Aliases |
 |---|---|---|
@@ -57,12 +57,13 @@ Case-insensitive string input with rich alias support:
 | 😮 Wow | `"WOW"` | `"wow"`, `"Wow"` |
 | 😢 Sad | `"SAD"` | `"SORRY"`, `"sad"`, `"sorry"` |
 | 😡 Angry | `"ANGRY"` | `"ANGER"`, `"angry"`, `"anger"` |
-| 🔄 **Unreact** | `"UNDO"` | `"UNREACT"`, `"NONE"`, `"0"` |
+| 🔄 **Unreact** | `"UNDO"` | `"UNREACT"`, `"NONE"` |
 
 ### 3. Architecture & Key Advantages
-- **Automatic Target ID Normalization**: Accepts raw post IDs (e.g., `"1234567890"`) and automatically encodes them as Base64 `feedback:<postID>`. If the target is already a valid Base64 `feedback:...` token, it is preserved without re-encoding.
-- **Safe Telemetry Attribution**: Generates dynamic client mutation IDs and realistic browser telemetry timestamps (`session_id`, `epoch` ms, referrer `/{actor_id}`), avoiding bot heuristics and checkpoint triggers.
-- **Fault-Tolerant Error Handling**: All network and GraphQL errors are intercepted cleanly and returned as structured dictionaries `{"error": 1, "messages": ...}` rather than unhandled exceptions that crash daemon listeners.
+
+- Post IDs are Base64-encoded as `feedback:<postID>`. An existing valid Base64 feedback token is kept unchanged to avoid encoding it twice.
+- Attribution uses the current timestamp in milliseconds, the account's actor ID, and the referrer `/{actor_id}`. The request also includes a generated session ID and client mutation ID. None of these values guarantees protection from bot detection or account checkpoints.
+- HTTP failures, invalid data, and GraphQL errors are returned as `{"error": 1, "messages": ...}` dictionaries. Callers still need to check the result before continuing.
 
 ### 4. Practical Code Example
 

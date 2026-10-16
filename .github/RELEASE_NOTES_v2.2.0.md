@@ -1,9 +1,9 @@
-# 🚀 fbchat-v2 v2.2.0 - Async/Await đã chính thức lên sóng
+# fbchat-v2 v2.2.0 - API async/await
 
 > *Release date: 2026-07-19*
 > *Author: MinhHuyDev*
 
-`v2.2.0` là bản nâng cấp lớn của `fbchat-v2`: codebase chuyển sang hướng **async-first**, HTTP runtime ưu tiên `httpx`, listener E2EE được ổn định lại, bot mẫu chạy theo lifecycle `asyncio` rõ ràng hơn và tài liệu được viết lại để người dùng không copy nhầm flow blocking cũ.
+`v2.2.0` chuyển API sang coroutine, dùng `httpx` cho HTTP async và viết lại bot mẫu theo lifecycle `asyncio`. Bản này cũng sửa listener E2EE và cập nhật ví dụ theo API mới. Code gọi API cần thêm `await`; các điểm cần đổi được liệt kê bên dưới.
 
 Nếu bạn vẫn cần bản `requests` cũ, hãy dùng nhánh/tag `v2.1.4`: <https://github.com/m008v/fbchat-v2/tree/v2.1.4>
 
@@ -15,7 +15,7 @@ Nếu bạn vẫn cần bản `requests` cũ, hãy dùng nhánh/tag `v2.1.4`: <h
 
 - Các API chính chuyển sang coroutine và dùng `await`.
 - Module feature và messaging dùng tên hàm thống nhất `func(...)`.
-- Loại bỏ alias dư như `func_async = func` và `func_sync` để public API gọn hơn.
+- Bỏ các alias `func_async = func` và `func_sync`; dùng `func(...)` cho API async.
 - Hỗ trợ truyền `client=httpx.AsyncClient(...)` để tái sử dụng connection khi gọi nhiều API liên tiếp.
 
 Ví dụ:
@@ -47,24 +47,24 @@ asyncio.run(main())
 
 - Transport HTTP được gom về `_core/_http.py`.
 - API async dùng `httpx.AsyncClient`.
-- Caller có thể inject client chung để giảm overhead tạo connection.
-- Các boundary blocking còn lại được cô lập rõ, không giả async bằng cách bọc `requests` lung tung.
+- Có thể truyền client dùng chung để tránh tạo connection cho từng request.
+- Những đoạn còn dùng thư viện blocking được giữ ở lớp tương thích, tách khỏi transport async.
 
 ### 🔐 E2EE listener ổn định hơn
 
 - `listeningE2EEEvent.connect_mqtt()` là coroutine dùng được trực tiếp với `asyncio.create_task(...)`.
-- Bridge Go chạy qua JSON-RPC stdin/stdout và không kéo process Python chết theo khi bridge lỗi.
+- Bridge Go dùng JSON-RPC qua stdin/stdout và chạy trong process riêng với Python.
 - Callback bridge được khuyến nghị đẩy vào `asyncio.Queue` bằng `loop.call_soon_threadsafe(...)`.
 - Hỗ trợ event thường và event E2EE trong cùng listener.
 
 ### 🤖 Bot mẫu `src/main.py` viết lại theo lifecycle async
 
 - Đọc config local từ `src/config.json`.
-- Gọi `await dataGetHome(...)` và validate field bắt buộc trước khi chạy bot.
+- Gọi `await dataGetHome(...)` và kiểm tra các field bắt buộc trước khi chạy bot.
 - Dùng một `httpx.AsyncClient` chung cho command HTTP.
 - Chờ E2EE handshake sẵn sàng trước khi xử lý lệnh.
-- Reply bằng E2EE khi có `chatJid`, fallback gửi thường khi chỉ có `threadId`.
-- Shutdown listener và HTTP client rõ ràng khi Ctrl+C.
+- Trả lời bằng E2EE khi có `chatJid`, gửi thường khi chỉ có `threadId`.
+- Dừng listener và đóng HTTP client khi Ctrl+C.
 
 ### 📎 Upload attachment được cứng hơn
 
@@ -74,10 +74,10 @@ asyncio.run(main())
 
 ### 🔑 Login FB4A và 2FA được gom lại
 
-- Giữ default FB4A `apiKey` và `appAccessToken` trong code, vì đây là constant mặc định của app Facebook.
+- Giữ `apiKey` và `appAccessToken` mặc định của app Facebook trong code.
 - Cho phép override qua config/env khi thật sự cần.
 - Luồng 2FA vẫn giữ password gốc khi gửi request xác minh.
-- Login credential là compatibility boundary và vẫn không nên chạy trong event loop nóng.
+- Đăng nhập bằng username/password vẫn dùng lớp tương thích blocking; không gọi trực tiếp trong event loop đang xử lý tác vụ khác.
 
 ### 📚 Tài liệu được đồng bộ lại
 
@@ -155,7 +155,7 @@ Copy-Item src\config.example.json src\config.json
 cp src/config.example.json src/config.json
 ```
 
-Dán cookie Facebook thật vào `src/config.json`. File này đã bị gitignore, không commit cookie.
+Đặt cookie của tài khoản thử nghiệm vào `src/config.json`. File này nằm trong `.gitignore`; không commit hoặc chia sẻ cookie.
 
 ### 4. Chạy bot mẫu
 

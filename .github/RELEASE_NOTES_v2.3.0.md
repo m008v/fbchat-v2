@@ -1,26 +1,26 @@
-# 🚀 fbchat-v2 v2.3.0 — Hoàn thiện refactor và hardening runtime
+# fbchat-v2 v2.3.0 - Refactor và sửa lỗi runtime
 
-> **Trạng thái:** Source refactor và version metadata đã được đồng bộ cho
-> `v2.3.0`. Tag, package và artifact chỉ được coi là chính thức sau khi release
-> workflow hoàn tất.
+> Ghi chú này được viết khi chuẩn bị `v2.3.0`, sau khi đồng bộ source và version
+> metadata. Các mục artifact và kiểm chứng bên dưới mô tả kế hoạch ở thời điểm
+> đó, không thay cho kết quả của release workflow.
 
-`v2.3.0` hoàn thiện đợt refactor async-first của `fbchat-v2`, tập trung vào
-lifecycle E2EE, độ tin cậy của message pipeline, bảo vệ dữ liệu phiên và quy
-trình đóng gói có thể kiểm chứng. Đây chủ yếu là một bản behavior-hardening:
-không chủ đích xóa public Python API đang được hỗ trợ, nhưng các trạng thái lỗi
-trước đây bị bỏ qua hoặc báo thành công giả nay sẽ fail closed và trả lỗi thật.
+`v2.3.0` tiếp tục refactor async-first, tập trung vào lifecycle E2EE, xử lý event,
+lưu dữ liệu phiên và kiểm tra artifact phát hành. Bản này không chủ đích bỏ
+public Python API đang hỗ trợ. Tuy vậy, những trường hợp trước đây bỏ qua lỗi
+hoặc báo thành công sai nay trả lỗi, nên ứng dụng cần xử lý các kết quả đó.
 
 ## ✨ Điểm nổi bật
 
 ### Runtime async và message pipeline
 
-- Bot mẫu quản lý startup, cancellation và shutdown theo một lifecycle async rõ
-  ràng; công việc blocking được tách khỏi event loop.
+- Bot mẫu quản lý startup, cancellation và shutdown trong lifecycle async;
+  công việc blocking được tách khỏi event loop.
 - Event `typing`, `read receipt`, `reaction` và payload phụ được lọc trước
   message queue. Queue có giới hạn, có telemetry đã che nội dung và không thể
   tăng bộ nhớ vô hạn khi event dồn dập.
-- Khôi phục delivery message thường và E2EE từ live upsert; bổ sung cutoff chống
-  replay, dedupe giữa upsert/insert và không để placeholder đầu độc command thật.
+- Khôi phục nhận message thường và E2EE từ live upsert; bổ sung cutoff chống
+  replay và dedupe giữa upsert/insert. Placeholder không còn làm mất command
+  thật có cùng ID.
 - Listener thường sửa luồng refresh sequence khi MQTT overflow và không còn gọi
   coroutine như hàm đồng bộ.
 
@@ -36,8 +36,7 @@ trước đây bị bỏ qua hoặc báo thành công giả nay sẽ fail closed
 - Readiness chỉ được công bố khi socket thường đã kết nối và E2EE đã đăng nhập
   thật. Gửi E2EE khi transport chưa sẵn sàng sẽ trả lỗi thay vì âm thầm hạ cấp
   sang transport thường.
-- Listener là single-use: sau khi `stop`, ứng dụng phải tạo instance mới thay vì
-  hồi sinh một object đã đóng.
+- Listener là single-use: sau khi `stop`, ứng dụng phải tạo instance mới.
 
 ### Device state và tính toàn vẹn
 
@@ -47,8 +46,8 @@ trước đây bị bỏ qua hoặc báo thành công giả nay sẽ fail closed
   temp file, `fsync` và atomic rename.
 - Mutation state được tuần tự hóa và rollback cả dữ liệu trong RAM nếu ghi đĩa
   thất bại. Callback snapshot được coalesce để không chặn Signal ratchet.
-- Connection health theo dõi socket event thật; trạng thái cũ không còn khiến
-  watchdog hiểu nhầm bridge đang khỏe.
+- Connection health theo dõi socket event thay vì chỉ dựa vào trạng thái cũ
+  trong bộ nhớ.
 
 ## 🔒 Bảo mật và quyền riêng tư
 
@@ -59,14 +58,14 @@ trước đây bị bỏ qua hoặc báo thành công giả nay sẽ fail closed
   và 100 MiB để giảm rủi ro SSRF cùng tải dữ liệu không giới hạn.
 - `config.json` chứa cookie được tạo atomic với mode riêng tư trên POSIX hoặc ACL
   chỉ cho user hiện tại và `SYSTEM` trên Windows.
-- Nội dung message, command và traceback được che mặc định. Chỉ bật
+- Nội dung message, command và traceback được ẩn mặc định. Chỉ bật
   `log_message_content` hoặc `debug_errors` trong môi trường kiểm soát.
 - Không log, commit hoặc chia sẻ cookie, session token và E2EE device state.
 
 ## 🧩 Tính năng và sửa lỗi hành vi
 
 - Thêm `_features._facebook._unFriend.func(dataFB, friendID, client=None)` để hủy
-  kết bạn theo Facebook ID; input rỗng và GraphQL failure được xử lý rõ ràng.
+  kết bạn theo Facebook ID; trả lỗi cho input rỗng và GraphQL failure.
 - Archive post, move-to-trash và unfriend không còn trả success khi GraphQL trả
   `errors`, `data=null` hoặc `success=false`.
 - Sửa các boundary sync/async trong listener, theme, note và attachment; bổ sung
@@ -82,7 +81,7 @@ trước đây bị bỏ qua hoặc báo thành công giả nay sẽ fail closed
 - Caller từng chỉ kiểm tra HTTP thành công cần xử lý thêm response
   `{"error": 1, ...}` từ các mutation bị Facebook từ chối.
 - Custom E2EE bridge phải cùng version với package và hỗ trợ protocol `1`. Binary
-  cũ hoặc thiếu capability sẽ bị từ chối có chủ đích.
+  cũ hoặc thiếu capability sẽ bị từ chối.
 - Source checkout chặn binary cũ hơn Go source. Nếu không có checksum tin cậy,
   hãy tự build bridge hoặc cấu hình `FBCHAT_E2EE_BIN` và
   `FBCHAT_E2EE_SHA256` từ nguồn độc lập.

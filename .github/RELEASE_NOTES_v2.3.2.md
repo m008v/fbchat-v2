@@ -1,8 +1,8 @@
-# 🚀 fbchat-v2 v2.3.2 — Stability, E2EE hardening và release integrity
+# fbchat-v2 v2.3.2 - Sửa runtime, E2EE và kiểm tra artifact
 
-`v2.3.2` là bản vá ổn định tập trung vào các lỗi runtime từng lọt qua CI xanh:
-MQTT fresh-start, GraphQL success giả, ACL Windows, E2EE cleanup/resource bound
-và artifact PyPI không đồng nhất với source phát hành.
+`v2.3.2` sửa lỗi MQTT khi khởi động mới, mutation GraphQL báo thành công sai,
+quyền file Windows và cleanup E2EE. Bản này cũng giới hạn tài nguyên và kiểm
+tra wheel/sdist để tránh khác biệt giữa package PyPI và source phát hành.
 
 ## Thay đổi chính
 
@@ -15,12 +15,13 @@ và artifact PyPI không đồng nhất với source phát hành.
   từng request.
 - File session giữ ACL riêng sau atomic replace trên Windows; CI chạy full
   pytest trên Windows để giữ regression này.
-- E2EE bridge rollback partial client, dọn subprocess khi handshake lỗi, hard
-  cap RPC/media, giới hạn queue 1.000 event và log overflow không lộ payload.
-- Timeout gửi E2EE có trạng thái `unknown`, không được trả thành success, cache
-  làm message cuối hoặc tự retry gây gửi trùng.
+- E2EE bridge rollback client khởi tạo dở, dọn subprocess khi handshake lỗi,
+  giới hạn kích thước RPC/media và queue 1.000 event. Log overflow không chứa
+  payload.
+- Timeout gửi E2EE trả trạng thái `unknown`, không báo success hoặc cache làm
+  message cuối. Không tự retry vì request có thể đã tới server và gây gửi trùng.
 - `/unsend` fail closed nếu chưa cấu hình admin.
-- `/search` có bound và quota theo sender/toàn bot; log Windows giữ Unicode mà
+- `/search` giới hạn độ dài và quota theo sender/toàn bot; log Windows giữ Unicode mà
   không in query hoặc payload nhạy cảm.
 - Go `1.26.6`, `gorilla/websocket 1.5.3`; quality gate chạy thêm
   `govulncheck` đã pin.

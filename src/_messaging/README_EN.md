@@ -1,6 +1,6 @@
 # `_messaging` - Async messaging layer
 
-> Send, receive, attachments, reactions, unsend, editing, themes, notes, and the Messenger E2EE bridge.
+> Send and receive messages, handle attachments and reactions, manage themes and notes, and use Messenger E2EE.
 
 [![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-0b8ecf?style=flat-square)](README.md)
 [![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
@@ -31,17 +31,17 @@
 
 ## 🎯 Responsibilities
 
-`_messaging` implements Messenger workflows:
+`_messaging` provides these Messenger operations:
 
 - Send text and attachments through regular HTTP endpoints.
 - Receive regular realtime events through MQTT over WebSocket.
-- Receive and send direct E2EE chats through the Go bridge.
-- Edit, react, unsend, type, and mark messages as read.
+- Send and receive direct E2EE messages through the Go bridge.
+- Edit, react to, unsend, and mark messages as read; send typing indicators.
 - Send and download regular or encrypted media.
 - Change themes and manage Messenger Notes.
 - Fetch pending message requests.
 
-The package receives `dataFB` from `_core`. It does not own application cookie storage or credential management.
+The package receives `dataFB` from `_core`. The application is responsible for storing cookies and managing credentials.
 
 ---
 
@@ -80,13 +80,13 @@ Main dependencies:
 
 | Package | Used for |
 |---|---|
-| `httpx` | Send, injected-client uploads, reactions, unsend, and requests |
+| `httpx` | Sending, uploads with a supplied client, reactions, unsend, and message requests |
 | `paho-mqtt` | Regular listener and LS tasks |
-| `requests` | Compatibility upload boundary without an injected async client |
+| `requests` | Legacy uploads when no async client is supplied |
 
 ### E2EE bridge
 
-`bridge-e2ee/go.mod` requires Go 1.26.6.
+`bridge-e2ee/go.mod` requires Go 1.26.9.
 
 ```bash
 git submodule update --init --recursive bridge-e2ee/meta
@@ -98,7 +98,7 @@ go build -ldflags="-s -w" -o ../build/fbchat-bridge-e2ee .
 
 Use `..\build\fbchat-bridge-e2ee.exe` on Windows.
 
-Python resolves the binary from `binary_path=`, `FBCHAT_E2EE_BIN`, the default `build/` path, and finally a release auto-download when the default file is missing.
+Python looks for the binary at `binary_path=`, then `FBCHAT_E2EE_BIN`, then the default path in `build/`. If the default file is missing, it downloads the release asset.
 
 ---
 
@@ -267,7 +267,7 @@ Server or parser error:
 }
 ```
 
-Invalid input raises `ValueError` before a request. Every call builds an isolated form, so concurrent calls can share one sender. `sender.results` is only a latest-completion snapshot; application logic must use the returned dictionary.
+Invalid input raises `ValueError` before a request. Each call builds its own form, so concurrent calls can share a sender. `sender.results` holds only the result of the most recently completed call; use the returned dictionary to handle each request.
 
 ---
 
@@ -284,7 +284,7 @@ await _attachments.func(
 
 `filenames` accepts a string or list of strings. An empty list raises `ValueError`; a missing path raises `FileNotFoundError`.
 
-The parser currently returns only the first metadata item. For deterministic multi-file sending, upload every path separately, validate every `attachmentID`, and pass the collected IDs to the sender; a list of paths does not produce a list result.
+The parser currently returns metadata for only the first file. To send several files, upload each one separately, check each `attachmentID`, and pass the collected IDs to the sender. Passing a list of paths to the upload function does not make the result a list.
 
 ```python
 from fbchat_v2._messaging import _attachments
@@ -326,7 +326,7 @@ result = await sender.send(
 
 With `include_error=True`, diagnostics include error code, summary, description, upload ID, metadata, file rejection state, and a bounded raw excerpt. An `uploadID` is not an `attachmentID`, and `metadata["0"] is None` is not success.
 
-File handles are closed in `finally`. Without an injected async client, the compatibility upload runs in a worker thread. With `httpx.AsyncClient`, the multipart request is native async.
+File handles are closed in `finally`. If no async client is supplied, the legacy upload runs on a worker thread. With `httpx.AsyncClient`, the multipart request runs directly as async code.
 
 ---
 
@@ -380,7 +380,7 @@ Normalized event:
 
 The listener parses all deltas, verifies TLS, and uses a bounded queue. A full queue drops the oldest event and increments `droppedMessages`.
 
-`bodyResults` is a compatibility snapshot. New bots must consume `get_message()` to survive event bursts. Reconnect is controlled by an outer loop, never recursively from an MQTT callback.
+`bodyResults` is a snapshot kept for compatibility. New bots should read the queue through `get_message()` so that consecutive events are not overwritten. An outer loop controls reconnect; do not call `connect_mqtt()` recursively from an MQTT callback, as this can create extra clients and grow the stack.
 
 ---
 
@@ -445,9 +445,9 @@ if not ready:
     raise TimeoutError("The E2EE listener is not ready.")
 ```
 
-`startup_timeout` is a hard ceiling above the separately bounded startup
-phases. On failure, the wrapper preserves the exception chain and reports the
-failed phase instead of letting the outer wait hide the root cause.
+`startup_timeout` is an overall limit longer than the combined timeouts of the
+individual startup steps. On failure, the wrapper keeps the original exception
+chain and identifies the failed step, so the outer timeout does not hide the cause.
 
 ### Raw event
 
@@ -556,7 +556,7 @@ await actions.send_e2ee_audio(
 )
 ```
 
-Binary data is base64-encoded at the JSON-RPC boundary. `_BridgeProcess` limits a JSON-RPC request to 150 MiB, and base64 increases size by roughly one third.
+Binary data is base64-encoded for JSON-RPC. `_BridgeProcess` limits each request to 150 MiB. Base64 adds roughly one third to the size, so the source file must be well below that limit.
 
 ### Media download
 
@@ -609,7 +609,7 @@ finally:
     await asyncio.to_thread(sender.close)
 ```
 
-New async applications should use `listener.send_e2ee_message()` directly. A standalone sender owns separate pairing state and another subprocess.
+New async applications should use `listener.send_e2ee_message()` directly. A standalone sender has its own pairing state and subprocess, so avoid creating one for every send.
 
 `normalize_chat_jid()` converts a numeric Facebook ID to `<id>@msgr`, preserves a full JID, and rejects arbitrary non-ID text.
 
@@ -647,7 +647,7 @@ result = await _editMessage.func(
 )
 ```
 
-`editMessage()` and `func()` share the same async contract. Success confirms publication of the LS task, not server application.
+`editMessage()` and `func()` are both async. Success confirms that the LS task was published, not that the server applied the edit. The server can still reject an old message or one not owned by the account.
 
 ### HTTP unsend
 
@@ -707,7 +707,7 @@ replaced = await _createNotes.recreateNote(
 )
 ```
 
-The unified `func` supports `check`, `create`, `delete`, and `recreate`. Empty text or note IDs produce an error. Notes use the module's 24-hour workflow.
+The `func` entry point supports `check`, `create`, `delete`, and `recreate`. Empty text or note IDs produce an error. The module sets a default lifetime of 24 hours for notes.
 
 `recreateNote` deletes and then creates; it has no server-side rollback if creation fails.
 
@@ -818,7 +818,7 @@ async def run(data_fb: dict) -> None:
         await listener_task
 ```
 
-A production workflow should add message ID deduplication, self-message filtering, structured logs, a documented backpressure policy, cancellation, and listener task metrics.
+For a real application, add message ID deduplication, self-message filtering, structured logs, queue overflow handling, cancellation, and listener task metrics.
 
 ---
 
@@ -856,4 +856,4 @@ A production workflow should add message ID deduplication, self-message filterin
 | Edit/theme reports success but UI does not change | Only the LS task was published | Verify the later event or UI state |
 | Reaction HTTP 200 but no change | GraphQL body contains an error | Parse JSON and inspect `errors` |
 
-Starting extra listener threads to make a broken listener "more reliable" only multiplies processes, pairing state, and the original bug.
+If the listener is not running, check its task, handshake, and callbacks before creating another instance. Extra threads can duplicate bridge processes and pairing state without fixing the original failure.

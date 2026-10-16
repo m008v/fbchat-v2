@@ -1,5 +1,43 @@
 # Agent Memories
 
+## 2026-10-16 — Biên tập tài liệu Việt/Anh và chuẩn bị phát hành 2.3.3
+
+### Mục tiêu
+- Viết README và tài liệu Markdown tự nhiên hơn, giữ nguyên ví dụ code và
+  nội dung kỹ thuật; commit/push. m008v sau đó cho phép phát hành GitHub Release
+  tag `v2.3.3` và publish PyPI `2.3.3`. Vẫn không mở live Facebook.
+
+### Đã thực hiện
+- Biên tập README Việt/Anh, DOCS, README bridge, tám README module nguồn,
+  changelog, tám release note, flowchart, mindmap và hướng dẫn ngôn ngữ.
+- Bỏ câu quảng cáo, lời hứa tránh checkpoint và lời đùa gượng; viết bản Anh
+  trực tiếp hơn. Giữ tên API, giới hạn readiness/ACK/unknown-send và code cũ.
+- Đối chiếu source để sửa prose Go `1.26.9`, reaction doc_id, alias reaction,
+  chuẩn hóa TOTP và câu changelog bị cắt ở điều kiện admin của `/unsend`.
+- Sinh lại tám README trong namespace `fbchat_v2` bằng script đồng bộ. Không
+  sửa code Python/Go, dependency, ví dụ code hoặc Mermaid. Giữ nguyên policy
+  CODE_OF_CONDUCT, hướng dẫn agent CLAUDE và lịch sử memory.
+- Release note ghi rõ cold restart sau payload và ca mất mạng live còn thiếu
+  bằng chứng; không lấy kết quả offline thay cho xác nhận peer.
+
+### Kiểm tra
+- Đối chiếu cả 35 file Markdown với HEAD: 605 fenced block giữ nguyên sau
+  chuẩn hóa newline, đích liên kết không đổi, UTF-8 strict/mojibake và diff đạt.
+- Full Python suite `413 passed` trong 48,22 giây. Ruff, Black (125 file),
+  compileall, canonical snapshot check và mypy Linux/Windows (51 file mỗi bên)
+  cùng canonical namespace (45 file) đều đạt.
+- QA độc lập kiểm prose và đối chiếu source; đã sửa cách diễn đạt checksum,
+  startup timeout và thời điểm reset watchdog để không làm sai hành vi.
+
+### Quyết định kỹ thuật và việc còn lại
+- Chỉ dùng artifact wheel/sdist đã qua release workflow để publish PyPI;
+  workflow hiện tại tạo GitHub Release và không tự upload PyPI.
+- Trước khi tạo tag đã xác minh chưa có tag hoặc GitHub Release `v2.3.3`,
+  PyPI chưa có version `2.3.3`. CI/publish cần được kiểm tra riêng sau push.
+- Không sửa ví dụ lịch sử dù một số ví dụ cũ đã khác API hiện tại; không tự
+  mở rộng sang sửa TOC/link hỏng có sẵn. Giữ `.vs/` ngoài phạm vi.
+- Các lệnh kiểm thử trong lượt này không đăng nhập hay chạy listener Facebook.
+
 ## 2026-10-16 — Xác minh CI của bản offline fd731ac
 
 ### Mục tiêu

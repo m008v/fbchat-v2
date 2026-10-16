@@ -1,12 +1,12 @@
 # fbchat-v2 - Tài liệu API async
 
-Tài liệu này mô tả API hiện hành trên nhánh `main` cho package `fbchat-v2==2.3.3`. Các ví dụ I/O mới đều dùng `async`/`await`; API blocking chỉ được nhắc đến khi cần giải thích boundary hoặc hỗ trợ code legacy.
+Tài liệu dành cho mã nguồn `fbchat-v2==2.3.3` trên nhánh `main`. Các ví dụ I/O mới dùng `async`/`await`. API blocking được giữ lại để giải thích cách tích hợp hoặc hỗ trợ code cũ.
 
 > [!NOTE]
 > Đây là API Facebook không chính thức. Endpoint, token HTML, GraphQL `doc_id`, MQTT payload và E2EE protocol có thể thay đổi mà không báo trước.
 
 > [!WARNING]
-> Cookie, password, access token, TOTP secret và toàn bộ `dataFB` là secret. Không đưa chúng vào issue, log, test fixture thật hoặc commit Git.
+> Cookie, mật khẩu, access token, TOTP secret và toàn bộ `dataFB` là thông tin nhạy cảm. Không đưa chúng vào issue, log, dữ liệu test hoặc commit Git.
 
 ## 📋 Mục lục
 
@@ -67,7 +67,7 @@ Không phải thư viện nào cũng cung cấp API asyncio:
 - Bridge E2EE dùng hàng đợi response và subprocess pipe blocking.
 - Credential login cũ dùng `requests`.
 
-Các boundary này được cô lập bằng `asyncio.to_thread()` trong wrapper. Feature HTTP mới không được bọc `requests` bằng thread để giả async; chúng phải dùng `httpx.AsyncClient` thật.
+Wrapper chạy các phần blocking này qua `asyncio.to_thread()` để không chặn event loop. API HTTP mới dùng `httpx.AsyncClient`; thread adapter chỉ dành cho những phần blocking còn cần giữ lại.
 
 ---
 
@@ -88,7 +88,7 @@ python -m pip install -e ".[dev]"
 python scripts/verify_distribution.py
 ```
 
-Editable install làm cho namespace `fbchat_v2` import được từ mọi script trong virtual environment.
+Sau khi cài ở chế độ editable, các script trong virtual environment có thể import `fbchat_v2`.
 Không cần đặt `PYTHONPATH=src` hoặc thêm prefix `src.` vào import.
 
 ```python
@@ -97,7 +97,7 @@ from fbchat_v2._features._facebook import _search
 from fbchat_v2._messaging._send import api as SendAPI
 ```
 
-Không import private helper bắt đầu bằng `_build_`, `_parse_` hoặc `_BridgeProcess` trong application code. Chúng là implementation detail và có thể đổi giữa các bản.
+Ứng dụng không nên import các helper riêng như `_build_`, `_parse_` hoặc `_BridgeProcess`. Chúng phục vụ nội bộ và có thể thay đổi giữa các phiên bản.
 
 ---
 
@@ -123,7 +123,7 @@ if data_fb is None:
     raise RuntimeError("Không tạo được session Facebook.")
 ```
 
-`dataGetHome()` gọi homepage bằng HTTPS, parse token và chỉ trả dict khi các field bắt buộc hợp lệ:
+`dataGetHome()` tải trang chủ qua HTTPS, đọc token từ HTML và trả dict khi đủ các trường bắt buộc:
 
 ```python
 {
@@ -138,7 +138,7 @@ if data_fb is None:
 }
 ```
 
-Các field bắt buộc hiện tại là `fb_dtsg`, `jazoest`, `sessionID`, `FacebookID` và `clientRevision`. `FacebookID` phải là chuỗi số. Nếu cookie thiếu, HTTP lỗi hoặc HTML không còn token, hàm trả `None` và in chẩn đoán ngắn không chứa cookie.
+Các trường bắt buộc là `fb_dtsg`, `jazoest`, `sessionID`, `FacebookID` và `clientRevision`. `FacebookID` phải là chuỗi số. Nếu thiếu cookie, request HTTP lỗi hoặc HTML không còn token cần thiết, hàm trả `None` và in chẩn đoán ngắn, không chứa cookie.
 
 ### Không log `dataFB`
 
@@ -177,7 +177,7 @@ storage = FileSessionStorage("src/config.json", key="cookies")
 data_fb = await dataGetHome(storage=storage)
 ```
 
-`FileSessionStorage.save()` ghi file tạm, flush, `fsync` rồi `os.replace()`. Cách này giảm nguy cơ JSON bị cắt khi process bị dừng giữa lúc ghi. Nó không mã hóa cookie; quyền truy cập file và secret management vẫn là trách nhiệm của ứng dụng.
+`FileSessionStorage.save()` ghi vào file tạm, flush, `fsync` rồi thay file bằng `os.replace()`. Cách này giảm nguy cơ file JSON bị ghi dở khi tiến trình dừng đột ngột. Cookie không được mã hóa; ứng dụng vẫn cần bảo vệ quyền truy cập file và quản lý thông tin nhạy cảm.
 
 ### Biến môi trường
 
@@ -194,20 +194,20 @@ Windows PowerShell:
 $env:FB_COOKIES = "c_user=...; xs=...; fr=...; datr=...;"
 ```
 
-Biến môi trường giúp tách secret khỏi source, nhưng vẫn có thể bị đọc bởi process cùng quyền. Production nên dùng secret manager phù hợp với nền tảng deploy.
+Biến môi trường giúp giữ thông tin nhạy cảm ngoài mã nguồn, nhưng tiến trình cùng quyền vẫn có thể đọc chúng. Khi triển khai, nên dùng công cụ quản lý secret của nền tảng đang chạy.
 
 ---
 
 ## 5. 🌍 HTTP transport và connection pool
 
-`_core._http` cung cấp transport thấp:
+`_core._http` cung cấp các hàm HTTP dùng chung:
 
 ```python
 await post_async(request_kwargs, client=client)
 await get_async(request_kwargs, client=client)
 ```
 
-`_core._utils` cung cấp helper mức Facebook:
+`_core._utils` bổ sung các hàm gửi request theo định dạng Facebook:
 
 ```python
 await send_request_async(request_kwargs, client=client)
@@ -241,25 +241,25 @@ async with httpx.AsyncClient(
 
 Lợi ích:
 
-- Tái sử dụng TCP/TLS connection.
+- Tái sử dụng kết nối TCP/TLS.
 - Đặt timeout và proxy ở một chỗ.
-- Dễ inject `httpx.MockTransport` khi test.
-- Đóng tài nguyên đúng lifecycle ứng dụng.
+- Có thể truyền `httpx.MockTransport` khi test.
+- Đóng tài nguyên cùng vòng đời ứng dụng.
 
 ### Quyền sở hữu client
 
-- Caller truyền `client=` thì caller phải đóng client.
-- Caller bỏ `client=` thì helper tự tạo và đóng client cho call đó.
+- Nếu bạn truyền `client=`, bạn chịu trách nhiệm đóng client.
+- Nếu không truyền `client=`, helper tự tạo và đóng client cho lần gọi đó.
 - Không dùng client sau khi thoát `async with`.
 - Không chia sẻ một client giữa nhiều event loop ở các thread khác nhau.
 
-Transport copy request kwargs trước khi loại `url`, `verify`, `timeout`, vì vậy dict đầu vào của caller không bị mutate.
+Transport sao chép request kwargs trước khi bỏ `url`, `verify`, `timeout`, nên không sửa dict mà ứng dụng truyền vào.
 
 ---
 
 ## 6. 🔑 Login credential và 2FA
 
-Cookie session là luồng khuyến nghị. Credential login dễ gặp checkpoint, rate limit và thay đổi subcode.
+Nên dùng cookie phiên có sẵn. Đăng nhập bằng thông tin tài khoản dễ gặp checkpoint, giới hạn tần suất hoặc thay đổi mã lỗi từ Facebook.
 
 ```python
 from fbchat_v2._core._facebookLogin import loginFacebook
@@ -277,22 +277,22 @@ result = await login.main()
 - OTP hiện hành gồm 6 đến 8 chữ số.
 - TOTP shared secret để module tạo OTP cục bộ bằng `pyotp`.
 
-`login.main()` đưa luồng `requests` legacy sang worker thread để không block event loop. Nó không biến protocol cũ thành native async, nhưng giữ boundary rõ ràng.
+`login.main()` chạy phần đăng nhập cũ dùng `requests` trên worker thread để không chặn event loop. Phần này vẫn là xử lý blocking, không phải HTTP async.
 
 ### FB4A defaults và override
 
-Module có sẵn default API key và app access token của flow FB4A legacy. Chỉ override khi Facebook hoặc môi trường test yêu cầu:
+Module có API key và app access token mặc định cho luồng FB4A cũ. Chỉ ghi đè khi Facebook hoặc môi trường test yêu cầu:
 
 ```powershell
 $env:FBCHAT_API_KEY = "<optional-override>"
 $env:FBCHAT_APP_ACCESS_TOKEN = "<optional-override>"
 ```
 
-Không hardcode override thật vào source hoặc `.env.example`.
+Không ghi giá trị bí mật thật vào mã nguồn hoặc `.env.example`.
 
 ### Kết quả login
 
-Success thường chứa cookie đã export và trạng thái login. Error nên được đọc qua message, code và subcode Facebook trả về. Các continuation subcode đã biết trong codebase gồm `1348162` và `1348023`, nhưng không có đảm bảo chúng ổn định.
+Kết quả thành công thường chứa cookie đã xuất và trạng thái đăng nhập. Khi có lỗi, đọc message, code và subcode Facebook trả về. Code hiện xử lý các continuation subcode `1348162` và `1348023`; chúng có thể thay đổi.
 
 TOTP secret không được gửi tới `2fa.live` hoặc dịch vụ bên thứ ba.
 
@@ -351,7 +351,7 @@ result = await SendAPI().send(
 )
 ```
 
-Danh sách recipient chỉ hợp lệ với `typeChat="user"`.
+Chỉ truyền danh sách người nhận khi dùng `typeChat="user"`.
 
 ### Reply message
 
@@ -366,20 +366,20 @@ result = await SendAPI().send(
 )
 ```
 
-Nếu `replyMessage=True` mà thiếu `messageID`, API raise `ValueError` trước khi gửi request.
+Nếu `replyMessage=True` mà thiếu `messageID`, API báo `ValueError` trước khi gửi request.
 
 ### Validation
 
-`send()` reject các input sau:
+`send()` không nhận các đầu vào sau:
 
 - `threadID` rỗng.
 - `typeChat` khác `None` hoặc `"user"`.
 - `typeAttachment` ngoài `gif`, `image`, `video`, `file`, `audio`.
 - Chỉ truyền một trong hai `typeAttachment` và `attachmentID`.
-- Cả content lẫn attachment đều rỗng.
-- Danh sách recipient rỗng hoặc chứa ID rỗng.
+- Cả nội dung lẫn tệp đính kèm đều rỗng.
+- Danh sách người nhận rỗng hoặc chứa ID rỗng.
 
-Mỗi call build form cục bộ nên có thể chạy đồng thời. `sender.results` chỉ là snapshot call hoàn tất gần nhất; logic phải dùng dict được `return`.
+Mỗi lần gọi tạo form riêng nên có thể chạy đồng thời. `sender.results` chỉ giữ kết quả của lần gọi hoàn tất gần nhất; hãy dùng dict được hàm trả về để xử lý kết quả của từng lần gửi.
 
 ---
 
@@ -396,9 +396,9 @@ await _attachments.func(
 )
 ```
 
-`filenames` nhận một path hoặc danh sách path. Module kiểm tra file tồn tại trước request và luôn đóng file handle trong `finally`.
+`filenames` nhận một đường dẫn hoặc danh sách đường dẫn. Module kiểm tra file tồn tại trước khi gửi request và luôn đóng file trong `finally`.
 
-Parser hiện trả metadata của item đầu tiên (`metadata[0]` hoặc `metadata["0"]`), không trả danh sách result. Nếu cần gửi nhiều attachment một cách xác định, hãy upload từng file, kiểm tra từng `attachmentID` rồi truyền list ID vào `_send`.
+Parser hiện chỉ trả metadata của phần tử đầu tiên (`metadata[0]` hoặc `metadata["0"]`), không trả danh sách kết quả. Để gửi nhiều tệp và kiểm tra kết quả của từng tệp, hãy upload lần lượt, lấy từng `attachmentID` rồi truyền danh sách ID vào `_send`.
 
 ```python
 from fbchat_v2._messaging import _attachments
@@ -422,7 +422,7 @@ Success:
 }
 ```
 
-`attachmentType` có thể là MIME hoặc type từ Facebook. Khi gọi `_send`, dùng `typeAttachment` đã được normalize:
+`attachmentType` có thể là MIME hoặc loại tệp do Facebook trả về. Khi gọi `_send`, dùng `typeAttachment` đã chuẩn hóa:
 
 ```python
 from fbchat_v2._messaging._send import api as SendAPI
@@ -442,7 +442,7 @@ result = await SendAPI().send(
 
 Khi `include_error=False`, response không parse được trả `None`. Khi `include_error=True`, module trả error payload có `error-code`, `error-summary`, `error-description`, `metadata`, `file-rejected` và `raw-excerpt` đã giới hạn độ dài.
 
-Nếu Facebook trả `metadata: {"0": null}` hoặc error `1357054`, đó là server từ chối upload hoặc endpoint/session không còn phù hợp, không phải attachment ID hợp lệ.
+Nếu Facebook trả `metadata: {"0": null}` hoặc lỗi `1357054`, server đã từ chối upload hoặc endpoint/session không còn phù hợp. Không dùng kết quả đó làm attachment ID.
 
 ---
 
@@ -499,9 +499,9 @@ Event normalized:
 }
 ```
 
-Listener parse toàn bộ delta trong payload, dùng queue có giới hạn và drop event cũ nhất khi đầy. `droppedMessages` tăng sau mỗi lần drop. Theo dõi metric này để biết consumer quá chậm.
+Listener đọc toàn bộ delta trong payload và đưa event vào queue có giới hạn. Khi queue đầy, event cũ nhất bị bỏ và `droppedMessages` tăng. Theo dõi giá trị này để biết ứng dụng có xử lý tin chậm hơn tốc độ nhận hay không.
 
-Không poll `bodyResults` cho bot mới. Nó chỉ là snapshot tương thích và không lưu được burst nhiều event.
+Bot mới nên đọc event từ queue, không kiểm tra lặp lại `bodyResults`. Thuộc tính này chỉ giữ kết quả gần nhất để tương thích code cũ; nhiều event đến liên tiếp có thể ghi đè nhau.
 
 ---
 
@@ -539,11 +539,11 @@ Thứ tự:
 3. `build/fbchat-bridge-e2ee.exe` trên Windows hoặc không đuôi trên Unix.
 4. Auto-download GitHub Release nếu path mặc định chưa có.
 
-Khi override path được chỉ định mà file không tồn tại, wrapper raise `FileNotFoundError` và không tải fallback.
+Nếu bạn chỉ định đường dẫn nhưng file không tồn tại, wrapper báo `FileNotFoundError`, không tự tải binary khác.
 
 ### Callback và event loop
 
-`on_message()` là callback đồng bộ chạy từ poll loop bridge. Không `await` trực tiếp trong callback. Chuyển event về loop:
+`on_message()` nhận callback đồng bộ, được gọi từ vòng lặp đọc event của bridge. Không dùng `await` trực tiếp trong callback; hãy chuyển event về event loop:
 
 ```python
 import asyncio
@@ -567,7 +567,7 @@ task = asyncio.create_task(listener.connect_mqtt())
 
 ### Đợi bridge sẵn sàng
 
-`wait_until_connected()` dùng `threading.Event`, nên gọi qua worker thread để không block loop:
+`wait_until_connected()` dùng `threading.Event`. Gọi qua worker thread để không chặn event loop:
 
 ```python
 ready = await asyncio.to_thread(
@@ -579,7 +579,7 @@ if not ready:
     raise TimeoutError("E2EE listener chưa sẵn sàng.")
 ```
 
-Không gửi ngay sau `create_task(connect_mqtt())`. Bridge có thể mới spawn nhưng chưa chạy `newClient`, `connect` và `connectE2EE`. Wrapper áp timeout riêng cho các phase `contract`, `new client`, `regular connect`, `regular ready`, `E2EE connect` và `E2EE ready`; `startup_timeout` chỉ là hard ceiling bên ngoài nên không che exception gốc của phase lỗi.
+Đừng gửi tin ngay sau `create_task(connect_mqtt())`; tiến trình bridge có thể đã chạy nhưng chưa xong `newClient`, `connect` và `connectE2EE`. Wrapper đặt timeout riêng cho các bước `contract`, `new client`, `regular connect`, `regular ready`, `E2EE connect` và `E2EE ready`. `startup_timeout` là giới hạn tổng; lỗi gốc của từng bước vẫn được giữ lại.
 
 ### Schema event
 
@@ -602,7 +602,7 @@ Raw callback event:
 }
 ```
 
-`listener.bodyResults` giữ schema normalized giống listener thường. `listener.e2eeBodyResults` giữ `chatJid` và `senderJid`. Với ứng dụng mới, ưu tiên raw callback event để không gặp race khi nhiều event cập nhật snapshot liên tiếp.
+`listener.bodyResults` giữ dữ liệu đã chuẩn hóa giống listener thường. `listener.e2eeBodyResults` giữ `chatJid` và `senderJid`. Ứng dụng mới nên xử lý event nhận qua callback, tránh đọc kết quả bị ghi đè khi nhiều tin đến liên tiếp.
 
 ### Shutdown
 
@@ -614,7 +614,7 @@ finally:
     await task
 ```
 
-`stop()` là sync vì nó signal và đóng subprocess. Việc chờ task kết thúc vẫn phải `await`.
+`stop()` là hàm đồng bộ: nó báo dừng và đóng tiến trình con. Bạn vẫn cần `await` task để chờ listener kết thúc.
 
 ---
 
@@ -693,11 +693,11 @@ result = await actions.send_e2ee_image(
 )
 ```
 
-Bridge mã hóa bytes thành base64 tại JSON-RPC boundary. Tránh đọc file rất lớn vào event loop; dùng `asyncio.to_thread()` hoặc I/O async phù hợp.
+Bytes được chuyển sang base64 khi gửi qua JSON-RPC. Không đọc file lớn trực tiếp trong event loop; dùng `asyncio.to_thread()` hoặc I/O async phù hợp.
 
 ### `_send_e2ee.api`
 
-`_send_e2ee.api` hiện là compatibility sender blocking cho standalone hoặc reuse bridge. Application asyncio mới nên dùng `await listener.send_e2ee_message(...)` và `BridgeActions`. Nếu bắt buộc dùng standalone sender, gọi nó qua boundary riêng để không block loop.
+`_send_e2ee.api` là sender blocking được giữ để tương thích, có thể chạy riêng hoặc dùng lại bridge. Ứng dụng asyncio mới nên dùng `await listener.send_e2ee_message(...)` và `BridgeActions`. Nếu cần sender chạy riêng, tách lời gọi blocking khỏi event loop.
 
 ---
 
@@ -722,9 +722,9 @@ reacted = await _reactions.func(
 removed = await _unsend.func("mid.$message", data_fb)
 ```
 
-`_reactions.func()` chấp nhận `add`, `ADD_REACTION`, `remove` hoặc `REMOVE_REACTION` sau khi normalize hoa thường. ID và emoji rỗng bị reject.
+`_reactions.func()` chấp nhận `add`, `ADD_REACTION`, `remove` hoặc `REMOVE_REACTION`, không phân biệt hoa thường. ID và emoji không được rỗng.
 
-`_editMessage` publish LS task bằng MQTT. Success nghĩa là task đã được publish lên `/ls_req`, không đảm bảo server đã áp dụng. Facebook thường chỉ cho sửa tin của chính tài khoản và có thể giới hạn độ tuổi message.
+`_editMessage` gửi LS task qua MQTT. Kết quả thành công chỉ xác nhận task đã được gửi lên `/ls_req`, chưa xác nhận server đã áp dụng thay đổi. Facebook thường chỉ cho sửa tin của chính tài khoản và có thể giới hạn thời gian sửa.
 
 ---
 
@@ -792,7 +792,7 @@ await _createNotes.func(
 )
 ```
 
-`recreateNote()` là workflow fail-fast gồm delete rồi create, không phải transaction server-side. Nếu delete thành công nhưng create thất bại, note cũ đã mất.
+`recreateNote()` xóa note rồi tạo lại và dừng khi có lỗi. Hai bước này không phải một transaction phía server: nếu xóa thành công nhưng tạo lại thất bại, note cũ đã mất.
 
 ---
 
@@ -841,7 +841,7 @@ async with httpx.AsyncClient(timeout=30) as client:
 
 `_archivePost` sử dụng `useCometArchivePostMutation` để chuyển bài viết vào kho lưu trữ (Archive). Cơ chế tham số tương tự `_deletePost`.
 
-`_deletePost` sử dụng `useCometTrashPostMutation` để đẩy bài viết vào thùng rác thay vì xoá vĩnh viễn. Tham số `typePost` (`"my_post"` hoặc `"others"`) quyết định định dạng Base64 ID ảo diệu mà Facebook yêu cầu.
+`_deletePost` dùng `useCometTrashPostMutation` để đưa bài viết vào thùng rác, không xóa vĩnh viễn. Tham số `typePost` (`"my_post"` hoặc `"others"`) quyết định định dạng ID Base64 mà Facebook yêu cầu.
 
 Marketplace validate category, tên, giá không âm, danh sách ảnh và tọa độ seller trước request.
 
@@ -890,9 +890,9 @@ await _addAdmin.func(data_fb, "thread-id", "user-id", statusChoice=False)
 
 ## 16. 🤖 Bot mẫu `src/main.py`
 
-Bot mẫu là reference cho lifecycle, không phải framework bot production.
+Bot mẫu minh họa cách khởi động, nhận tin và dừng listener. Đây không phải framework bot để dùng nguyên trạng khi triển khai.
 
-Bot mẫu bắt buộc có Go E2EE bridge, fail closed khi E2EE chưa sẵn sàng và không fallback sang Python MQTT. Consumer muốn dùng listener MQTT thường phải khởi tạo `listeningEvent` riêng; đó không phải chế độ dự phòng của bot mẫu.
+Bot mẫu cần Go E2EE bridge và chỉ xử lý lệnh sau khi E2EE sẵn sàng. Nó chờ tối đa `startup_timeout`, rồi dừng nếu kết nối không đạt hoặc có lỗi, không chuyển sang Python MQTT. Nếu chỉ cần listener MQTT thường, hãy khởi tạo `listeningEvent` riêng; đó không phải chế độ dự phòng của bot mẫu.
 
 ### Cấu hình
 
@@ -934,7 +934,7 @@ debug được kiểm soát.
 | `/search <query>` | Gọi `_search.func` bằng HTTP client dùng chung |
 | `/unsend` | Admin thu hồi tin E2EE cuối của bot trong chat |
 
-Thêm command bằng cách khai báo async handler và đăng ký trong `self._handlers`. Handler không nên giữ CPU lâu; đưa CPU-bound work sang process pool hoặc worker phù hợp.
+Để thêm lệnh, viết async handler rồi đăng ký trong `self._handlers`. Không chạy tác vụ tính toán nặng ngay trong handler; hãy đưa chúng sang process pool hoặc worker phù hợp.
 
 ---
 
@@ -982,7 +982,7 @@ finally:
 
 ### Log an toàn
 
-Log loại exception và endpoint logical. Không log provider ID/JID, request form, cookie, access token, password hoặc TOTP. Bridge logger và Python stderr drain đều redact metadata nhạy cảm trước khi in; `debug_errors` không phải giấy phép đổ payload chat ra console.
+Log loại exception và tên thao tác, không log provider ID/JID, request form, cookie, access token, mật khẩu hoặc TOTP. Logger của bridge và bộ đọc stderr Python đều che metadata nhạy cảm trước khi in. Bật `debug_errors` cũng không nên làm lộ nội dung chat.
 
 Go logger và Python stderr drain giới hạn dòng thô ở 64 KiB. Dòng vượt ngưỡng
 bị bỏ toàn bộ đến newline, chỉ phát diagnostic cố định; không in prefix/tail
@@ -1153,12 +1153,12 @@ thành công, không chứng minh peer đã đọc tin đó. Nếu kết quả g
 trường này là `unknown`; acceptance vẫn không đạt dù bằng chứng ACK media
 đã được giữ lại.
 
-Khi không thấy reply, xem counter `observed` trong report: `challenge_message`
+Khi không thấy phản hồi, xem bộ đếm `observed` trong report: `challenge_message`
 nghĩa là mã đã tới qua Go LightSpeed regular, còn `challenge_e2eeMessage` là
 event E2EE. Counter không lưu nội dung hay ID. Thêm `--regular-notice` để gửi
 đúng một thông báo chẩn đoán cho challenge regular mới; mặc định tắt. Kết quả
-`regular_notice_rpc_ok` luôn tách khỏi các acceptance check E2EE; đây không
-phải fallback sang Python MQTT.
+`regular_notice_rpc_ok` luôn được ghi riêng, không tính vào điều kiện đạt của
+E2EE. Tùy chọn này không chuyển listener sang Python MQTT.
 
 Mặc định mỗi run tạo nonce mới. Có thể dùng `--challenge <mã-chính-xác>` khi
 khởi động lại chẩn đoán để peer không cần đổi mã; event trước thời điểm ready
@@ -1219,12 +1219,13 @@ Messenger. Khi bot hướng dẫn, gửi mã `net-ready-...`, rồi gửi riêng
 `net-ok-...` chỉ xuất hiện trong reply E2EE sau phục hồi.
 
 Report có `outcome` riêng: `running`, `passed`, `inconclusive`, `failed` hoặc
-`cancelled`. Chỉ deadline chờ bằng chứng từ peer mới có thể là `inconclusive`;
-lỗi thực thi, transport, queue drop hoặc cleanup không được che thành thiếu ACK.
+`cancelled`. `inconclusive` chỉ dành cho trường hợp hết hạn chờ bằng chứng từ
+peer. Lỗi thực thi, transport, queue drop hoặc dọn tài nguyên vẫn là lỗi,
+không được ghi thành thiếu ACK.
 `phase`, `reason_code`, `missing_evidence` và `waiting_for` dùng tập giá trị cố
 định để chỉ đúng bước đang chờ, không sao chép nội dung chat hoặc lỗi provider.
-Controller đối chiếu kết quả worker cùng exit code và cleanup của chính nó;
-thiếu bằng chứng không bao giờ đồng nghĩa pass.
+Controller kiểm tra kết quả worker, exit code và việc dọn tài nguyên của chính
+nó. Thiếu bằng chứng không được tính là đạt.
 
 ### Diễn tập recovery hoàn toàn offline
 
