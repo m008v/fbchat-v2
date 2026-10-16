@@ -35,9 +35,20 @@
   sdist, test không nới assertion. UTF-8 strict, mojibake và diff check đạt.
 
 ### Việc còn lại
-- Push commit đồng bộ rồi upload exact artifact bằng Twine qua Windows
-  keyring; xác minh hash public PyPI và clean-install sau upload.
 - Chưa có thêm bằng chứng live cold restart/network; các ca này vẫn hoãn.
+
+### Kết quả phát hành
+- Commit đồng bộ `d35e6f6b5221e258a309df325d56a0c87fd10d2d` đã push
+  fast-forward lên `origin/pypi`, không merge hoặc force branch.
+- Đã upload exact wheel/sdist từ thư mục assets đã xác minh bằng Twine 7,
+  dùng Windows keyring qua cơ chế của Twine; không đọc hoặc in token.
+- Public PyPI `2.3.3` trả đúng hai file, không yanked. Tải lại cả hai khớp
+  byte với GitHub Release: wheel
+  `10417e4bdf7d2798333e521a5897fb976cdbc399e85107ad9cd2f3773ff4680b`,
+  sdist `b571511e59e7e7a8da648c09f4fd474a6a1855eaa00ecc1128cc11240450d674`.
+- Fresh install trực tiếp `https://pypi.org/simple` vào môi trường mới đạt
+  import/version/public namespace 2.3.3 và dependency check (13 package).
+- Chỉ cập nhật memory sau phát hành; không rebuild, thay artifact hoặc tag.
 
 ## 2026-09-15 — Đồng bộ source đóng gói v2.3.2
 
