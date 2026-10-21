@@ -18,6 +18,7 @@ wheels/
 
 # Cấu hình runtime — KHÔNG commit
 src/fbchat_v2/config.json
+/.state/
 
 # IDE
 .vscode/

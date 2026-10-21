@@ -1,5 +1,36 @@
 # Agent Memories
 
+## 2026-10-21 — Đồng bộ reconnect và chuẩn bị PyPI 2.3.4
+
+### Mục tiêu
+- Đồng bộ reconnect, commit/push pypi trước khi public GitHub v2.3.4 và PyPI;
+  không mở live Facebook/Messenger.
+
+### Đã thực hiện
+- Lấy 55 canonical file cùng README Việt/Anh và changelog từ verified sdist,
+  source aa7abd0386ef1d4cabf8ce592d0f2cf308d8f4f6. Cả 58 file khớp byte.
+- Nâng version 2.3.4, PACKAGING, năm hash fixture theo manifest và hai test
+  public reconnect/status cùng capability structuredConnectionStatus.
+- Giữ mypy package-only, Black exclude checksum generated và MANIFEST.in;
+  thêm /.state/ vào gitignore vì device/session file chứa key.
+
+### Kiểm tra
+- Release workflow 39622736668 thành công; chín asset tải lại khớp API digest,
+  cả hai manifest và checksum bridge nhúng. Twine strict, fresh production
+  wheel install/verifier và native Windows RPC smoke không credential đạt.
+- Main full suite 530/530 offline đạt. Checkout này 7/7 regression test, Ruff,
+  mypy 46 file, Black 46 file và compileall đạt; dev tools mainvenv dùng
+  PYTHONPATH trỏ đúng source/metadata sibling 2.3.4, không tải thêm dependency.
+- Local build wheel/sdist và Twine strict đạt; nội dung từng member wheel
+  khớp production. Chỉ upload artifact GitHub gốc, không dùng build thử.
+- QA độc lập xác nhận 58/58 file và 5/5 hash fixture khớp, không có namespace
+  legacy/token signature trong payload đã quét; diff check đạt.
+
+### Việc còn lại
+- Push pypi trước khi public draft 419703838 và upload hai artifact gốc qua
+  Twine 7/Windows keyring; kiểm PyPI JSON/hash và fresh install sau upload.
+- Chưa có thêm bằng chứng provider-live; cold restart/network thật vẫn hoãn.
+
 ## 2026-10-16 — Đồng bộ source đóng gói 2.3.3
 
 ### Mục tiêu

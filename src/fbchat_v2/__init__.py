@@ -11,6 +11,7 @@ from ._messaging import _editMessage as editMessage
 from ._messaging._bridge_actions import BridgeActions
 from ._messaging._listening import listeningEvent
 from ._messaging._listening_e2ee import listeningE2EEEvent
+from ._messaging._reconnect import ConnectionFailure, ReconnectPolicy
 from ._messaging._send import api as SendAPI
 from ._messaging._send_e2ee import api as E2EESendAPI
 
@@ -27,6 +28,8 @@ __all__ = [
     "FileSessionStorage",
     "listeningEvent",
     "listeningE2EEEvent",
+    "ReconnectPolicy",
+    "ConnectionFailure",
     "BridgeActions",
     "SendAPI",
     "E2EESendAPI",

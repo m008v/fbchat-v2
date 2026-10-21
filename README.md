@@ -7,7 +7,7 @@
 [![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/m008v/fbchat-v2)
 [![PyPI](https://img.shields.io/pypi/v/fbchat-v2?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/fbchat-v2/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-2.3.3-blue)](https://github.com/m008v/fbchat-v2/releases)
+[![Version](https://img.shields.io/badge/version-2.3.4-blue)](https://github.com/m008v/fbchat-v2/releases)
 [![Issues](https://img.shields.io/github/issues/m008v/fbchat-v2?color=orange)](https://github.com/m008v/fbchat-v2/issues)
 [![License](https://img.shields.io/badge/license-Xem%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
@@ -19,7 +19,7 @@
 ---
 
 > [!IMPORTANT]
-> Bản 2.3.3 dùng `async/await`. Nếu đang dùng bản cũ, bạn cần sửa cách gọi hàm theo ví dụ bên dưới. Muốn giữ code đồng bộ thì dùng bản [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4).
+> Bản 2.3.4 dùng `async/await`. Nếu đang dùng bản cũ, bạn cần sửa cách gọi hàm theo ví dụ bên dưới. Muốn giữ code đồng bộ thì dùng bản [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4).
 
 > [!WARNING]
 > Đây không phải sản phẩm chính thức của Facebook. Nếu cần API chatbot chính thức, xem [Messenger Platform](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` dùng tài khoản và cookie Facebook cá nhân, nên có rủi ro với bảo mật phiên và tài khoản. Cân nhắc trước khi sử dụng.
@@ -30,6 +30,10 @@
 Mình là MinhHuyDev (`m008v`), tác giả và người duy trì dự án.
 
 `fbchat-v2` là thư viện Python để gửi và nhận tin nhắn Messenger bằng tài khoản Facebook cá nhân. Thư viện dùng `async/await`; E2EE chạy qua bridge Go. Codebase đã được tổ chức lại từ v2.2.0 và tiếp tục được sửa theo các lỗi người dùng báo về.
+
+Từ 2.3.4, MQTT/E2EE tự nối lại khi mất mạng, phân biệt lỗi cookie và có callback
+trạng thái. Xem [cách cấu hình](DOCS.md#tự-nối-lại).
+E2EE cần bridge 2.3.4; wrapper không dùng binary cũ thiếu contract reconnect.
 
 Cảm ơn mọi người đã góp ý và báo lỗi. Đây là API không chính thức nên một số chức năng có thể hỏng khi Facebook thay đổi. Nếu gặp lỗi, mở issue trên [GitHub](https://github.com/m008v/fbchat-v2/issues) kèm cách tái hiện và log đã che thông tin nhạy cảm, hoặc nhắn mình qua [Telegram](https://t.me/MinhHuyDev).
 
@@ -177,7 +181,7 @@ fbchat-v2/
 | Thành phần | Tối thiểu | Khuyến nghị | Ghi chú |
 |---|---|---|---|
 | Python | 3.10 | 3.11 / 3.12 | Bắt buộc |
-| Go (toolchain) | 1.26.9 | 1.26.9+ | **Chỉ cần cho E2EE** - để build `fbchat-bridge-e2ee` |
+| Go (toolchain) | 1.26.10 | 1.26.10+ | **Chỉ cần cho E2EE** - để build `fbchat-bridge-e2ee` |
 | Git | bất kỳ | latest | Cần cho `go mod tidy` kéo `mautrix/meta` |
 | Hệ điều hành | Windows / Linux / macOS | - | - |
 | RAM | 256 MB | 1 GB+ | Bridge E2EE chiếm ~80–150 MB khi chạy |
@@ -256,7 +260,7 @@ Nếu chỉ dùng API HTTP hoặc listener MQTT thường, bạn có thể bỏ 
 
 #### 5.1. Cài Go toolchain
 
-- Tải về: <https://go.dev/dl/> (Go ≥ 1.26.9).
+- Tải về: <https://go.dev/dl/> (Go ≥ 1.26.10).
 - Sau khi cài, mở terminal mới và kiểm tra:
 
   ```bash
@@ -300,9 +304,9 @@ Lần build đầu mất vài phút (~300 MB cache Go module). Sau đó binary k
 ```bash
 cd ..
 # Windows
-python scripts/smoke_bridge_rpc.py .\build\fbchat-bridge-e2ee.exe --expected-version 2.3.3
+python scripts/smoke_bridge_rpc.py .\build\fbchat-bridge-e2ee.exe --expected-version 2.3.4
 # Linux/macOS
-python scripts/smoke_bridge_rpc.py ./build/fbchat-bridge-e2ee --expected-version 2.3.3
+python scripts/smoke_bridge_rpc.py ./build/fbchat-bridge-e2ee --expected-version 2.3.4
 ```
 
 Nếu binary không nằm ở vị trí mặc định, đặt biến môi trường:
@@ -606,7 +610,7 @@ ruff check src tests scripts
 black --check src tests scripts
 mypy
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.3-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.4-py3-none-any.whl
 git diff --check
 ```
 
