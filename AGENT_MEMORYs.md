@@ -23,9 +23,27 @@
 - Bản source reconnect `b8350d9` trước bump có CI 12/12 đạt, gồm vulnerability
   scan và Linux race. Release 2.3.4 vẫn cần lượt CI/artifact riêng sau tag.
 
+### Kết quả phát hành
+- Tag v2.3.4 giữ nguyên source aa7abd0386ef1d4cabf8ce592d0f2cf308d8f4f6;
+  Release run 39622736668 thành công, draft 419703838 có đúng chín asset.
+- Tải lại cả chín file, kiểm API digest, hai manifest, embedded checksum,
+  Twine strict, fresh wheel install và native Windows RPC smoke đều đạt.
+- Đồng bộ 55 canonical file cùng ba root docs vào checkout pypi; QA độc lập
+  xác nhận 58/58 file khớp byte. Bảy package test, Ruff, mypy/Black 46 file,
+  compileall và local build đạt; từng member wheel local giống production.
+- Commit 1ba974de8aa52b188e949eeef3227b53af4bc1ff đã push origin/pypi trước
+  khi public GitHub Release https://github.com/m008v/fbchat-v2/releases/tag/v2.3.4.
+- Upload nguyên wheel/sdist GitHub bằng Twine 7/Windows keyring; không đọc/in
+  token bằng tool, không dùng local rebuild để publish. PyPI public 2.3.4 có
+  đúng hai file không yanked, tải lại byte-identical với GitHub:
+  wheel 9237b68fc99483100f543da6c6327581b7432630124f95e2fd0b85a73cc21536;
+  sdist 43498ffc92c151de60f7a20467d6b046fdcfb581b55396a6545aba6b4927c690.
+- Fresh install trực tiếp pypi.org/simple vào venv mới đạt dependency check
+  13 package, archive verifier, version/export/retry-policy và năm bridge hash.
+- Mọi version thay đổi trong lượt này đều 2.3.4; không di chuyển tag 2.3.3,
+  không merge/force branch hoặc mở Facebook/Messenger live.
+
 ### Việc còn lại
-- Chờ release build để có checksum chính thức, kiểm package-only checkout,
-  push `pypi`, public release và upload/verify PyPI. Chưa ghi nhận publish.
 - Giữ `.vs/` và mọi artifact/toolenv ngoài commit; live cold restart/network
   vẫn chưa kiểm, không lấy offline test làm bằng chứng provider-live.
 
