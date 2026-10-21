@@ -186,6 +186,18 @@ def test_wrapped_network_error_is_retryable_but_unknown_error_is_not() -> None:
     assert ConnectionFailure("unknown").retryable is False
 
 
+@pytest.mark.parametrize("extra_wrapper", [False, True])
+def test_network_wrapper_cannot_hide_permanent_tls_failure(extra_wrapper: bool) -> None:
+    error = httpx.ConnectError("synthetic connection error")
+    error.__cause__ = ssl.SSLCertVerificationError("synthetic certificate failure")
+    if extra_wrapper:
+        outer = OSError("synthetic network wrapper")
+        outer.__cause__ = error
+        assert classify_connection_error(outer) == "configuration"
+    else:
+        assert classify_connection_error(error) == "configuration"
+
+
 def test_error_classifier_ignores_untrusted_unhashable_error_attributes() -> None:
     error = OSError("synthetic outage")
     error.reason = {"unexpected": "provider structure"}

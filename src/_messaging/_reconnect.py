@@ -227,6 +227,7 @@ def classify_connection_error(error: BaseException) -> str:
     """Classify connection failures only; unknown failures are never retried."""
     current: BaseException | None = error
     seen: set[int] = set()
+    fallback = "unknown"
     for _ in range(8):
         if current is None or id(current) in seen:
             break
@@ -297,7 +298,9 @@ def classify_connection_error(error: BaseException) -> str:
                 httpx.RemoteProtocolError,
             ),
         ):
-            return "network"
+            # HTTPX/socket wrappers can conceal a permanent TLS/config cause.
+            # Inspect the chain before accepting a generic network fallback.
+            fallback = "network"
         if any(
             marker in text
             for marker in (
@@ -313,11 +316,11 @@ def classify_connection_error(error: BaseException) -> str:
                 "connection remained unhealthy",
             )
         ):
-            return "network"
+            fallback = "network"
         cause = current.__cause__ or current.__context__
         if cause is None:
             if isinstance(current, (ValueError, TypeError)):
                 return "configuration"
             break
         current = cause
-    return "unknown"
+    return fallback

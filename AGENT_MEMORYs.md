@@ -32,11 +32,13 @@
   Budget hữu hạn có thể hết trước lần thử socket tiếp theo.
 - Unknown failure dừng fail-closed. Paho không giữ HTTP status của WebSocket
   upgrade rejection nên không đoán đây là network/auth từ handshake chung.
+- Python duyệt cause chain trước generic network fallback: HTTPX/OSError bọc
+  lỗi chứng chỉ TLS vẫn được phân loại configuration, không retry vô hạn.
 - Source main cần bridge build cùng source; binary release 2.3.3 thiếu capability
   mới và bị từ chối rõ ràng. Không thay tag/artifact đã phát hành.
 
 ### Kiểm tra
-- Full pytest: 528/528 đạt, chạy qua helper chặn DNS/TCP ngoài loopback; không
+- Full pytest cuối: 530/530 đạt, chạy qua helper chặn DNS/TCP ngoài loopback; không
   dùng cookie/device hoặc listener thật. E2EE/lifecycle riêng 69/69 đạt.
 - Ruff, Black 133 file, compileall, canonical snapshot check và mypy default/
   Linux (52 file) cùng canonical namespace (46 file) đạt.
