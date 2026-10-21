@@ -213,16 +213,27 @@ class SimpleBot:
         self.listener.on_message(
             lambda event: self._forward_listener_event(loop, event)
         )
+        status_callback = getattr(self.listener, "set_connection_state_callback", None)
+        if callable(status_callback):
+            status_callback(self._log_connection_status)
         listener_task = asyncio.create_task(
             self.listener.connect_mqtt(), name="fbchat-e2ee-listener"
         )
         try:
-            ready = await asyncio.to_thread(
-                self.listener.wait_until_connected,
-                self.listener.startup_timeout,
-                require_e2ee=True,
-            )
-            if not ready:
+            while True:
+                ready = await asyncio.to_thread(
+                    self.listener.wait_until_connected,
+                    self.listener.startup_timeout,
+                    require_e2ee=True,
+                )
+                if ready:
+                    break
+                if listener_task.done():
+                    listener_task.result()
+                    raise RuntimeError("E2EE listener đã dừng khi đang khởi động.")
+                if getattr(self.listener, "connection_state", None) == "reconnecting":
+                    log("bot", "Mạng chưa sẵn sàng; listener đang tự nối lại.")
+                    continue
                 raise RuntimeError("E2EE listener chưa sẵn sàng trước timeout.")
             log("bot", "E2EE listener đã sẵn sàng. Nhấn Ctrl+C để thoát.")
             while True:
@@ -239,6 +250,19 @@ class SimpleBot:
     def run_blocking(self) -> None:
         """Wrapper CLI tương thích; trong ứng dụng async hãy await run()."""
         asyncio.run(self.run())
+
+    @staticmethod
+    def _log_connection_status(status: dict[str, Any]) -> None:
+        state = status.get("state")
+        if isinstance(state, str) and state in {
+            "starting",
+            "connected",
+            "reconnecting",
+            "auth_required",
+            "fatal",
+            "stopped",
+        }:
+            log("transport", state)
 
     async def _shutdown_listener(self, listener_task: asyncio.Task[None]) -> None:
         """Dừng bridge E2EE và chờ task listener thoát gọn."""

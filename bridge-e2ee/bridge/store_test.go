@@ -606,6 +606,9 @@ func TestClientCannotReconnectAfterDisconnectStarts(t *testing.T) {
 	if client.IsConnected() || client.IsE2EEConnected() {
 		t.Fatal("disconnected client reported an active connection")
 	}
+	if status := client.ConnectionStatus(); status.HasFailure || status.NativeReconnecting {
+		t.Fatalf("stopped client retained connection failure state: %#v", status)
+	}
 }
 
 func TestSendMessageDoesNotDowngradeE2EEToRegularTransport(t *testing.T) {

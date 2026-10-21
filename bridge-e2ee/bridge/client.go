@@ -57,24 +57,30 @@ type Client struct {
 	FBID        int64
 	Platform    types.Platform
 
-	eventChan           chan *Event
-	eventMu             sync.RWMutex
-	eventsClosed        bool
-	disconnectOnce      sync.Once
-	connectMu           sync.Mutex
-	lifecycleMu         sync.RWMutex
-	disconnected        bool
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	mu                  sync.RWMutex
-	threadCache         map[int64]*Thread
-	recentUnreactions   map[string]int64 // key: messageId+actorId, value: timestamp
-	recentUnreactionsMu sync.RWMutex
-	recentMessages      map[string]recentMessageEvent
-	recentMessagesMu    sync.Mutex
-	recentMessageSweep  int64
-	liveMessageCutoffMs int64
-	regularConnected    atomic.Bool
+	eventChan            chan *Event
+	eventMu              sync.RWMutex
+	eventsClosed         bool
+	disconnectOnce       sync.Once
+	connectMu            sync.Mutex
+	lifecycleMu          sync.RWMutex
+	disconnected         bool
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	mu                   sync.RWMutex
+	threadCache          map[int64]*Thread
+	recentUnreactions    map[string]int64 // key: messageId+actorId, value: timestamp
+	recentUnreactionsMu  sync.RWMutex
+	recentMessages       map[string]recentMessageEvent
+	recentMessagesMu     sync.Mutex
+	recentMessageSweep   int64
+	liveMessageCutoffMs  int64
+	recentE2EEMessages   map[string]int64
+	recentE2EEMessagesMu sync.Mutex
+	recentE2EESweep      int64
+	connectionStatusMu   sync.RWMutex
+	regularFailure       transportFailureState
+	e2eeFailure          transportFailureState
+	regularConnected     atomic.Bool
 }
 
 // ClientConfig for creating a new client
@@ -168,16 +174,17 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	client := &Client{
-		Messagix:          msgClient,
-		DeviceStore:       deviceStore,
-		Logger:            logger,
-		Platform:          platform,
-		eventChan:         make(chan *Event, 100),
-		ctx:               ctx,
-		cancel:            cancel,
-		threadCache:       make(map[int64]*Thread),
-		recentUnreactions: make(map[string]int64),
-		recentMessages:    make(map[string]recentMessageEvent),
+		Messagix:           msgClient,
+		DeviceStore:        deviceStore,
+		Logger:             logger,
+		Platform:           platform,
+		eventChan:          make(chan *Event, 100),
+		ctx:                ctx,
+		cancel:             cancel,
+		threadCache:        make(map[int64]*Thread),
+		recentUnreactions:  make(map[string]int64),
+		recentMessages:     make(map[string]recentMessageEvent),
+		recentE2EEMessages: make(map[string]int64),
 	}
 
 	// Set callback for device data changes (only when using deviceData mode)
@@ -196,23 +203,36 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 }
 
 func (c *Client) handleMessagixEvent(ctx context.Context, evt any) {
-	switch evt.(type) {
+	switch event := evt.(type) {
 	case *messagix.ConnectedEvent, *messagix.ReconnectedEvent:
 		c.regularConnected.Store(true)
-	case *messagix.TransientDisconnectEvent, *messagix.PermanentErrorEvent:
+		c.clearTransportFailure(false)
+	case *messagix.TransientDisconnectEvent:
 		c.regularConnected.Store(false)
+		c.setTransportFailure(false, transientConnectionFailure(event.Err))
+	case *messagix.PermanentErrorEvent:
+		c.regularConnected.Store(false)
+		c.setTransportFailure(false, permanentConnectionFailure(event.Err))
 	}
 	c.handleEvent(ctx, evt)
 }
 
 // Connect connects to Messenger
-func (c *Client) Connect() (*UserInfo, *InitialData, error) {
+func (c *Client) Connect() (_ *UserInfo, _ *InitialData, err error) {
 	c.connectMu.Lock()
 	defer c.connectMu.Unlock()
 	c.regularConnected.Store(false)
 	if err := c.lifecycleError(); err != nil {
 		return nil, nil, err
 	}
+	c.markTransportConnecting(false)
+	defer func() {
+		if errors.Is(err, context.Canceled) {
+			c.clearTransportFailure(false)
+		} else if err != nil {
+			c.setTransportFailure(false, synchronousConnectionFailure(err))
+		}
+	}()
 	// Mở cửa sổ trước page load để không làm rơi message được gửi trong lúc
 	// bootstrap; cutoff zero-grace vẫn loại mọi message có trước Connect().
 	c.openRealtimeMessageWindow(0)
@@ -274,10 +294,19 @@ func (c *Client) connectE2EE(operations e2eeConnectOperations) (err error) {
 	if err := c.lifecycleError(); err != nil {
 		return err
 	}
+	c.markTransportConnecting(true)
+	defer func() {
+		if errors.Is(err, context.Canceled) {
+			c.clearTransportFailure(true)
+		} else if err != nil {
+			c.setTransportFailure(true, synchronousConnectionFailure(err))
+		}
+	}()
 
 	currentE2EE := c.snapshotE2EEClient()
 	if currentE2EE != nil {
 		if isE2EEReady(currentE2EE) {
+			c.clearTransportFailure(true)
 			return nil
 		}
 		c.rollbackE2EEClient(currentE2EE, currentE2EE.Disconnect)
@@ -365,6 +394,7 @@ func (c *Client) rollbackE2EEClient(e2eeClient *whatsmeow.Client, disconnect fun
 func (c *Client) Disconnect() {
 	c.disconnectOnce.Do(func() {
 		c.regularConnected.Store(false)
+		c.clearConnectionFailures()
 		if c.cancel != nil {
 			c.cancel()
 		}
@@ -395,6 +425,7 @@ func (c *Client) Disconnect() {
 		if messagixClient != nil {
 			messagixClient.Disconnect()
 		}
+		c.clearConnectionFailures()
 
 		// Closing the stream under the write lock prevents late callbacks from
 		// racing a send against close(eventChan). Canceling first releases any
@@ -862,10 +893,10 @@ func newDeviceStore(path string, randomReader io.Reader) (*DeviceStore, error) {
 		}
 		var deviceJSON DeviceJSON
 		if err := json.Unmarshal(data, &deviceJSON); err != nil {
-			return nil, fmt.Errorf("decode device store: %w", err)
+			return nil, fmt.Errorf("%w: decode device store: %w", ErrDeviceStateInvalid, err)
 		}
 		if err := ds.loadDeviceJSON(&deviceJSON); err != nil {
-			return nil, fmt.Errorf("load device store: %w", err)
+			return nil, fmt.Errorf("%w: load device store: %w", ErrDeviceStateInvalid, err)
 		}
 	} else if os.IsNotExist(err) {
 		created = true
@@ -1267,10 +1298,10 @@ func NewDeviceStoreFromData(dataStr string) (*DeviceStore, error) {
 	ds := newEmptyDeviceStore("")
 	var deviceJSON DeviceJSON
 	if err := json.Unmarshal([]byte(dataStr), &deviceJSON); err != nil {
-		return nil, fmt.Errorf("decode device data: %w", err)
+		return nil, fmt.Errorf("%w: decode device data: %w", ErrDeviceStateInvalid, err)
 	}
 	if err := ds.loadDeviceJSON(&deviceJSON); err != nil {
-		return nil, fmt.Errorf("load device data: %w", err)
+		return nil, fmt.Errorf("%w: load device data: %w", ErrDeviceStateInvalid, err)
 	}
 	ds.configureInterfaces()
 	return ds, nil

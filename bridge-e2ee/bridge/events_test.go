@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,12 +27,23 @@ func newEventPipelineTestClient(t *testing.T, liveCutoffMs int64) *Client {
 
 func TestHandleSocketErrorsWithoutUnderlyingError(t *testing.T) {
 	tests := []struct {
-		name  string
-		event any
-		code  int
+		name      string
+		event     any
+		code      int
+		retryable bool
+		permanent bool
 	}{
-		{name: "socket disconnected", event: &messagix.TransientDisconnectEvent{}},
-		{name: "permanent failure", event: &messagix.PermanentErrorEvent{}, code: 1},
+		{
+			name:      "socket disconnected",
+			event:     &messagix.TransientDisconnectEvent{},
+			retryable: true,
+		},
+		{
+			name:      "permanent failure",
+			event:     &messagix.PermanentErrorEvent{},
+			code:      1,
+			permanent: true,
+		},
 	}
 
 	for _, test := range tests {
@@ -47,6 +59,21 @@ func TestHandleSocketErrorsWithoutUnderlyingError(t *testing.T) {
 			if raw.Type != EventTypeRaw {
 				t.Fatalf("first event type = %q, want %q", raw.Type, EventTypeRaw)
 			}
+			disconnected := <-client.eventChan
+			if disconnected.Type != EventTypeDisconnected {
+				t.Fatalf("connection state event type = %q, want %q", disconnected.Type, EventTypeDisconnected)
+			}
+			state, ok := disconnected.Data.(map[string]any)
+			if !ok || state["isE2EE"] != false ||
+				state["retryable"] != test.retryable ||
+				state["permanent"] != test.permanent ||
+				state["nativeReconnecting"] != test.retryable {
+				t.Fatalf("connection state data = %#v", disconnected.Data)
+			}
+			if state["failureCode"] == "" {
+				t.Fatal("connection state omitted safe failure code")
+			}
+
 			diagnostic := <-client.eventChan
 			if diagnostic.Type != EventTypeError {
 				t.Fatalf("diagnostic event type = %q, want %q", diagnostic.Type, EventTypeError)
@@ -74,6 +101,105 @@ func TestHandleE2EEUndecryptableMessageEmitsDiagnostic(t *testing.T) {
 	errorEvent, ok := diagnostic.Data.(*ErrorEvent)
 	if !ok || errorEvent.Code != 2 {
 		t.Fatalf("diagnostic event data = %#v, want decrypt error", diagnostic.Data)
+	}
+}
+
+func TestHandleE2EELoggedOutEmitsPermanentStructuredDisconnect(t *testing.T) {
+	client := newEventPipelineTestClient(t, timeNowMs()-1_000)
+	client.handleE2EEEvent(&events.LoggedOut{
+		OnConnect: true,
+		Reason:    events.ConnectFailureLoggedOut,
+	})
+
+	raw := <-client.eventChan
+	if raw.Type != EventTypeRaw {
+		t.Fatalf("first event type = %q, want %q", raw.Type, EventTypeRaw)
+	}
+	disconnected := <-client.eventChan
+	if disconnected.Type != EventTypeDisconnected {
+		t.Fatalf("state event type = %q, want %q", disconnected.Type, EventTypeDisconnected)
+	}
+	state, ok := disconnected.Data.(map[string]any)
+	if !ok || state["isE2EE"] != true || state["failureCode"] != FailureAuthFailed ||
+		state["retryable"] != false || state["permanent"] != true ||
+		state["nativeReconnecting"] != false {
+		t.Fatalf("logged-out state = %#v", disconnected.Data)
+	}
+	diagnostic := <-client.eventChan
+	if diagnostic.Type != EventTypeError {
+		t.Fatalf("diagnostic event type = %q, want %q", diagnostic.Type, EventTypeError)
+	}
+	status := client.ConnectionStatus()
+	if !status.HasFailure || status.FailureCode != FailureAuthFailed ||
+		status.FailureTransport != connectionTransportE2EE || !status.Permanent ||
+		status.Retryable || status.NativeReconnecting {
+		t.Fatalf("connection status = %#v", status)
+	}
+
+	// whatsmeow may report the underlying websocket close after LoggedOut. That
+	// generic event must not downgrade a terminal auth failure to native retry.
+	client.handleE2EEEvent(&events.Disconnected{})
+	<-client.eventChan // raw
+	disconnected = <-client.eventChan
+	state, ok = disconnected.Data.(map[string]any)
+	if !ok || state["failureCode"] != FailureAuthFailed ||
+		state["retryable"] != false || state["permanent"] != true ||
+		state["nativeReconnecting"] != false {
+		t.Fatalf("post-logout disconnect downgraded state = %#v", disconnected.Data)
+	}
+	<-client.eventChan // diagnostic
+	status = client.ConnectionStatus()
+	if status.FailureCode != FailureAuthFailed || !status.Permanent ||
+		status.Retryable || status.NativeReconnecting {
+		t.Fatalf("post-logout status = %#v", status)
+	}
+}
+
+func TestHandleE2EEConnectedClearsReconnectStatus(t *testing.T) {
+	client := newEventPipelineTestClient(t, timeNowMs()-1_000)
+	client.handleE2EEEvent(&events.Disconnected{})
+	for range 3 {
+		<-client.eventChan
+	}
+	if status := client.ConnectionStatus(); !status.NativeReconnecting {
+		t.Fatalf("disconnected status = %#v, want native reconnect", status)
+	}
+
+	client.handleE2EEEvent(&events.Connected{})
+	if status := client.ConnectionStatus(); status.HasFailure || status.NativeReconnecting {
+		t.Fatalf("connected status retained failure = %#v", status)
+	}
+}
+
+func TestClaimE2EEMessageIDDeduplicatesWithinProcess(t *testing.T) {
+	client := newEventPipelineTestClient(t, timeNowMs()-1_000)
+	if !client.claimE2EEMessageID("e2ee-mid") {
+		t.Fatal("first E2EE message ID was rejected")
+	}
+	if client.claimE2EEMessageID("e2ee-mid") {
+		t.Fatal("duplicate E2EE message ID was accepted")
+	}
+	if !client.claimE2EEMessageID("") || !client.claimE2EEMessageID("") {
+		t.Fatal("empty E2EE message IDs must remain deliverable")
+	}
+}
+
+func TestClaimE2EEMessageIDHasHardMemoryBound(t *testing.T) {
+	client := newEventPipelineTestClient(t, timeNowMs()-1_000)
+	client.recentE2EEMessages = make(map[string]int64, recentE2EEMessageLimit)
+	client.recentE2EESweep = timeNowMs() + recentMessageSweepIntervalMs
+	for index := range recentE2EEMessageLimit {
+		client.recentE2EEMessages[fmt.Sprintf("mid-%d", index)] = int64(index + 1)
+	}
+
+	if !client.claimE2EEMessageID("mid-new") {
+		t.Fatal("new E2EE message ID was rejected at the dedupe limit")
+	}
+	if got := len(client.recentE2EEMessages); got != recentE2EEMessageLimit {
+		t.Fatalf("dedupe size = %d, want hard limit %d", got, recentE2EEMessageLimit)
+	}
+	if _, exists := client.recentE2EEMessages["mid-0"]; exists {
+		t.Fatal("oldest E2EE message ID was not evicted")
 	}
 }
 

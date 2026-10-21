@@ -46,6 +46,7 @@ import sys
 import tempfile
 import threading
 import time
+from collections import OrderedDict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -59,6 +60,12 @@ from _core import __version__ as _PACKAGE_VERSION
 from _core._console import safe_print as _safe_print
 from _core._utils import parse_cookie_string
 from _messaging._bridge_checksums import BRIDGE_RELEASE_VERSION, BRIDGE_SHA256
+from _messaging._reconnect import (
+    ConnectionStateTracker,
+    ReconnectPolicy,
+    classify_connection_error,
+    finish_listener_worker,
+)
 
 # ---------------------------------------------------------------------------
 # Binary discovery
@@ -639,11 +646,73 @@ class BridgeError(RuntimeError):
     """Bridge trả về `ok:false` hoặc lỗi truyền tải."""
 
 
+class _BridgeConnectionError(BridgeError):
+    """Lỗi kết nối đã chuẩn hóa; không mang raw payload từ bridge."""
+
+    def __init__(
+        self,
+        failure_code: str,
+        *,
+        retryable: bool | None = None,
+        permanent: bool = False,
+    ) -> None:
+        self.failure_code = failure_code
+        self.retryable = retryable
+        self.permanent = permanent
+        super().__init__(f"bridge connection failed ({failure_code})")
+
+
+_FAILURE_CLASS_BY_CODE = {
+    "network_disconnected": "network",
+    "connection_failed": "network",
+    "auth_failed": "auth_required",
+    "checkpoint_required": "auth_required",
+    "config_invalid": "configuration",
+    "device_state_invalid": "configuration",
+    "device_state_lost": "device_state_lost",
+    "protocol_error": "protocol",
+}
+_SAFE_BRIDGE_FAILURE_CODES = frozenset(
+    {*_FAILURE_CLASS_BY_CODE, "cancelled", "unknown"}
+)
+_TERMINAL_CONNECTION_ERRORS = frozenset(
+    {"auth_required", "configuration", "protocol", "device_state_lost"}
+)
+
+
+def _classify_bridge_connection_error(error: BaseException) -> str:
+    """Phân loại theo safe code trước, rồi mới dùng classifier dùng chung."""
+    current: BaseException | None = error
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        failure_code = getattr(current, "failure_code", None)
+        if isinstance(failure_code, str):
+            classified = _FAILURE_CLASS_BY_CODE.get(failure_code)
+            if classified in _TERMINAL_CONNECTION_ERRORS:
+                return classified
+            if (
+                getattr(current, "permanent", False) is True
+                or getattr(current, "retryable", None) is False
+            ):
+                return "unknown"
+            if classified is not None:
+                return classified
+        explicit_cause = getattr(current, "cause", None)
+        current = (
+            current.__cause__
+            or (explicit_cause if isinstance(explicit_cause, BaseException) else None)
+            or current.__context__
+        )
+    return classify_connection_error(error)
+
+
 class BridgeStartupError(BridgeError):
     """Một phase startup thất bại; exception gốc nằm trong ``__cause__``."""
 
     def __init__(self, phase: str, cause: BaseException) -> None:
         self.phase = phase
+        self.cause = cause
         self.cause_type = type(cause).__name__
         detail = _redact_bridge_text(str(cause))
         suffix = f": {detail}" if detail else ""
@@ -657,6 +726,17 @@ class _WriteRequest:
     line: bytes
     result: Queue[BaseException | None]
     cancelled: threading.Event
+
+
+@dataclass(frozen=True, slots=True)
+class _BridgeHealth:
+    healthy: bool
+    connected: bool = False
+    e2ee_connected: bool = False
+    native_reconnecting: bool = False
+    failure_code: str = ""
+    retryable: bool | None = None
+    permanent: bool = False
 
 
 class _BridgeProcess:
@@ -696,6 +776,7 @@ class _BridgeProcess:
         *,
         log_stderr: bool = False,
         command: Sequence[str] | None = None,
+        reconnect_policy: ReconnectPolicy | None = None,
     ) -> None:
         self.events: Queue[dict[str, Any]] = Queue(maxsize=self.MAX_EVENT_QUEUE_SIZE)
         self._event_queue_lock = threading.Lock()
@@ -727,6 +808,10 @@ class _BridgeProcess:
         self._watchdog_thread: threading.Thread | None = None
         self._connect_cfg: dict[str, Any] = {}
         self._enable_e2ee = True
+        self._reconnect_policy = reconnect_policy
+        self._client_initialized = False
+        self._new_client_started = False
+        self._memory_only_e2ee = False
 
         self._spawn()
 
@@ -1227,6 +1312,19 @@ class _BridgeProcess:
 
         response_ok = resp.get("ok")
         if response_ok is False:
+            raw_error_code = resp.get("errorCode")
+            if isinstance(raw_error_code, str):
+                error_code = (
+                    raw_error_code
+                    if raw_error_code in _SAFE_BRIDGE_FAILURE_CODES
+                    else "unknown"
+                )
+                retryable = resp.get("retryable")
+                raise _BridgeConnectionError(
+                    error_code,
+                    retryable=retryable if isinstance(retryable, bool) else None,
+                    permanent=retryable is False,
+                )
             error = resp.get("error")
             detail = error if isinstance(error, str) and error else "unknown"
             raise BridgeError(f"{method}: {detail}")
@@ -1270,6 +1368,14 @@ class _BridgeProcess:
         missing = _BRIDGE_REQUIRED_CAPABILITIES.difference(raw_capabilities)
         if missing:
             raise BridgeError("bridge is missing required capabilities")
+        if (
+            self._reconnect_policy is not None
+            and "structuredConnectionStatus" not in raw_capabilities
+        ):
+            raise BridgeError(
+                "bridge capabilities do not include structuredConnectionStatus; "
+                "build the bridge from the same source checkout"
+            )
         return hello
 
     def _wait_for_connection(self, *, require_e2ee: bool, timeout: float) -> None:
@@ -1286,54 +1392,160 @@ class _BridgeProcess:
             )
             regular_ready = last_status.get("connected") is True
             e2ee_ready = last_status.get("e2eeConnected") is True
+            failure = self._status_connection_error(last_status)
+            if failure is not None:
+                raise failure
             if regular_ready and (not require_e2ee or e2ee_ready):
                 return
             self._stop_event.wait(min(self.CONNECTION_POLL_INTERVAL, remaining))
         raise BridgeError("bridge process is closing")
 
+    @staticmethod
+    def _status_connection_error(
+        status: dict[str, Any],
+    ) -> _BridgeConnectionError | None:
+        raw_code = status.get("failureCode")
+        failure_code = (
+            raw_code
+            if isinstance(raw_code, str) and raw_code in _SAFE_BRIDGE_FAILURE_CODES
+            else ""
+        )
+        retryable_value = status.get("retryable")
+        retryable = retryable_value if isinstance(retryable_value, bool) else None
+        permanent = status.get("permanent") is True
+        classification = _FAILURE_CLASS_BY_CODE.get(failure_code)
+        if (
+            classification in _TERMINAL_CONNECTION_ERRORS
+            or permanent
+            or retryable is False
+        ):
+            return _BridgeConnectionError(
+                failure_code or "unknown",
+                retryable=retryable,
+                permanent=permanent,
+            )
+        return None
+
     def connect_client(
-        self, connect_cfg: dict[str, Any], *, enable_e2ee: bool
+        self,
+        connect_cfg: dict[str, Any],
+        *,
+        enable_e2ee: bool,
+        reconnect_policy: ReconnectPolicy | None = None,
+        on_retry: Callable[[str, int, float], None] | None = None,
     ) -> dict[str, Any]:
         """Validate contract and establish every requested transport."""
+        if reconnect_policy is not None:
+            # An explicit policy opts into the structured status contract.
+            # Keep legacy direct ``_BridgeProcess`` callers compatible only
+            # when they do not request the new reconnect behavior.
+            self._reconnect_policy = reconnect_policy
+        policy = reconnect_policy or self._reconnect_policy
+        replacement_attempt = 0
         self._begin_recovery_transaction()
         try:
-            self._run_startup_phase("contract", self._validate_contract)
-            self._run_startup_phase(
-                "new client",
-                lambda: self.call_blocking(
-                    "newClient", connect_cfg, timeout=self.NEW_CLIENT_TIMEOUT
-                ),
-            )
-            info = self._run_startup_phase(
-                "regular connect",
-                lambda: self.call_blocking(
-                    "connect", timeout=self.REGULAR_CONNECT_TIMEOUT
-                ),
-            )
-            self._run_startup_phase(
-                "regular ready",
-                lambda: self._wait_for_connection(
-                    require_e2ee=False,
-                    timeout=self.REGULAR_READY_TIMEOUT,
-                ),
-            )
-            if enable_e2ee:
-                self._run_startup_phase(
-                    "E2EE connect",
-                    lambda: self.call_blocking(
-                        "connectE2EE", timeout=self.E2EE_CONNECT_TIMEOUT
-                    ),
-                )
-                self._run_startup_phase(
-                    "E2EE ready",
-                    lambda: self._wait_for_connection(
-                        require_e2ee=True,
-                        timeout=self.E2EE_READY_TIMEOUT,
-                    ),
-                )
-            return info
+            while True:
+                try:
+                    return self._connect_client_generation(
+                        connect_cfg,
+                        enable_e2ee=enable_e2ee,
+                        policy=policy,
+                        on_retry=on_retry,
+                    )
+                except BridgeStartupError as exc:
+                    if not self._generation_requires_replacement():
+                        raise
+                    if self._memory_only_e2ee and self._new_client_started:
+                        loss = _BridgeConnectionError(
+                            "device_state_lost", retryable=False, permanent=True
+                        )
+                        raise BridgeStartupError(exc.phase, loss) from loss
+                    replacement_attempt += 1
+                    if policy is None or not policy.allows(replacement_attempt):
+                        raise
+                    delay = policy.delay(replacement_attempt)
+                    if on_retry is not None:
+                        on_retry("network", replacement_attempt, delay)
+                    if self._stop_event.wait(delay):
+                        raise BridgeError("bridge process is closing") from exc
+                    failed_proc: subprocess.Popen[bytes] | None
+                    try:
+                        failed_proc, _ = self._snapshot_process()
+                    except BridgeError:
+                        failed_proc = getattr(self, "_proc", None)
+                    if failed_proc is not None:
+                        self._terminate_process(failed_proc)
+                    self._spawn()
+                    self._client_initialized = False
+                    self._new_client_started = False
         finally:
             self._end_recovery_transaction()
+
+    def _connect_client_generation(
+        self,
+        connect_cfg: dict[str, Any],
+        *,
+        enable_e2ee: bool,
+        policy: ReconnectPolicy | None,
+        on_retry: Callable[[str, int, float], None] | None,
+    ) -> dict[str, Any]:
+        self._run_startup_phase_with_retry(
+            "contract", self._validate_contract, policy=policy, on_retry=on_retry
+        )
+        self._memory_only_e2ee = bool(
+            enable_e2ee and connect_cfg.get("e2eeMemoryOnly") is True
+        )
+        self._new_client_started = True
+        self._run_startup_phase(
+            "new client",
+            lambda: self.call_blocking(
+                "newClient", connect_cfg, timeout=self.NEW_CLIENT_TIMEOUT
+            ),
+        )
+        self._client_initialized = True
+        info = self._run_startup_phase_with_retry(
+            "regular connect",
+            lambda: self.call_blocking("connect", timeout=self.REGULAR_CONNECT_TIMEOUT),
+            policy=policy,
+            on_retry=on_retry,
+        )
+        self._run_startup_phase_with_retry(
+            "regular ready",
+            lambda: self._wait_for_connection(
+                require_e2ee=False,
+                timeout=self.REGULAR_READY_TIMEOUT,
+            ),
+            policy=policy,
+            on_retry=on_retry,
+        )
+        if enable_e2ee:
+            self._run_startup_phase_with_retry(
+                "E2EE connect",
+                lambda: self.call_blocking(
+                    "connectE2EE", timeout=self.E2EE_CONNECT_TIMEOUT
+                ),
+                policy=policy,
+                on_retry=on_retry,
+            )
+            self._run_startup_phase_with_retry(
+                "E2EE ready",
+                lambda: self._wait_for_connection(
+                    require_e2ee=True,
+                    timeout=self.E2EE_READY_TIMEOUT,
+                ),
+                policy=policy,
+                on_retry=on_retry,
+            )
+        return info
+
+    def _generation_requires_replacement(self) -> bool:
+        with self._state_lock:
+            proc = self._proc
+            generation = self._generation
+            if proc.poll() is not None:
+                return True
+        with self._rpc_condition:
+            return self._timed_out_generation == generation
 
     @classmethod
     def startup_timeout(cls, *, enable_e2ee: bool) -> float:
@@ -1358,7 +1570,32 @@ class _BridgeProcess:
         except BaseException as exc:
             raise BridgeStartupError(phase, exc) from exc
 
-    def _probe_health(self) -> bool | None:
+    def _run_startup_phase_with_retry(
+        self,
+        phase: str,
+        action: Callable[[], _T],
+        *,
+        policy: ReconnectPolicy | None,
+        on_retry: Callable[[str, int, float], None] | None,
+    ) -> _T:
+        attempt = 0
+        while True:
+            try:
+                return self._run_startup_phase(phase, action)
+            except BridgeStartupError as exc:
+                reason = _classify_bridge_connection_error(exc)
+                if self._generation_requires_replacement():
+                    raise
+                attempt += 1
+                if reason != "network" or policy is None or not policy.allows(attempt):
+                    raise
+                delay = policy.delay(attempt)
+                if on_retry is not None:
+                    on_retry(reason, attempt, delay)
+                if self._stop_event.wait(delay):
+                    raise BridgeError("bridge process is closing") from exc
+
+    def _probe_health(self) -> _BridgeHealth | None:
         _, generation = self._snapshot_process()
         with self._rpc_condition:
             if self._timed_out_generation == generation:
@@ -1369,14 +1606,33 @@ class _BridgeProcess:
         try:
             self._validate_contract(health_probe=True)
             if not self._connect_cfg:
-                return True
+                return _BridgeHealth(healthy=True)
             status = self._call_blocking_impl(
                 "isConnected",
                 None,
                 self.HEALTH_RPC_TIMEOUT,
             )
-            return status.get("connected") is True and (
+            healthy = status.get("connected") is True and (
                 not self._enable_e2ee or status.get("e2eeConnected") is True
+            )
+            raw_failure_code = status.get("failureCode")
+            failure_code = (
+                raw_failure_code
+                if isinstance(raw_failure_code, str)
+                and raw_failure_code in _SAFE_BRIDGE_FAILURE_CODES
+                else ""
+            )
+            retryable_value = status.get("retryable")
+            return _BridgeHealth(
+                healthy=healthy,
+                connected=status.get("connected") is True,
+                e2ee_connected=status.get("e2eeConnected") is True,
+                native_reconnecting=status.get("nativeReconnecting") is True,
+                failure_code=failure_code,
+                retryable=(
+                    retryable_value if isinstance(retryable_value, bool) else None
+                ),
+                permanent=status.get("permanent") is True,
             )
         finally:
             with self._rpc_condition:
@@ -1392,11 +1648,14 @@ class _BridgeProcess:
         """Khởi động watchdog thread giám sát subprocess.
 
         Khi bridge crash, treo RPC hoặc mất kết nối quá lâu, watchdog sẽ:
-        1. Dừng generation lỗi và đợi exponential backoff (2s→32s).
+        1. Dừng generation lỗi và đợi theo reconnect policy.
         2. Respawn subprocess rồi xác thực protocol/version.
         3. Replay `newClient` + `connect` + `connectE2EE` theo cấu hình.
         4. Chỉ reset retry sau khi generation mới chạy ổn định.
-        5. Emit `bridge_fatal` nếu vượt quá MAX_RETRIES.
+        5. Emit `bridge_fatal` khi policy dừng retry hoặc gặp lỗi permanent.
+
+        Direct `_BridgeProcess` callers không truyền policy vẫn dùng giới hạn
+        legacy `MAX_RETRIES`; public listener luôn truyền `ReconnectPolicy`.
         """
         with self._state_lock:
             self._connect_cfg = dict(connect_cfg or {})
@@ -1419,6 +1678,8 @@ class _BridgeProcess:
         failures = 0
         healthy_since = time.monotonic()
         unhealthy_checks = 0
+        native_reconnecting = False
+        native_retry_deadline = 0.0
         while not self._stop_event.is_set():
             if self._stop_event.wait(self.HEALTH_INTERVAL):
                 return
@@ -1429,22 +1690,150 @@ class _BridgeProcess:
                 health = self._probe_health()
                 if health is None:
                     continue
-                if health:
+                reason = _FAILURE_CLASS_BY_CODE.get(health.failure_code, "unknown")
+                if (
+                    health.retryable is False
+                    and reason not in _TERMINAL_CONNECTION_ERRORS
+                ):
+                    reason = "unknown"
+                if (
+                    health.permanent
+                    or health.retryable is False
+                    or reason in _TERMINAL_CONNECTION_ERRORS
+                ):
+                    self._enqueue_event(
+                        {
+                            "type": _BRIDGE_STATE_EVENT,
+                            "data": {
+                                "connected": False,
+                                "e2eeConnected": False,
+                                "reason": reason,
+                            },
+                        }
+                    )
+                    self._emit_bridge_fatal(reason=reason, retries=failures)
+                    return
+                if health.healthy:
                     unhealthy_checks = 0
-                    if time.monotonic() - healthy_since >= self.STABLE_UPTIME:
+                    if native_reconnecting:
+                        self._enqueue_event(
+                            {
+                                "type": _BRIDGE_STATE_EVENT,
+                                "data": {
+                                    "connected": health.connected,
+                                    "e2eeConnected": health.e2ee_connected,
+                                },
+                            }
+                        )
+                        native_reconnecting = False
+                        native_retry_deadline = 0.0
+                        healthy_since = time.monotonic()
+                    stable_reset_after = (
+                        self._reconnect_policy.stable_reset_after
+                        if self._reconnect_policy is not None
+                        else self.STABLE_UPTIME
+                    )
+                    if time.monotonic() - healthy_since >= stable_reset_after:
                         failures = 0
                     continue
+                if health.native_reconnecting:
+                    unhealthy_checks = 0
+                    now = time.monotonic()
+                    if not native_reconnecting or now >= native_retry_deadline:
+                        attempt = failures + 1
+                        if not self._recovery_retry_allowed(attempt):
+                            reason = (
+                                "retry_disabled"
+                                if self._reconnect_policy is not None
+                                and not self._reconnect_policy.enabled
+                                else "retry_exhausted"
+                            )
+                            self._emit_bridge_fatal(reason=reason, retries=failures)
+                            return
+                        failures = attempt
+                        delay = self._recovery_retry_delay(attempt)
+                        native_retry_deadline = now + delay
+                        self._enqueue_event(
+                            {
+                                "type": _BRIDGE_STATE_EVENT,
+                                "data": {
+                                    "connected": health.connected,
+                                    "e2eeConnected": health.e2ee_connected,
+                                    "reason": "network",
+                                    "nativeReconnecting": True,
+                                    "attempt": attempt,
+                                    "nextRetryIn": delay,
+                                },
+                            }
+                        )
+                    native_reconnecting = True
+                    continue
+                native_reconnecting = False
+                native_retry_deadline = 0.0
                 unhealthy_checks += 1
                 if unhealthy_checks < self.UNHEALTHY_CHECK_LIMIT:
                     continue
                 raise BridgeError("bridge connection remained unhealthy")
-            except BridgeError:
+            except BridgeError as exc:
                 unhealthy_checks = 0
+                reason = _classify_bridge_connection_error(exc)
+                if reason in _TERMINAL_CONNECTION_ERRORS:
+                    self._emit_bridge_fatal(reason=reason, retries=failures)
+                    return
 
             recovered, failures = self._recover_process(failures)
             if not recovered:
                 return
             healthy_since = time.monotonic()
+
+    def _emit_bridge_fatal(self, *, reason: str, retries: int) -> None:
+        safe_reason = (
+            reason
+            if reason
+            in {
+                "auth_required",
+                "configuration",
+                "protocol",
+                "retry_exhausted",
+                "retry_disabled",
+                "device_state_lost",
+                "unknown",
+            }
+            else "unknown"
+        )
+        self._enqueue_event(
+            {
+                "type": "bridge_fatal",
+                "error": safe_reason,
+                "reason": safe_reason,
+                "retries": retries,
+            }
+        )
+
+    def _recovery_retry_allowed(self, attempt: int) -> bool:
+        if self._reconnect_policy is not None:
+            return self._reconnect_policy.allows(attempt)
+        return attempt <= self.MAX_RETRIES
+
+    def _recovery_retry_delay(self, attempt: int) -> float:
+        if self._reconnect_policy is not None:
+            return self._reconnect_policy.delay(attempt)
+        return self.BASE_BACKOFF * (2 ** (attempt - 1))
+
+    def _enqueue_recovery_retry(self, reason: str, attempt: int, delay: float) -> None:
+        self._enqueue_event(
+            {
+                "type": _BRIDGE_STATE_EVENT,
+                "data": {
+                    "connected": False,
+                    "e2eeConnected": False,
+                    "generationRecovering": True,
+                    "reason": reason,
+                    "attempt": attempt,
+                    "nextRetryIn": delay,
+                },
+            }
+        )
 
     def _recover_process(self, failures: int) -> tuple[bool, int]:
         """Replace and replay a generation while external RPC calls are gated."""
@@ -1462,31 +1851,39 @@ class _BridgeProcess:
             self._enqueue_event(
                 {
                     "type": _BRIDGE_STATE_EVENT,
-                    "data": {"connected": False, "e2eeConnected": False},
+                    "data": {
+                        "connected": False,
+                        "e2eeConnected": False,
+                        "generationRecovering": True,
+                    },
                 }
             )
 
+            if self._memory_only_e2ee and self._client_initialized:
+                self._emit_bridge_fatal(reason="device_state_lost", retries=failures)
+                return False, failures
+
             while not self._stop_event.is_set():
                 failures += 1
-                if failures > self.MAX_RETRIES:
+                if not self._recovery_retry_allowed(failures):
+                    reason = (
+                        "retry_disabled"
+                        if self._reconnect_policy is not None
+                        and not self._reconnect_policy.enabled
+                        else "retry_exhausted"
+                    )
                     _safe_print(
-                        f"[{datetime.datetime.now()}] Bridge exceeded max retries "
-                        f"({self.MAX_RETRIES}). Giving up."
+                        f"[{datetime.datetime.now()}] Bridge reconnect stopped "
+                        f"({reason})."
                     )
-                    self._enqueue_event(
-                        {
-                            "type": "bridge_fatal",
-                            "error": f"max retries exceeded ({self.MAX_RETRIES})",
-                            "retries": self.MAX_RETRIES,
-                        }
-                    )
+                    self._emit_bridge_fatal(reason=reason, retries=failures - 1)
                     return False, failures
 
-                backoff = self.BASE_BACKOFF * (2 ** (failures - 1))
+                backoff = self._recovery_retry_delay(failures)
+                self._enqueue_recovery_retry("network", failures, backoff)
                 _safe_print(
                     f"[{datetime.datetime.now()}] Bridge unavailable. "
-                    f"Respawning in {backoff:.0f}s "
-                    f"(attempt {failures}/{self.MAX_RETRIES})"
+                    f"Respawning in {backoff:.1f}s (attempt {failures})"
                 )
                 if self._stop_event.wait(backoff):
                     return False, failures
@@ -1499,6 +1896,7 @@ class _BridgeProcess:
                         self.connect_client(
                             self._connect_cfg,
                             enable_e2ee=self._enable_e2ee,
+                            on_retry=self._enqueue_recovery_retry,
                         )
                     else:
                         self._validate_contract()
@@ -1510,6 +1908,16 @@ class _BridgeProcess:
                                 "e2eeConnected": bool(
                                     self._connect_cfg and self._enable_e2ee
                                 ),
+                                "generationRecovering": False,
+                                "generation": generation,
+                            },
+                        }
+                    )
+                    self._enqueue_event(
+                        {
+                            "type": "potential_message_gap",
+                            "data": {
+                                "reason": "bridge_respawn",
                                 "generation": generation,
                             },
                         }
@@ -1528,6 +1936,10 @@ class _BridgeProcess:
                         else type(exc).__name__
                     )
                     _safe_print(f"[{datetime.datetime.now()}] Respawn failed: {detail}")
+                    reason = _classify_bridge_connection_error(exc)
+                    if reason in _TERMINAL_CONNECTION_ERRORS:
+                        self._emit_bridge_fatal(reason=reason, retries=failures)
+                        return False, failures
             return False, failures
         finally:
             self._end_recovery_transaction()
@@ -1628,7 +2040,8 @@ class listeningE2EEEvent:
 
     Tương thích với `listeningEvent` của _listening.py:
         l = listeningE2EEEvent(dataFB)
-        l.connect_mqtt()       # blocking, giữ tên cũ cho tương thích
+        await l.connect_mqtt()        # async; cleanup đầy đủ khi task bị hủy
+        # hoặc l.connect_mqtt_blocking() trong worker thread riêng
 
     Bổ sung:
         @l.on_message
@@ -1637,6 +2050,9 @@ class listeningE2EEEvent:
         l.send_e2ee_message(chat_jid, "pong",
                             reply_to_id=..., reply_to_sender_jid=...)
     """
+
+    _RECENT_MESSAGE_TTL = 10 * 60.0
+    _MAX_RECENT_MESSAGE_KEYS = 2048
 
     def __init__(
         self,
@@ -1648,6 +2064,8 @@ class listeningE2EEEvent:
         enable_e2ee: bool = True,
         binary_path: Optional[str] = None,
         debug_errors: bool = False,
+        reconnect_policy: ReconnectPolicy | None = None,
+        on_connection_state: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.dataFB = dataFB
         self.log_level = log_level
@@ -1656,6 +2074,11 @@ class listeningE2EEEvent:
         self.enable_e2ee = enable_e2ee
         self.debug_errors = debug_errors
         self._binary_path_override = binary_path
+        if reconnect_policy is not None and not isinstance(
+            reconnect_policy, ReconnectPolicy
+        ):
+            raise TypeError("reconnect_policy must be ReconnectPolicy or None")
+        self.reconnect_policy = reconnect_policy or ReconnectPolicy()
 
         self._on_message: Callable[[dict[str, Any]], None] | None = None
         self._bridge: Optional[_BridgeProcess] = None
@@ -1666,6 +2089,8 @@ class listeningE2EEEvent:
         self._connected = threading.Event()
         self._e2ee_connected = threading.Event()
         self._startup_error: BaseException | None = None
+        self._connection_tracker = ConnectionStateTracker(on_connection_state)
+        self._recent_message_keys: OrderedDict[str, float] = OrderedDict()
 
         self.bodyResults = self._fresh_body()
         self.e2eeBodyResults: dict[str, Any] = {"chatJid": None, "senderJid": None}
@@ -1695,6 +2120,33 @@ class listeningE2EEEvent:
     ) -> Callable[[dict[str, Any]], None]:
         self._on_message = fn
         return fn
+
+    @property
+    def connection_state(self) -> str:
+        return str(self._connection_tracker.snapshot()["state"])
+
+    @property
+    def connection_status(self) -> dict[str, Any]:
+        return self._connection_tracker.snapshot()
+
+    def set_connection_state_callback(
+        self, callback: Callable[[dict[str, Any]], None] | None
+    ) -> None:
+        self._connection_tracker.set_callback(callback)
+
+    def _update_connection_state(
+        self,
+        state: str,
+        reason: str = "",
+        attempt: int = 0,
+        next_retry_in: float = 0.0,
+    ) -> None:
+        self._connection_tracker.update(
+            state,
+            reason=reason,
+            attempt=attempt,
+            next_retry_in=next_retry_in,
+        )
 
     def get_last_seq_id(self):
         self.lastSeqID = self.fbt.get("last_seq_id")
@@ -1747,9 +2199,16 @@ class listeningE2EEEvent:
         return {k: v for k, v in cks.items() if k in keep}
 
     # ------------------------------------------------------------------
-    def _claim_run(self) -> None:
+    def _claim_run(
+        self,
+        *,
+        cancelled: threading.Event | None = None,
+        claimed: threading.Event | None = None,
+    ) -> None:
         """Claim this single-use listener before mutating lifecycle state."""
         with self._lifecycle_lock:
+            if cancelled is not None and cancelled.is_set():
+                raise BridgeError("listener start was cancelled")
             if self._run_started or self._stop.is_set():
                 raise RuntimeError(
                     "E2EE listener instances are single-use; create a new instance."
@@ -1759,15 +2218,43 @@ class listeningE2EEEvent:
             self._startup_done.clear()
             self._connected.clear()
             self._e2ee_connected.clear()
+        self._update_connection_state("starting")
+        cancelled_during_claim = False
+        with self._lifecycle_lock:
+            if cancelled is not None and cancelled.is_set():
+                self._stop.set()
+                self._startup_done.set()
+                cancelled_during_claim = True
+            elif claimed is not None:
+                claimed.set()
+        if cancelled_during_claim:
+            self._update_connection_state("stopped", reason="stopped")
+            raise BridgeError("listener start was cancelled")
 
-    def connect_mqtt_blocking(self) -> None:
+    def _on_startup_retry(self, reason: str, attempt: int, delay: float) -> None:
+        self._connected.clear()
+        self._e2ee_connected.clear()
+        self._update_connection_state(
+            "reconnecting",
+            reason=reason,
+            attempt=attempt,
+            next_retry_in=delay,
+        )
+
+    def connect_mqtt_blocking(
+        self,
+        *,
+        _cancelled: threading.Event | None = None,
+        _claimed: threading.Event | None = None,
+    ) -> None:
         """Khởi động bridge subprocess + connect Messenger (blocking poll loop).
 
         Startup fail closed nếu protocol/version hoặc transport E2EE không sẵn
         sàng. Sau đó watchdog tự động respawn khi subprocess crash/treo/mất kết
-        nối, với exponential backoff (2s→32s, tối đa 5 lần).
+        nối theo reconnect policy; native socket reconnect tiếp tục chạy trong
+        Go bridge mà không respawn process còn khỏe.
         """
-        self._claim_run()
+        self._claim_run(cancelled=_cancelled, claimed=_claimed)
         bridge: _BridgeProcess | None = None
         try:
             binary = (
@@ -1775,7 +2262,11 @@ class listeningE2EEEvent:
                 if self._binary_path_override
                 else _resolve_binary()
             )
-            bridge = _BridgeProcess(binary, log_stderr=self.debug_errors)
+            bridge = _BridgeProcess(
+                binary,
+                log_stderr=self.debug_errors,
+                reconnect_policy=self.reconnect_policy,
+            )
             with self._lifecycle_lock:
                 if self._stop.is_set():
                     raise BridgeError("listener stopped during bridge startup")
@@ -1790,7 +2281,12 @@ class listeningE2EEEvent:
             if self.device_path:
                 cfg["devicePath"] = self.device_path
 
-            bridge.connect_client(cfg, enable_e2ee=self.enable_e2ee)
+            bridge.connect_client(
+                cfg,
+                enable_e2ee=self.enable_e2ee,
+                reconnect_policy=self.reconnect_policy,
+                on_retry=self._on_startup_retry,
+            )
             # Khởi động watchdog — auto-respawn khi bridge crash
             bridge.start_watchdog(connect_cfg=cfg, enable_e2ee=self.enable_e2ee)
             with self._lifecycle_lock:
@@ -1800,6 +2296,7 @@ class listeningE2EEEvent:
                 if self.enable_e2ee:
                     self._e2ee_connected.set()
                 self._startup_done.set()
+            self._update_connection_state("connected")
 
             _safe_print(f"[{datetime.datetime.now()}] Bridge login succeeded")
             if self.enable_e2ee:
@@ -1811,20 +2308,51 @@ class listeningE2EEEvent:
             self._connected.clear()
             self._e2ee_connected.clear()
             self._startup_done.set()
-            self.stop()
+            if not self._stop.is_set():
+                reason = _classify_bridge_connection_error(exc)
+                self._update_connection_state(
+                    "auth_required" if reason == "auth_required" else "fatal",
+                    reason=reason,
+                )
+            self._stop_listener(preserve_state=True)
             if bridge is not None:
                 bridge.close()
             raise
 
     async def connect_mqtt(self) -> None:
-        """Chạy poll loop của bridge ngoài event loop asyncio."""
-        await asyncio.to_thread(self.connect_mqtt_blocking)
+        """Chạy poll loop ngoài event loop và join worker khi bị hủy.
+
+        Bridge/RPC I/O có timeout riêng; cancellation đợi worker thoát thay vì
+        trả về sớm rồi để một listener mồ côi tiếp tục chạy nền.
+        """
+        cancelled = threading.Event()
+        claimed = threading.Event()
+        worker = asyncio.create_task(
+            asyncio.to_thread(
+                self.connect_mqtt_blocking,
+                _cancelled=cancelled,
+                _claimed=claimed,
+            )
+        )
+        try:
+            await asyncio.shield(worker)
+        except asyncio.CancelledError:
+            cancelled.set()
+            with self._lifecycle_lock:
+                owns_listener = claimed.is_set()
+            await finish_listener_worker(worker, self.stop if owns_listener else None)
+            raise
 
     def stop(self) -> None:
+        self._stop_listener(preserve_state=False)
+
+    def _stop_listener(self, *, preserve_state: bool) -> None:
         self._stop.set()
         self._startup_done.set()
         self._connected.clear()
         self._e2ee_connected.clear()
+        if not preserve_state:
+            self._update_connection_state("stopped", reason="stopped")
         with self._lifecycle_lock:
             bridge = self._bridge
             self._bridge = None
@@ -1844,7 +2372,7 @@ class listeningE2EEEvent:
         if bridge is None:
             raise BridgeError("bridge process is not available")
 
-        recovering = False
+        generation_recovering = False
         try:
             while not self._stop.is_set():
                 try:
@@ -1855,39 +2383,114 @@ class listeningE2EEEvent:
                 event_type = evt.get("type")
                 if event_type == _BRIDGE_STATE_EVENT:
                     state = evt.get("data") or {}
+                    if state.get("generationRecovering") is True:
+                        generation_recovering = True
+                    elif state.get("generationRecovering") is False:
+                        generation_recovering = False
                     if state.get("connected") is True:
                         self._connected.set()
-                        recovering = False
                     else:
                         self._connected.clear()
-                        recovering = True
                     if state.get("e2eeConnected") is True:
                         self._e2ee_connected.set()
                     else:
                         self._e2ee_connected.clear()
+                    all_ready = self._connected.is_set() and (
+                        not self.enable_e2ee or self._e2ee_connected.is_set()
+                    )
+                    if all_ready:
+                        generation_recovering = False
+                        self._update_connection_state("connected")
+                    else:
+                        reason = state.get("reason")
+                        safe_reason = (
+                            reason
+                            if reason
+                            in {
+                                "network",
+                                "auth_required",
+                                "configuration",
+                                "protocol",
+                                "unknown",
+                            }
+                            else "network"
+                        )
+                        attempt = state.get("attempt")
+                        next_retry = state.get("nextRetryIn")
+                        self._update_connection_state(
+                            (
+                                "auth_required"
+                                if safe_reason == "auth_required"
+                                else (
+                                    "fatal"
+                                    if safe_reason in {"configuration", "protocol"}
+                                    else "reconnecting"
+                                )
+                            ),
+                            reason=safe_reason,
+                            attempt=(
+                                attempt if type(attempt) is int and attempt >= 0 else 0
+                            ),
+                            next_retry_in=(
+                                float(next_retry)
+                                if isinstance(next_retry, (int, float))
+                                and not isinstance(next_retry, bool)
+                                and next_retry >= 0
+                                else 0.0
+                            ),
+                        )
                     continue
 
                 if event_type == "bridge_fatal":
                     self._connected.clear()
                     self._e2ee_connected.clear()
+                    raw_reason = evt.get("reason")
+                    reason = (
+                        raw_reason
+                        if raw_reason
+                        in {
+                            "auth_required",
+                            "configuration",
+                            "protocol",
+                            "retry_exhausted",
+                            "retry_disabled",
+                            "device_state_lost",
+                            "unknown",
+                        }
+                        else "unknown"
+                    )
+                    self._update_connection_state(
+                        "auth_required" if reason == "auth_required" else "fatal",
+                        reason=reason,
+                    )
                     detail = (
                         _redact_bridge_text(evt.get("error"))
                         if self.debug_errors
                         else "details hidden"
                     )
                     _safe_print(f"[{datetime.datetime.now()}] bridge_fatal: {detail}")
+                    if reason == "auth_required":
+                        raise BridgeError("bridge authentication is required")
+                    if reason == "device_state_lost":
+                        raise BridgeError("bridge memory-only device state was lost")
                     raise BridgeError("bridge watchdog exhausted its retry budget")
 
+                terminal_error: BridgeError | None = None
                 if event_type == "closed":
                     self._connected.clear()
                     self._e2ee_connected.clear()
-                    recovering = True
+                    generation_recovering = True
+                    self._update_connection_state("reconnecting", reason="network")
                 elif event_type in {"ready", "reconnected"}:
-                    if not recovering:
+                    if not generation_recovering:
                         self._connected.set()
+                        if not self.enable_e2ee or self._e2ee_connected.is_set():
+                            self._update_connection_state("connected")
                 elif event_type == "e2eeConnected":
-                    if not recovering:
+                    if not generation_recovering:
                         self._e2ee_connected.set()
+                        if self._connected.is_set():
+                            self._update_connection_state("connected")
                 elif event_type == "disconnected":
                     data = evt.get("data") or {}
                     if data.get("isE2EE") is True:
@@ -1895,16 +2498,69 @@ class listeningE2EEEvent:
                     else:
                         self._connected.clear()
                         self._e2ee_connected.clear()
+                    failure_code = data.get("failureCode")
+                    reason = (
+                        _FAILURE_CLASS_BY_CODE.get(failure_code, "unknown")
+                        if isinstance(failure_code, str)
+                        else "unknown"
+                    )
+                    if reason == "unknown" and data.get("retryable") is True:
+                        reason = "network"
+                    if (
+                        data.get("permanent") is True
+                        or reason in _TERMINAL_CONNECTION_ERRORS
+                    ):
+                        self._update_connection_state(
+                            "auth_required" if reason == "auth_required" else "fatal",
+                            reason=reason,
+                        )
+                        terminal_error = BridgeError(
+                            "bridge authentication is required"
+                            if reason == "auth_required"
+                            else f"bridge connection failed ({reason})"
+                        )
+                    else:
+                        if not self.reconnect_policy.allows(1):
+                            terminal_reason = (
+                                "retry_disabled"
+                                if not self.reconnect_policy.enabled
+                                else "retry_exhausted"
+                            )
+                            self._update_connection_state(
+                                "fatal", reason=terminal_reason
+                            )
+                            terminal_error = BridgeError(
+                                "bridge reconnect policy does not allow a retry"
+                            )
+                        else:
+                            self._update_connection_state(
+                                "reconnecting",
+                                reason="network" if reason == "unknown" else reason,
+                                attempt=1,
+                                next_retry_in=self.reconnect_policy.delay(1),
+                            )
+                elif event_type == "potential_message_gap":
+                    self._update_connection_state(
+                        self.connection_state,
+                        reason="message_gap_possible",
+                    )
 
                 self._dispatch(evt)
+                if terminal_error is not None:
+                    raise terminal_error
 
         finally:
-            self.stop()
+            self._stop_listener(
+                preserve_state=self.connection_state in {"auth_required", "fatal"}
+            )
 
     # ------------------------------------------------------------------
     def _dispatch(self, evt: dict[str, Any]) -> None:
         etype = evt.get("type")
         data = evt.get("data") or {}
+
+        if etype in {"message", "e2eeMessage"} and self._is_duplicate_message(data):
+            return
 
         if etype == "message":
             self._populate_regular(data)
@@ -1939,6 +2595,28 @@ class listeningE2EEEvent:
                     f"[{datetime.datetime.now()}] handler raised: "
                     f"{type(exc).__name__} ({detail})"
                 )
+
+    def _is_duplicate_message(self, data: dict[str, Any]) -> bool:
+        message_id = data.get("id")
+        if not isinstance(message_id, (str, int)) or isinstance(message_id, bool):
+            return False
+        if isinstance(message_id, str) and not message_id:
+            return False
+        encoded = str(message_id).encode("utf-8", errors="strict")
+        key = hashlib.sha256(encoded).hexdigest()
+        now = time.monotonic()
+        cutoff = now - self._RECENT_MESSAGE_TTL
+        while self._recent_message_keys:
+            _, seen_at = next(iter(self._recent_message_keys.items()))
+            if seen_at >= cutoff:
+                break
+            self._recent_message_keys.popitem(last=False)
+        if key in self._recent_message_keys:
+            return True
+        self._recent_message_keys[key] = now
+        while len(self._recent_message_keys) > self._MAX_RECENT_MESSAGE_KEYS:
+            self._recent_message_keys.popitem(last=False)
+        return False
 
     def _populate_regular(self, msg: dict[str, Any]) -> None:
         body = self._fresh_body()

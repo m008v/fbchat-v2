@@ -41,6 +41,7 @@ venv.bak/
 *.log
 logs/
 .tmp/
+/.state/
 *.sqlite3
 *.db
 *.db-journal

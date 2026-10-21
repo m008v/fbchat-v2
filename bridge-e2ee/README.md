@@ -408,16 +408,28 @@ await actions.unsend_e2ee_message(
 
 ## 🐕 Watchdog và shutdown
 
-Watchdog:
+Các thay đổi reconnect dưới đây thuộc source chưa phát hành, không phải binary
+của release 2.3.3. Build lại bridge từ cùng checkout trước khi sử dụng.
 
-1. Phát hiện tiến trình con đã thoát.
-2. Chờ lần lượt 2, 4, 8, 16, 32 giây giữa các lần thử.
-3. Khởi động lại tiến trình.
-4. Gọi lại `newClient`, `connect`, `connectE2EE`.
-5. Đặt lại số lần thử sau khi bridge chạy đủ `STABLE_UPTIME` với kết quả kiểm tra sức khỏe tốt.
-6. Phát `bridge_fatal` sau tối đa 5 lần thất bại.
+Socket Go/whatsmeow tự nối lại khi process vẫn trả lời health check. Watchdog
+Python không thay process chỉ vì socket đang offline; nó xử lý crash/RPC treo
+và dùng `ReconnectPolicy` để chờ giữa các lần phục hồi. Mặc định retry lỗi mạng
+không giới hạn, có jitter và delay trần; có thể cấu hình giới hạn số lần thử.
 
-Watchdog không sửa được cookie hết hạn hoặc binary không tương thích. Ứng dụng cần theo dõi stderr, listener task và event lỗi nghiêm trọng.
+`isConnected` có thêm `nativeReconnecting`, `failureCode`, `retryable`,
+`permanent`, `failureTransport`. RPC lỗi có thể trả `errorCode` và `retryable`.
+Capability `structuredConnectionStatus` cho Python biết bridge hỗ trợ các field
+này; protocol vẫn là 1. Auth/checkpoint, sai protocol và lỗi config là terminal,
+không được giấu thành timeout mạng rồi retry cùng credential.
+
+E2EE socket reconnect giữ device hiện tại. Sau process crash, chỉ dùng lại device
+đã persist khi ứng dụng chọn `e2ee_memory_only=False` cùng `device_path`.
+Memory-only không tự ghi key hoặc pair device mới: listener dừng với reason
+`device_state_lost`. Cache dedupe có giới hạn và không thay thế cơ chế catch-up
+của server; ứng dụng vẫn phải theo dõi queue drop/khoảng trống dữ liệu.
+
+Ứng dụng cần theo dõi `connection_status`, listener task và lỗi terminal.
+Xem [ReconnectPolicy](../DOCS.md#tự-nối-lại--source-chưa-phát-hành) để cấu hình.
 
 Shutdown Python:
 

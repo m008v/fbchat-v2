@@ -826,7 +826,7 @@ def test_watchdog_keeps_contract_valid_idle_bridge_alive(tmp_path: Path) -> None
         bridge.close()
 
 
-def test_malformed_health_payload_causes_recovery_instead_of_watchdog_death(
+def test_malformed_health_payload_stops_as_protocol_failure(
     tmp_path: Path,
 ) -> None:
     launches = tmp_path / "launches.txt"
@@ -872,13 +872,13 @@ def test_malformed_health_payload_causes_recovery_instead_of_watchdog_death(
         assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
         watchdog = bridge.start_watchdog(enable_e2ee=False)
 
-        state = _wait_for_event(bridge.events, e2ee._BRIDGE_STATE_EVENT)
-        while not isinstance(state.get("data", {}).get("generation"), int):
-            state = _wait_for_event(bridge.events, e2ee._BRIDGE_STATE_EVENT)
-        assert watchdog.is_alive()
-        assert first_proc.poll() is not None
-        assert bridge._proc is not first_proc
-        assert bridge._validate_contract()["bridgeVersion"] == "2.3.3"
+        fatal = _wait_for_event(bridge.events, "bridge_fatal")
+        assert fatal["reason"] == "protocol"
+        watchdog.join(timeout=1.0)
+        assert not watchdog.is_alive()
+        assert first_proc.poll() is None
+        assert bridge._proc is first_proc
+        assert launches.read_text(encoding="utf-8").splitlines() == ["1"]
     finally:
         bridge.close()
 

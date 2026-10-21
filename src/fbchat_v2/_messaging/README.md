@@ -55,6 +55,7 @@ src/fbchat_v2/_messaging/
 ├── _attachments.py           # Upload file -> attachment ID
 ├── _listening.py             # MQTT listener thường
 ├── _listening_e2ee.py        # Bridge process và listener E2EE
+├── _reconnect.py             # Retry policy và trạng thái kết nối
 ├── _bridge_actions.py        # Action async qua JSON-RPC
 ├── _send_e2ee.py             # Standalone compatibility sender
 ├── _editMessage.py           # Sửa tin qua LS task
@@ -116,6 +117,7 @@ __all__ = [
     "_listening",
     "_listening_e2ee",
     "_reactions",
+    "_reconnect",
     "_send",
     "_send_e2ee",
     "_unsend",
@@ -567,7 +569,13 @@ finally:
     await task
 ```
 
-Watchdog tự khởi chạy lại bridge tối đa 5 lần, có backoff. Ứng dụng vẫn cần theo dõi listener task và event `bridge_fatal`.
+Bản source chưa phát hành dùng `ReconnectPolicy` chung với MQTT: retry lỗi mạng
+với backoff/jitter, mặc định không giới hạn; auth/protocol/config không retry.
+Socket Go tự nối lại khi process còn khỏe. Với `e2ee_memory_only=True`, crash
+process báo `device_state_lost` thay vì tự pair device mới; muốn giữ state qua
+process mới, chọn `e2ee_memory_only=False` cùng `device_path` riêng.
+Theo dõi `connection_status`, listener task và `bridge_fatal`; xem cấu hình
+chi tiết trong [DOCS](../../DOCS.md#tự-nối-lại--source-chưa-phát-hành).
 
 ---
 

@@ -32,6 +32,7 @@ const (
 	standaloneUpsertFutureSkewMs          = int64((5 * time.Minute) / time.Millisecond)
 	recentMessageTTLms                    = int64((10 * time.Minute) / time.Millisecond)
 	recentMessageSweepIntervalMs          = int64(time.Minute / time.Millisecond)
+	recentE2EEMessageLimit                = 4096
 )
 
 // EventType represents the type of event
@@ -243,23 +244,10 @@ func (c *Client) handleEvent(ctx context.Context, evt any) {
 		c.emitEvent(EventTypeReconnected, nil)
 
 	case *messagix.TransientDisconnectEvent:
-		message := "Messenger socket disconnected"
-		if e.Err != nil {
-			message = e.Err.Error()
-		}
-		c.emitEvent(EventTypeError, &ErrorEvent{
-			Message: message,
-		})
+		c.emitConnectionFailure(false, transientConnectionFailure(e.Err))
 
 	case *messagix.PermanentErrorEvent:
-		message := "Messenger connection failed permanently"
-		if e.Err != nil {
-			message = e.Err.Error()
-		}
-		c.emitEvent(EventTypeError, &ErrorEvent{
-			Message: message,
-			Code:    1,
-		})
+		c.emitConnectionFailure(false, permanentConnectionFailure(e.Err))
 
 	case *table.LSTable:
 		c.handleTable(e)
@@ -463,6 +451,45 @@ func (c *Client) claimMessageID(messageID string) bool {
 	c.recentMessagesMu.Lock()
 	defer c.recentMessagesMu.Unlock()
 	return c.claimMessageIDLocked(messageID, now, messageEventSourceInsert)
+}
+
+// claimE2EEMessageID suppresses short-lived transport redelivery within one
+// process generation. It is intentionally bounded and non-persistent: it does
+// not claim to provide catch-up or exactly-once delivery across process death.
+func (c *Client) claimE2EEMessageID(messageID string) bool {
+	if messageID == "" {
+		return true
+	}
+	now := timeNowMs()
+	c.recentE2EEMessagesMu.Lock()
+	defer c.recentE2EEMessagesMu.Unlock()
+	if c.recentE2EEMessages == nil {
+		c.recentE2EEMessages = make(map[string]int64)
+	}
+	if now >= c.recentE2EESweep {
+		for existingID, emittedAt := range c.recentE2EEMessages {
+			if now-emittedAt > recentMessageTTLms {
+				delete(c.recentE2EEMessages, existingID)
+			}
+		}
+		c.recentE2EESweep = now + recentMessageSweepIntervalMs
+	}
+	if _, exists := c.recentE2EEMessages[messageID]; exists {
+		return false
+	}
+	if len(c.recentE2EEMessages) >= recentE2EEMessageLimit {
+		oldestID := ""
+		oldestTimestamp := now
+		for existingID, emittedAt := range c.recentE2EEMessages {
+			if oldestID == "" || emittedAt < oldestTimestamp {
+				oldestID = existingID
+				oldestTimestamp = emittedAt
+			}
+		}
+		delete(c.recentE2EEMessages, oldestID)
+	}
+	c.recentE2EEMessages[messageID] = now
+	return true
 }
 
 func (c *Client) claimStandaloneUpsert(msg *table.WrappedMessage) bool {
@@ -871,14 +898,53 @@ func (c *Client) handleE2EEEvent(evt interface{}) {
 
 	switch e := evt.(type) {
 	case *events.Connected:
+		c.clearTransportFailure(true)
 		c.emitEvent(EventTypeE2EEConnected, nil)
 
 	case *events.Disconnected:
-		c.emitEvent(EventTypeDisconnected, map[string]any{
-			"isE2EE": true,
+		c.emitConnectionFailure(true, transientConnectionFailure(nil))
+
+	case *events.LoggedOut:
+		c.emitConnectionFailure(true, transportFailureState{
+			code:      FailureAuthFailed,
+			permanent: true,
+			active:    true,
 		})
 
+	case *events.TemporaryBan:
+		c.emitConnectionFailure(true, transportFailureState{
+			code:      FailureAuthFailed,
+			permanent: true,
+			active:    true,
+		})
+
+	case *events.ClientOutdated:
+		c.emitConnectionFailure(true, transportFailureState{
+			code:      FailureProtocolError,
+			permanent: true,
+			active:    true,
+		})
+
+	case *events.ConnectFailure:
+		c.emitConnectionFailure(true, e2eeConnectFailure(e.Reason))
+
+	case *events.CATRefreshError:
+		c.emitConnectionFailure(true, permanentConnectionFailure(e.Error))
+
+	case *events.StreamReplaced:
+		c.emitConnectionFailure(true, transportFailureState{
+			code:      FailureConfigInvalid,
+			permanent: true,
+			active:    true,
+		})
+
+	case *events.StreamError:
+		c.emitConnectionFailure(true, transientConnectionFailure(nil))
+
 	case *events.FBMessage:
+		if !c.claimE2EEMessageID(e.Info.ID) {
+			return
+		}
 		var senderID int64
 		if e.Info.Sender.User != "" {
 			senderID, _ = strconv.ParseInt(e.Info.Sender.User, 10, 64)

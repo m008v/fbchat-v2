@@ -503,6 +503,87 @@ Listener đọc toàn bộ delta trong payload và đưa event vào queue có gi
 
 Bot mới nên đọc event từ queue, không kiểm tra lặp lại `bodyResults`. Thuộc tính này chỉ giữ kết quả gần nhất để tương thích code cũ; nhiều event đến liên tiếp có thể ghi đè nhau.
 
+### Tự nối lại — source chưa phát hành
+
+API dưới đây có trên nhánh `main`, chưa có trong gói PyPI `2.3.3`.
+Với E2EE, build bridge từ cùng source để có capability
+`structuredConnectionStatus`; binary của release 2.3.3 chưa có contract này.
+
+MQTT và E2EE dùng chung `ReconnectPolicy` cho lỗi kết nối tạm thời, kể cả khi
+khởi động lúc mất mạng. Mặc định không giới hạn số lượt phục hồi của wrapper;
+delay tăng dần từ 1 giây, có jitter 20% và không vượt 60 giây. Sau 60 giây
+kết nối ổn định, budget được reset. Muốn giới hạn, truyền `max_attempts=5`;
+muốn tắt retry, truyền `enabled=False` hoặc `max_attempts=0`.
+
+Với MQTT, mỗi lượt là một lần thử tạo kết nối mới sau lần đầu. Với E2EE,
+policy điều khiển retry từng phase startup và respawn; khi socket Go tự nối lại, mỗi lượt
+là một lần wrapper kiểm tra đã phục hồi hay chưa. `attempt` không phải bộ đếm
+TCP connect của Go. Delay socket native do thư viện Go quản lý riêng; regular
+transport hiện có backoff trần 5 phút, không bị `max_delay` ghi đè. Policy
+giới hạn có thể dừng listener trước khi socket native thử lần tiếp theo.
+
+```python
+from fbchat_v2 import ReconnectPolicy, listeningE2EEEvent
+
+policy = ReconnectPolicy(
+    initial_delay=1.0,
+    max_delay=60.0,
+    jitter=0.2,
+    max_attempts=None,
+)
+
+listener = listeningE2EEEvent(
+    data_fb,
+    reconnect_policy=policy,
+    on_connection_state=lambda status: print(status),
+    e2ee_memory_only=False,
+    device_path=".state/e2ee_device.json",
+)
+```
+
+File device chứa key thiết bị và session; không commit hoặc chia sẻ file này.
+Repo đã bỏ qua thư mục `.state/` trong Git.
+
+Với MQTT thường, truyền hai tham số `reconnect_policy` và `on_connection_state`
+cho `listeningEvent` theo cùng cách. Chỉ chạy listener phù hợp với ứng dụng;
+không khởi chạy thêm một listener để xử lý việc mất kết nối của listener cũ.
+
+Đọc `listener.connection_state` hoặc `listener.connection_status` để lấy snapshot.
+Callback trạng thái nhận `state`, `reason`, `attempt`, `next_retry_in`; không có
+cookie, ID hội thoại hoặc nội dung chat. Callback đồng bộ có thể chạy từ worker
+hoặc caller gọi `stop()`: giữ nó ngắn và dùng `loop.call_soon_threadsafe()` nếu
+cần cập nhật asyncio. Không giả định callback được gọi tuần tự giữa các thread;
+`connection_status` luôn là snapshot hiện tại.
+Có thể thay callback bằng `listener.set_connection_state_callback(fn)`.
+
+- `starting`: đang khởi tạo transport.
+- `connected`: transport yêu cầu đã sẵn sàng; không phải xác nhận một tin gửi đã tới peer.
+- `reconnecting`: đang chờ hoặc thử nối lại.
+- `auth_required`: cần cập nhật cookie hoặc xử lý checkpoint; không retry cùng credential.
+- `fatal`: lỗi protocol/config, hết retry budget hoặc không thể phục hồi an toàn.
+- `stopped`: đã yêu cầu dừng.
+
+Lỗi chưa phân loại được dừng với `fatal/unknown`, không retry vô hạn. Ví dụ,
+Paho không giữ HTTP status khi WebSocket upgrade bị từ chối; thư viện không
+đoán đây là lỗi mạng hay cookie hết hạn chỉ từ một thông báo handshake chung.
+
+Socket Go/whatsmeow giữ quyền tự nối lại khi bridge vẫn khỏe. Python chỉ thay
+process khi bridge crash hoặc RPC không còn dùng được, không giết bridge chỉ
+vì mạng đang mất. Với E2EE mặc định `e2ee_memory_only=True`, device chỉ nằm trong
+RAM của bridge: process chết thì listener báo `device_state_lost`, không tự
+pair device mới và không tự ghi key ra đĩa. Nếu cần phục hồi qua process mới,
+chọn `e2ee_memory_only=False` cùng `device_path` riêng như ví dụ trên.
+
+MQTT giữ sync token/sequence qua reconnect và có cache message ID giới hạn để
+lọc replay. Cache và khả năng đồng bộ của server vẫn có giới hạn; reconnect
+không phải cam kết nhận đủ mọi tin đã gửi trong thời gian offline. Theo dõi
+queue drop và thông báo khoảng trống dữ liệu khi thay process. Tin gửi trả
+`unknown` không được tự gửi lại chỉ vì transport vừa kết nối lại.
+
+`disconnect()`/`stop()` ngắt thời gian chờ retry. Hủy coroutine `connect_mqtt()`
+sẽ yêu cầu dừng và chờ worker thu dọn; lời gọi mạng đang chạy vẫn chịu timeout
+riêng. Không chạy listener mới trước khi task cũ kết thúc.
+
 ---
 
 ## 10. 🔐 Listener E2EE
@@ -579,7 +660,7 @@ if not ready:
     raise TimeoutError("E2EE listener chưa sẵn sàng.")
 ```
 
-Đừng gửi tin ngay sau `create_task(connect_mqtt())`; tiến trình bridge có thể đã chạy nhưng chưa xong `newClient`, `connect` và `connectE2EE`. Wrapper đặt timeout riêng cho các bước `contract`, `new client`, `regular connect`, `regular ready`, `E2EE connect` và `E2EE ready`. `startup_timeout` là giới hạn tổng; lỗi gốc của từng bước vẫn được giữ lại.
+Đừng gửi tin ngay sau `create_task(connect_mqtt())`; tiến trình bridge có thể đã chạy nhưng chưa xong `newClient`, `connect` và `connectE2EE`. Wrapper đặt timeout riêng cho các bước `contract`, `new client`, `regular connect`, `regular ready`, `E2EE connect` và `E2EE ready`. `startup_timeout` là ngân sách cho một lượt khởi động, không phải deadline cho toàn bộ thời gian retry. `wait_until_connected()` trả `False` khi hết thời gian chờ của caller; nếu listener còn `reconnecting`, ứng dụng có thể tiếp tục chờ. Lỗi terminal vẫn được trả về, không bị đổi thành timeout chung.
 
 ### Schema event
 
@@ -892,7 +973,7 @@ await _addAdmin.func(data_fb, "thread-id", "user-id", statusChoice=False)
 
 Bot mẫu minh họa cách khởi động, nhận tin và dừng listener. Đây không phải framework bot để dùng nguyên trạng khi triển khai.
 
-Bot mẫu cần Go E2EE bridge và chỉ xử lý lệnh sau khi E2EE sẵn sàng. Nó chờ tối đa `startup_timeout`, rồi dừng nếu kết nối không đạt hoặc có lỗi, không chuyển sang Python MQTT. Nếu chỉ cần listener MQTT thường, hãy khởi tạo `listeningEvent` riêng; đó không phải chế độ dự phòng của bot mẫu.
+Bot mẫu cần Go E2EE bridge và chỉ xử lý lệnh sau khi E2EE sẵn sàng. Nó kiểm tra readiness theo từng khoảng `startup_timeout` và tiếp tục chờ khi listener đang `reconnecting`; lỗi terminal khiến bot dừng. Bot không chuyển sang Python MQTT. Nếu chỉ cần listener MQTT thường, hãy khởi tạo `listeningEvent` riêng; đó không phải chế độ dự phòng của bot mẫu.
 
 ### Cấu hình
 
@@ -1326,7 +1407,7 @@ Trên Windows thêm `.exe`. Hoặc set `FBCHAT_E2EE_BIN` tới file tuyệt đ�
 
 ### Bridge liên tục respawn
 
-Watchdog retry theo exponential backoff và phát `bridge_fatal` khi vượt giới hạn. Đọc stderr bridge, xác nhận binary đúng kiến trúc, cookie còn sống và submodule/build cùng version. Không start thêm listener để che lỗi; mỗi listener sẽ spawn thêm process và pairing state.
+Watchdog dùng retry policy và báo `bridge_fatal` khi hết budget đã cấu hình hoặc gặp lỗi không thể tự phục hồi. Đọc `connection_status` trước: `auth_required` cần cập nhật phiên, `protocol` cần build bridge đúng source, còn `device_state_lost` nghĩa là state memory-only không còn sau process crash. Không start thêm listener để che lỗi; chờ task cũ dừng hẳn trước.
 
 ### Login credential báo code `-1`
 

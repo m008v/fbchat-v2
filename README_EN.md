@@ -33,6 +33,11 @@ I'm MinhHuyDev (`m008v`), the author and maintainer of this project.
 
 `fbchat-v2` is a Python library for sending and receiving Messenger messages through a personal Facebook account. It uses `async/await`, with a Go bridge for E2EE. The codebase was reorganized in v2.2.0 and has continued to receive fixes based on user reports.
 
+The `main` branch includes unreleased MQTT/E2EE reconnect changes: network
+retries, separate authentication failures, and connection-state callbacks.
+See the [configuration guide](DOCS.md#tự-nối-lại--source-chưa-phát-hành).
+These APIs are not in PyPI 2.3.3; E2EE needs a bridge built from the same source.
+
 Thanks to everyone who has shared ideas and reported bugs. This is an unofficial API, so features can break when Facebook changes. If you run into a problem, open an issue on [GitHub](https://github.com/m008v/fbchat-v2/issues) with reproduction steps and redacted logs, or reach me on [Telegram](https://t.me/MinhHuyDev).
 
 ---

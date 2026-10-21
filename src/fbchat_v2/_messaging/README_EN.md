@@ -55,6 +55,7 @@ src/fbchat_v2/_messaging/
 ├── _attachments.py           # File upload -> attachment ID
 ├── _listening.py             # Regular MQTT listener
 ├── _listening_e2ee.py        # Bridge process and E2EE listener
+├── _reconnect.py             # Retry policy and connection status
 ├── _bridge_actions.py        # Async JSON-RPC actions
 ├── _send_e2ee.py             # Standalone compatibility sender
 ├── _editMessage.py           # Edit through an LS task
@@ -116,6 +117,7 @@ __all__ = [
     "_listening",
     "_listening_e2ee",
     "_reactions",
+    "_reconnect",
     "_send",
     "_send_e2ee",
     "_unsend",
@@ -498,7 +500,14 @@ finally:
     await task
 ```
 
-The watchdog respawns a crashed bridge up to five times with backoff. The application must still monitor the listener task and `bridge_fatal` events.
+The unreleased source shares `ReconnectPolicy` with MQTT: network failures use
+capped backoff and jitter, with unlimited retries by default. Authentication,
+protocol, and configuration failures stop retrying. A healthy Go process owns
+socket reconnection. With `e2ee_memory_only=True`, a process crash reports
+`device_state_lost` instead of pairing a new device; use `e2ee_memory_only=False`
+and a dedicated `device_path` to retain state across processes.
+Monitor `connection_status`, the listener task, and `bridge_fatal`; see
+[DOCS](../../DOCS.md#tự-nối-lại--source-chưa-phát-hành) for configuration.
 
 ---
 

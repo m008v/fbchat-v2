@@ -10,7 +10,14 @@ from pathlib import Path
 from typing import Any
 
 REQUIRED_CAPABILITIES = frozenset(
-    {"newClient", "connect", "connectE2EE", "isConnected", "events"}
+    {
+        "newClient",
+        "connect",
+        "connectE2EE",
+        "isConnected",
+        "events",
+        "structuredConnectionStatus",
+    }
 )
 
 
@@ -116,6 +123,7 @@ def smoke_bridge(
     if status.get("ok") is not True or status.get("data") != {
         "connected": False,
         "e2eeConnected": False,
+        "nativeReconnecting": False,
     }:
         raise RuntimeError(f"Response isConnected không đúng contract: {status!r}")
 

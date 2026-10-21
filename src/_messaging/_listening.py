@@ -24,6 +24,8 @@ import datetime
 import json
 import ssl
 import threading
+import time
+from collections import OrderedDict
 from queue import Empty, Full, Queue
 from typing import Any
 from urllib.parse import urlparse
@@ -33,9 +35,19 @@ import paho.mqtt.client as mqtt
 from _core._console import safe_print as _safe_print
 from _core._utils import generate_client_id, generate_session_id, json_minimal
 from _features._thread import _all_thread_data
+from _messaging._reconnect import (
+    ConnectionCallback,
+    ConnectionFailure,
+    ConnectionStateTracker,
+    ReconnectPolicy,
+    classify_connection_error,
+    finish_listener_worker,
+)
 
 DEFAULT_MESSAGE_QUEUE_MAXSIZE = 1000
-_RECONNECT_DELAY_SECONDS = 10
+_CONNECT_TIMEOUT_SECONDS = 5.0
+_MESSAGE_DEDUPE_TTL_SECONDS = 600.0
+_MESSAGE_DEDUPE_MAXSIZE = 4096
 
 
 class listeningEvent:
@@ -45,6 +57,9 @@ class listeningEvent:
         self,
         dataFB: dict[str, Any],
         message_queue_maxsize: int = DEFAULT_MESSAGE_QUEUE_MAXSIZE,
+        *,
+        reconnect_policy: ReconnectPolicy | None = None,
+        on_connection_state: ConnectionCallback | None = None,
     ) -> None:
         try:
             queue_size = int(message_queue_maxsize)
@@ -66,6 +81,58 @@ class listeningEvent:
         self.mqtt: mqtt.Client | None = None
         self._stop_event = threading.Event()
         self._reconnect_requested = threading.Event()
+        if reconnect_policy is not None and not isinstance(
+            reconnect_policy, ReconnectPolicy
+        ):
+            raise TypeError("reconnect_policy must be a ReconnectPolicy or None")
+        self.reconnect_policy = reconnect_policy or ReconnectPolicy()
+        self._connection_tracker = ConnectionStateTracker(on_connection_state)
+        self._run_lock = threading.Lock()
+        self._client_lock = threading.Lock()
+        self._fatal_reason: str | None = None
+        self._connected_since: float | None = None
+        self._sequence_error: str | None = None
+        self._dedupe_lock = threading.Lock()
+        self._recent_messages: OrderedDict[tuple[str, str], float] = OrderedDict()
+
+    @property
+    def connection_state(self) -> str:
+        return str(self._connection_tracker.snapshot()["state"])
+
+    @property
+    def connection_status(self) -> dict[str, Any]:
+        return self._connection_tracker.snapshot()
+
+    def set_connection_state_callback(
+        self, callback: ConnectionCallback | None
+    ) -> None:
+        self._connection_tracker.set_callback(callback)
+
+    def _is_current_client(self, client: mqtt.Client) -> bool:
+        with self._client_lock:
+            return self.mqtt is None or self.mqtt is client
+
+    def _remember_message(self, body: dict[str, Any]) -> bool:
+        message_id = body.get("messageID")
+        if not isinstance(message_id, str) or not message_id or len(message_id) > 1024:
+            return True
+        thread_id = str(body.get("replyToID", ""))
+        if len(thread_id) > 1024:
+            return True
+        key = (thread_id, message_id)
+        now = time.monotonic()
+        with self._dedupe_lock:
+            while self._recent_messages:
+                first = next(iter(self._recent_messages))
+                if now - self._recent_messages[first] < _MESSAGE_DEDUPE_TTL_SECONDS:
+                    break
+                self._recent_messages.popitem(last=False)
+            if key in self._recent_messages:
+                return False
+            self._recent_messages[key] = now
+            while len(self._recent_messages) > _MESSAGE_DEDUPE_MAXSIZE:
+                self._recent_messages.popitem(last=False)
+        return True
 
     @staticmethod
     def _fresh_body_results() -> dict[str, Any]:
@@ -161,12 +228,10 @@ class listeningEvent:
         try:
             seq_id = int(str(value).strip())
         except (TypeError, ValueError):
-            _safe_print(
-                f"[{datetime.datetime.now()}] Bỏ qua {source} không hợp lệ: {value}"
-            )
+            _safe_print(f"[{datetime.datetime.now()}] Bỏ qua {source} không hợp lệ.")
             return None
         if seq_id < 0:
-            _safe_print(f"[{datetime.datetime.now()}] Bỏ qua {source} âm: {seq_id}")
+            _safe_print(f"[{datetime.datetime.now()}] Bỏ qua {source} âm.")
             return None
         return seq_id
 
@@ -178,9 +243,7 @@ class listeningEvent:
             return False
         previous = self.lastSeqID
         if previous is not None and seq_id < previous and not allow_reset:
-            _safe_print(
-                f"[{datetime.datetime.now()}] Bỏ qua {source} cũ: {seq_id} < {previous}"
-            )
+            _safe_print(f"[{datetime.datetime.now()}] Bỏ qua {source} cũ.")
             return False
         self.lastSeqID = seq_id
         return True
@@ -194,40 +257,52 @@ class listeningEvent:
 
     def get_last_seq_id_blocking(self) -> int | None:
         previous = self.lastSeqID
+        self._sequence_error = None
         try:
             self._apply_thread_data(
                 _all_thread_data.func_blocking(self.dataFB), previous
             )
         except Exception as error:  # lỗi mạng cần giữ sequence cũ để phục hồi
             self.lastSeqID = previous
+            self._sequence_error = classify_connection_error(error)
             _safe_print(
-                f"[{datetime.datetime.now()}] Không thể làm mới last_seq_id: {error}"
+                f"[{datetime.datetime.now()}] Không thể làm mới last_seq_id "
+                f"({self._sequence_error})."
             )
         return self.lastSeqID
 
     async def get_last_seq_id(self) -> int | None:
         previous = self.lastSeqID
+        self._sequence_error = None
         try:
             result = await _all_thread_data.func(self.dataFB)
             self._apply_thread_data(result, previous)
         except Exception as error:  # lỗi mạng cần giữ sequence cũ để phục hồi
             self.lastSeqID = previous
+            self._sequence_error = classify_connection_error(error)
             _safe_print(
-                f"[{datetime.datetime.now()}] Không thể làm mới last_seq_id: {error}"
+                f"[{datetime.datetime.now()}] Không thể làm mới last_seq_id "
+                f"({self._sequence_error})."
             )
         return self.lastSeqID
 
-    def _publish_pending_queue(self, client: mqtt.Client) -> None:
+    def _publish_pending_queue(self, client: mqtt.Client) -> bool:
         if self.syncToken is None or self.lastSeqID is None:
             if self.syncToken is not None:
                 self.syncToken = None
             self.get_last_seq_id_blocking()
-        if self.lastSeqID is None:
-            _safe_print(
-                "Không có last_seq_id; hãy làm mới cookie Facebook rồi khởi động lại."
-            )
+        if self._sequence_error is not None and self._sequence_error != "network":
+            self._fatal_reason = self._sequence_error
+            self._reconnect_requested.set()
             client.disconnect()
-            return
+            return False
+        if self.lastSeqID is None:
+            reason = self._sequence_error or "unknown"
+            if reason != "network":
+                self._fatal_reason = reason
+            self._reconnect_requested.set()
+            client.disconnect()
+            return False
 
         queue: dict[str, Any] = {
             "sync_api_version": 10,
@@ -245,17 +320,45 @@ class listeningEvent:
             topic = "/messenger_sync_get_diffs"
             queue["last_seq_id"] = self.lastSeqID
             queue["sync_token"] = self.syncToken
-        client.publish(topic, json_minimal(queue), qos=1, retain=False)
+        result = client.publish(topic, json_minimal(queue), qos=1, retain=False)
+        status = getattr(result, "rc", mqtt.MQTT_ERR_SUCCESS)
+        if isinstance(status, int) and status != mqtt.MQTT_ERR_SUCCESS:
+            self._reconnect_requested.set()
+            client.disconnect()
+            return False
+        return True
 
     def _on_connect(
         self, client: mqtt.Client, userdata: Any, flags: Any, rc: int
     ) -> None:
-        if rc != 0:
-            _safe_print(f"Kết nối MQTT thất bại với mã {rc}.")
+        if not self._is_current_client(client):
             return
-        self._publish_pending_queue(client)
+        if self._stop_event.is_set():
+            client.disconnect()
+            return
+        if rc != 0:
+            reason = (
+                "auth_required"
+                if rc in (4, 5)
+                else "network" if rc == 3 else "protocol"
+            )
+            if reason != "network":
+                self._fatal_reason = reason
+                self._connection_tracker.update(
+                    "auth_required" if reason == "auth_required" else "fatal", reason
+                )
+            else:
+                self._connection_tracker.update("reconnecting", reason)
+            self._reconnect_requested.set()
+            client.disconnect()
+            return
+        if self._publish_pending_queue(client) is not False:
+            self._connected_since = time.monotonic()
+            self._connection_tracker.update("connected")
 
     def _on_message(self, client: mqtt.Client, userdata: Any, msg: Any) -> None:
+        if self._stop_event.is_set() or not self._is_current_client(client):
+            return
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
@@ -277,7 +380,7 @@ class listeningEvent:
 
         for delta in deltas or []:
             body = self._body_from_delta(delta)
-            if body is not None:
+            if body is not None and self._remember_message(body):
                 self._publish_body_results(body)
 
         if "syncToken" in payload and "firstDeltaSeqId" in payload:
@@ -302,14 +405,26 @@ class listeningEvent:
                 self._publish_pending_queue(client)
                 return
 
-        _safe_print(f"MQTT lỗi {error}; yêu cầu tạo kết nối mới.")
+        reason = (
+            "network"
+            if is_overflow
+            else classify_connection_error(RuntimeError(str(error)))
+        )
+        if reason != "network":
+            self._fatal_reason = reason
+            self._connection_tracker.update(
+                "auth_required" if reason == "auth_required" else "fatal", reason
+            )
+        _safe_print(f"MQTT queue thất bại ({reason}); chi tiết đã được ẩn.")
         self.retry_count = 0
         self._reconnect_requested.set()
         client.disconnect()
 
-    @staticmethod
-    def _on_disconnect(client: mqtt.Client, userdata: Any, rc: int) -> None:
-        _safe_print(f"MQTT đã ngắt kết nối với mã {rc}.")
+    def _on_disconnect(self, client: mqtt.Client, userdata: Any, rc: int) -> None:
+        if not self._is_current_client(client):
+            return
+        if not self._stop_event.is_set() and self._fatal_reason is None:
+            self._connection_tracker.update("reconnecting", "network")
 
     def _build_client(self) -> mqtt.Client:
         session_id = generate_session_id()
@@ -333,12 +448,19 @@ class listeningEvent:
         }
         host = f"wss://edge-chat.facebook.com/chat?region=eag&sid={session_id}"
         parsed_host = urlparse(host)
-        client = mqtt.Client(
+        client_options: dict[str, Any] = dict(
             client_id="mqttwsclient",
             clean_session=True,
             protocol=mqtt.MQTTv31,
             transport="websockets",
         )
+        # One supervisor owns retry timing. Paho 1.x has no constructor flag.
+        try:
+            client = mqtt.Client(**client_options, reconnect_on_failure=False)
+        except TypeError:
+            client = mqtt.Client(**client_options)
+            client._reconnect_on_failure = False
+        client._connect_timeout = _CONNECT_TIMEOUT_SECONDS
         client.tls_set(cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS_CLIENT)
         client.tls_insecure_set(False)
         client.on_connect = self._on_connect
@@ -355,29 +477,125 @@ class listeningEvent:
                 "Host": "edge-chat.facebook.com",
             },
         )
-        client.reconnect_delay_set(min_delay=1, max_delay=30)
         return client
 
     def connect_mqtt_blocking(self) -> None:
-        """Chạy listener blocking; reconnect bằng vòng lặp, không đệ quy callback."""
-        self._stop_event.clear()
-        while not self._stop_event.is_set():
-            self._reconnect_requested.clear()
-            self.mqtt = self._build_client()
-            self.mqtt.connect("edge-chat.facebook.com", port=443, keepalive=10)
-            self.mqtt.loop_forever(retry_first_connection=True)
-            if not self._reconnect_requested.is_set() or self._stop_event.is_set():
-                break
-            self._stop_event.wait(_RECONNECT_DELAY_SECONDS)
+        """Run one MQTT supervisor; startup and runtime share the retry policy."""
+        self._run_listener()
+
+    def _run_listener(
+        self,
+        cancelled: threading.Event | None = None,
+        claimed: threading.Event | None = None,
+    ) -> None:
+        if not self._run_lock.acquire(blocking=False):
+            raise RuntimeError("MQTT listener is already running")
+        if claimed is not None:
+            claimed.set()
+        attempts = 0
+        try:
+            if cancelled is not None and cancelled.is_set():
+                return
+            self._stop_event.clear()
+            self._fatal_reason = None
+            if cancelled is not None and cancelled.is_set():
+                self._stop_event.set()
+                return
+            self._connection_tracker.update("starting")
+            while not self._stop_event.is_set():
+                self._reconnect_requested.clear()
+                self._connected_since = None
+                client: mqtt.Client | None = None
+                reason = "network"
+                try:
+                    client = self._build_client()
+                    with self._client_lock:
+                        self.mqtt = client
+                    if self._stop_event.is_set():
+                        break
+                    connect_result = client.connect(
+                        "edge-chat.facebook.com", port=443, keepalive=10
+                    )
+                    if (
+                        isinstance(connect_result, int)
+                        and connect_result != mqtt.MQTT_ERR_SUCCESS
+                    ):
+                        raise ConnectionFailure("network")
+                    if not self._stop_event.is_set():
+                        client.loop_forever(retry_first_connection=False)
+                    reason = self._fatal_reason or "network"
+                except Exception as error:
+                    reason = self._fatal_reason or classify_connection_error(error)
+                finally:
+                    if client is not None:
+                        try:
+                            client.disconnect()
+                        except (OSError, ValueError):
+                            _safe_print("MQTT cleanup failed (details hidden).")
+                    with self._client_lock:
+                        if self.mqtt is client:
+                            self.mqtt = None
+                if self._stop_event.is_set():
+                    break
+                if reason != "network":
+                    self._connection_tracker.update(
+                        "auth_required" if reason == "auth_required" else "fatal",
+                        reason,
+                    )
+                    raise ConnectionFailure(reason) from None
+                if (
+                    self._connected_since is not None
+                    and time.monotonic() - self._connected_since
+                    >= self.reconnect_policy.stable_reset_after
+                ):
+                    attempts = 0
+                attempts += 1
+                if not self.reconnect_policy.allows(attempts):
+                    reason = (
+                        "retry_disabled"
+                        if not self.reconnect_policy.enabled
+                        else "retry_exhausted"
+                    )
+                    self._connection_tracker.update("fatal", reason, attempts)
+                    raise ConnectionFailure(reason)
+                delay = self.reconnect_policy.delay(attempts)
+                self._connection_tracker.update(
+                    "reconnecting", "network", attempts, delay
+                )
+                if self._stop_event.wait(delay):
+                    break
+        finally:
+            if self.connection_state not in {"fatal", "auth_required"}:
+                self._connection_tracker.update("stopped", "stopped")
+            self._run_lock.release()
 
     async def connect_mqtt(self) -> None:
-        """Chạy MQTT blocking trong worker thread dành riêng."""
-        await asyncio.to_thread(self.connect_mqtt_blocking)
+        """Run MQTT off-loop and reap its worker when the coroutine is cancelled."""
+        cancelled = threading.Event()
+        claimed = threading.Event()
+        worker = asyncio.create_task(
+            asyncio.to_thread(self._run_listener, cancelled, claimed)
+        )
+        try:
+            await asyncio.shield(worker)
+        except asyncio.CancelledError:
+            cancelled.set()
+            await finish_listener_worker(
+                worker, self.disconnect_blocking if claimed.is_set() else None
+            )
+            raise
 
     def disconnect_blocking(self) -> None:
         self._stop_event.set()
-        if self.mqtt is not None:
-            self.mqtt.disconnect()
+        with self._client_lock:
+            client = self.mqtt
+        if client is not None:
+            try:
+                client.disconnect()
+            except (OSError, ValueError):
+                _safe_print("MQTT disconnect failed (details hidden).")
+        if self.connection_state not in {"fatal", "auth_required"}:
+            self._connection_tracker.update("stopped", "stopped")
 
     async def disconnect(self) -> None:
         await asyncio.to_thread(self.disconnect_blocking)

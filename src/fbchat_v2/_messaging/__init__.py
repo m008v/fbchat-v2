@@ -26,6 +26,7 @@ __all__ = [
     "_listening",
     "_listening_e2ee",
     "_reactions",
+    "_reconnect",
     "_send",
     "_send_e2ee",
     "_unsend",
