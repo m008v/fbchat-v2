@@ -27,9 +27,23 @@
   legacy/token signature trong payload đã quét; diff check đạt.
 
 ### Việc còn lại
-- Push pypi trước khi public draft 419703838 và upload hai artifact gốc qua
-  Twine 7/Windows keyring; kiểm PyPI JSON/hash và fresh install sau upload.
+- Không còn bước phát hành 2.3.4. Giữ artifact/toolenv ngoài Git; bản build thử
+  không được dùng thay artifact production.
 - Chưa có thêm bằng chứng provider-live; cold restart/network thật vẫn hoãn.
+
+### Kết quả phát hành
+- Commit 1ba974de8aa52b188e949eeef3227b53af4bc1ff đã push fast-forward lên
+  origin/pypi trước khi public draft 419703838 thành GitHub Release v2.3.4.
+- Upload nguyên wheel/sdist GitHub đã xác minh bằng Twine 7/Windows keyring;
+  credential không nằm trong source, command line hoặc log.
+- Public PyPI 2.3.4 có đúng hai file không yanked; tải lại khớp byte GitHub:
+  wheel 9237b68fc99483100f543da6c6327581b7432630124f95e2fd0b85a73cc21536;
+  sdist 43498ffc92c151de60f7a20467d6b046fdcfb581b55396a6545aba6b4927c690.
+- Fresh install trực tiếp pypi.org/simple vào venv mới đạt dependency check
+  13 package, distribution verifier, version/export/policy và năm bridge hash.
+- URL: https://pypi.org/project/fbchat-v2/2.3.4/ và
+  https://github.com/m008v/fbchat-v2/releases/tag/v2.3.4.
+- Chỉ cập nhật memory sau phát hành; không rebuild/thay artifact hoặc tag.
 
 ## 2026-10-16 — Đồng bộ source đóng gói 2.3.3
 
