@@ -64,7 +64,7 @@ const maxRPCRequestBytes = 150 * 1024 * 1024
 
 // bridgeVersion is intentionally overridable with -ldflags
 // "-X main.bridgeVersion=<version>" for release builds.
-var bridgeVersion = "2.3.3"
+var bridgeVersion = "2.3.4"
 
 var bridgeCapabilities = []string{
 	"newClient",

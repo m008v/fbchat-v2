@@ -9,7 +9,7 @@ on:
       tag_name:
         description: Existing tag to rebuild missing assets; dispatch this workflow from the same tag ref
         required: true
-        default: v2.3.3
+        default: v2.3.4
 
 permissions:
   contents: read
@@ -53,7 +53,7 @@ jobs:
             exit 1
           fi
           printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
-          printf 'name=v.%s\n' "${tag#v}" >> "$GITHUB_OUTPUT"
+          printf 'name=%s\n' "$tag" >> "$GITHUB_OUTPUT"
       - name: Check out release tag
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -351,6 +351,8 @@ jobs:
           tag_name: ${{ needs.resolve-release.outputs.tag }}
           name: ${{ needs.resolve-release.outputs.name }}
           target_commitish: ${{ needs.resolve-release.outputs.sha }}
+          # Publish only after the package branch has the verified sdist payload.
+          draft: true
           files: verified-assets/*
           body_path: .github/RELEASE_NOTES_${{ needs.resolve-release.outputs.tag }}.md
           fail_on_unmatched_files: true

@@ -19,7 +19,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path, PurePosixPath
 
 DISTIBUTION_NAME = "fbchat-v2"
-EXPECTED_VERSION = "2.3.3"
+EXPECTED_VERSION = "2.3.4"
 PACKAGE_NAMES = ("fbchat_v2",)
 _SYNC_MODULE_NAME = (
     f"{__package__}.sync_canonical_package" if __package__ else "sync_canonical_package"

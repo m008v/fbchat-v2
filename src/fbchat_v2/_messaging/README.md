@@ -569,7 +569,7 @@ finally:
     await task
 ```
 
-Bản source chưa phát hành dùng `ReconnectPolicy` chung với MQTT: retry lỗi mạng
+Từ 2.3.4, E2EE dùng `ReconnectPolicy` chung với MQTT: retry lỗi mạng
 với backoff/jitter, mặc định không giới hạn; auth/protocol/config không retry.
 Socket Go tự nối lại khi process còn khỏe. Với `e2ee_memory_only=True`, crash
 process báo `device_state_lost` thay vì tự pair device mới; muốn giữ state qua

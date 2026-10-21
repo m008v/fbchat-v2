@@ -43,6 +43,42 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   khoảng trắng thừa đầu hero, CSS variable thiếu, V2 badge bị ẩn và layout
   contributor/preloader trên màn hình nhỏ.
 
+## [2.3.4] - 2026-10-21
+
+### Added
+
+- Thêm `ReconnectPolicy` cho MQTT/E2EE: retry khi startup mất mạng hoặc kết nối
+  bị ngắt, exponential backoff có jitter, delay trần và retry budget tùy chọn.
+- Thêm `connection_state`, `connection_status` và callback trạng thái. Bridge
+  cung cấp capability `structuredConnectionStatus` cùng failure code an toàn,
+  không đưa cookie, ID hội thoại hoặc nội dung chat vào snapshot.
+- Thêm test offline cho outage, startup retry, mất riêng socket E2EE, giới hạn
+  retry, stop/cancel và lọc message replay qua các generation của bridge.
+
+### Changed
+
+- MQTT dùng một supervisor quản lý retry; giữ sync token/sequence và cache ID
+  có giới hạn qua reconnect. E2EE ưu tiên socket Go tự nối lại khi RPC còn khỏe,
+  chỉ thay process khi generation không thể dùng tiếp.
+- Lỗi auth/checkpoint/config/protocol hoặc chưa phân loại được dừng rõ ràng,
+  không retry vô hạn. Lỗi chứng chỉ TLS được phân loại trước lỗi mạng chung.
+- E2EE memory-only báo `device_state_lost` khi process chết, không tự pair mới
+  hoặc ghi key ra đĩa. Persistent device vẫn là lựa chọn chủ động của ứng dụng.
+- Bot mẫu tiếp tục chờ khi startup đang reconnecting. Stop/cancel chờ worker
+  thu dọn, kể cả khi coroutine bị cancel nhiều lần.
+- Nâng Go lên `1.26.10` để vá `GO-2026-6809` trong `crypto/x509`; giữ nguyên
+  vulnerability gate của CI.
+
+### Giới hạn
+
+- Policy của wrapper không ghi đè backoff socket native Go. Với E2EE, retry
+  budget khi native reconnect đếm lượt quan sát, không phải số TCP attempt.
+- Reconnect không đảm bảo nhận đủ mọi tin trong thời gian offline. Khi thay
+  process, listener báo nguy cơ message gap; tin gửi có kết quả `unknown`
+  không được tự gửi lại.
+- Các thay đổi reconnect được kiểm bằng test offline. Cold restart sau payload
+  thật và mất mạng riêng bridge vẫn cần kiểm chứng live riêng.
+
 ## [2.3.3] - 2026-10-16
 
 ### Added

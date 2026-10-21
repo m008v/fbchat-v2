@@ -408,8 +408,8 @@ await actions.unsend_e2ee_message(
 
 ## 🐕 Watchdog và shutdown
 
-Các thay đổi reconnect dưới đây thuộc source chưa phát hành, không phải binary
-của release 2.3.3. Build lại bridge từ cùng checkout trước khi sử dụng.
+Các thay đổi reconnect dưới đây có từ 2.3.4. Dùng bridge cùng phiên bản với
+package Python; nếu tự build, lấy cả hai từ cùng checkout.
 
 Socket Go/whatsmeow tự nối lại khi process vẫn trả lời health check. Watchdog
 Python không thay process chỉ vì socket đang offline; nó xử lý crash/RPC treo

@@ -221,4 +221,4 @@ jobs:
           BRIDGE_BINARY: build/fbchat-bridge-e2ee${{ matrix.suffix }}
         run: >-
           python scripts/smoke_bridge_rpc.py "$BRIDGE_BINARY"
-          --expected-version "2.3.3"
+          --expected-version "2.3.4"

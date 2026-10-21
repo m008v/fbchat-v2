@@ -1,6 +1,6 @@
 # fbchat-v2 - Tài liệu API async
 
-Tài liệu dành cho mã nguồn `fbchat-v2==2.3.3` trên nhánh `main`. Các ví dụ I/O mới dùng `async`/`await`. API blocking được giữ lại để giải thích cách tích hợp hoặc hỗ trợ code cũ.
+Tài liệu dành cho `fbchat-v2==2.3.4`. Các ví dụ I/O mới dùng `async`/`await`. API blocking được giữ lại để giải thích cách tích hợp hoặc hỗ trợ code cũ.
 
 > [!NOTE]
 > Đây là API Facebook không chính thức. Endpoint, token HTML, GraphQL `doc_id`, MQTT payload và E2EE protocol có thể thay đổi mà không báo trước.
@@ -503,11 +503,11 @@ Listener đọc toàn bộ delta trong payload và đưa event vào queue có gi
 
 Bot mới nên đọc event từ queue, không kiểm tra lặp lại `bodyResults`. Thuộc tính này chỉ giữ kết quả gần nhất để tương thích code cũ; nhiều event đến liên tiếp có thể ghi đè nhau.
 
-### Tự nối lại — source chưa phát hành
+### Tự nối lại
 
-API dưới đây có trên nhánh `main`, chưa có trong gói PyPI `2.3.3`.
-Với E2EE, build bridge từ cùng source để có capability
-`structuredConnectionStatus`; binary của release 2.3.3 chưa có contract này.
+API dưới đây có từ `2.3.4`. Với E2EE, dùng bridge cùng phiên bản để có
+capability `structuredConnectionStatus`. Nếu tự build, lấy bridge từ cùng
+checkout với package Python; binary 2.3.3 không có contract này.
 
 MQTT và E2EE dùng chung `ReconnectPolicy` cho lỗi kết nối tạm thời, kể cả khi
 khởi động lúc mất mạng. Mặc định không giới hạn số lượt phục hồi của wrapper;
@@ -1183,7 +1183,7 @@ black --check src tests scripts
 mypy
 python -m compileall -q src tests scripts
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.3-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.4-py3-none-any.whl
 git diff --check
 ```
 

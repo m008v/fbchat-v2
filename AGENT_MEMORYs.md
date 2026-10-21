@@ -1,5 +1,34 @@
 # Agent Memories
 
+## 2026-10-21 — Chuẩn bị phát hành reconnect 2.3.4
+
+### Mục tiêu
+- Đồng bộ checkout `fbchat-v2-pypi`, commit/push nhánh `pypi`, rồi phát hành
+  GitHub `v2.3.4` và PyPI `2.3.4` theo yêu cầu m008v; không mở live Facebook.
+
+### Đã thực hiện
+- Nâng version runtime, bridge, metadata, verifier và fixture đang hoạt động
+  lên 2.3.4; thêm changelog/release note, sửa docs Việt/Anh và canonical snapshot.
+- Workflow tạo GitHub Release dạng draft và dùng tên đúng tag. Sau khi workflow
+  đạt, tải/xác minh chín asset, đồng bộ source cùng checksum từ verified sdist
+  vào nhánh `pypi`, rồi mới public draft và upload nguyên wheel/sdist đó lên PyPI.
+- Không merge lịch sử độc lập main/pypi, không copy checksum placeholder từ
+  main sang checkout đóng gói, không thay tag/artifact 2.3.3 đã phát hành.
+
+### Kiểm tra
+- Full suite 530/530 offline đạt; targeted release/canonical/lifecycle 87/87
+  đạt. Helper chặn DNS/TCP ngoài loopback, không dùng cookie hoặc device thật.
+- Ruff, Black 133 file, mypy source 52 file/canonical 46 file và compileall đạt.
+- Go 1.26.10 full test/vet, native Windows build/RPC smoke 2.3.4 offline đạt.
+- Bản source reconnect `b8350d9` trước bump có CI 12/12 đạt, gồm vulnerability
+  scan và Linux race. Release 2.3.4 vẫn cần lượt CI/artifact riêng sau tag.
+
+### Việc còn lại
+- Chờ release build để có checksum chính thức, kiểm package-only checkout,
+  push `pypi`, public release và upload/verify PyPI. Chưa ghi nhận publish.
+- Giữ `.vs/` và mọi artifact/toolenv ngoài commit; live cold restart/network
+  vẫn chưa kiểm, không lấy offline test làm bằng chứng provider-live.
+
 ## 2026-10-21 — Tự reconnect MQTT/E2EE và kiểm thử offline
 
 ### Mục tiêu

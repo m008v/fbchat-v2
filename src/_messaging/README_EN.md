@@ -499,7 +499,7 @@ finally:
     await task
 ```
 
-The unreleased source shares `ReconnectPolicy` with MQTT: network failures use
+Since 2.3.4, E2EE shares `ReconnectPolicy` with MQTT: network failures use
 capped backoff and jitter, with unlimited retries by default. Authentication,
 protocol, and configuration failures stop retrying. A healthy Go process owns
 socket reconnection. With `e2ee_memory_only=True`, a process crash reports
