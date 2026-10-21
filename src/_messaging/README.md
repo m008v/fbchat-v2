@@ -87,7 +87,7 @@ Các dependency chính:
 
 ### Bridge E2EE
 
-`bridge-e2ee/go.mod` yêu cầu Go 1.26.9.
+`bridge-e2ee/go.mod` yêu cầu Go 1.26.10.
 
 ```bash
 git submodule update --init --recursive bridge-e2ee/meta

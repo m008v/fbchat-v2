@@ -34,6 +34,10 @@
   upgrade rejection nên không đoán đây là network/auth từ handshake chung.
 - Python duyệt cause chain trước generic network fallback: HTTPX/OSError bọc
   lỗi chứng chỉ TLS vẫn được phân loại configuration, không retry vô hạn.
+- CI SHA `494bf7f` đạt 11/12 job; Go test/vet đạt nhưng vulnerability scan chặn
+  `GO-2026-6809` / `CVE-2026-111943` trong `crypto/x509.Certificate.Verify`.
+  Advisory chính thức công bố 21/10 yêu cầu Go >= 1.26.10; nâng go.mod và docs
+  hiện hành đúng patch 1.26.10, không đổi dependency ứng dụng hay gate bảo mật.
 - Source main cần bridge build cùng source; binary release 2.3.3 thiếu capability
   mới và bị từ chối rõ ràng. Không thay tag/artifact đã phát hành.
 
@@ -49,6 +53,8 @@
 - Native Windows build/RPC smoke không credential đạt. Hatchling build wheel/
   sdist, Twine strict, fresh install từ cả hai bằng cache offline, verifier và
   public reconnect imports đạt. Không upload package.
+- Sau bản vá toolchain: Go 1.26.10 full test/vet và native build/RPC smoke đạt
+  offline; build/verifier/Twine package cùng UTF-8/mojibake scan 36 file đạt.
 - Full suite không tái hiện flaky pipe-write timing cũ; một lượt agent trước
   đó lỗi timing, chạy riêng và full suite hiện tại đều đạt.
 - UTF-8 strict, mojibake/secret marker scan 35 file task-owned và diff check

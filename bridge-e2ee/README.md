@@ -62,7 +62,7 @@ Build sẽ lỗi nếu thiếu thư mục `meta`.
 
 | Thành phần | Yêu cầu |
 |---|---|
-| Go | 1.26.9 theo directive trong `go.mod` |
+| Go | 1.26.10 theo directive trong `go.mod` |
 | Git | Có hỗ trợ submodule |
 | Hệ điều hành | Windows, Linux hoặc macOS |
 | Cookie | `c_user`, `xs`, `datr`, `fr` |
