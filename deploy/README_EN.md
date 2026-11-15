@@ -156,8 +156,6 @@ Each time E2EE connects, the history also gets a `keycheck` entry: whether the E
 
 fb-bot logs each group sender key event (`e2eeSenderKey`) with the `[e2ee-key]` tag and only a hashed device tag: which retry a group message was, whether it carried the sender key, which device's sender key was stored. When a sender key step fails (the key cannot be stored, it arrives in a 1-1 chat, a retry request cannot be sent) the history also gets a `decrypt` entry.
 
-Single-account mode (omi, one pod and one PVC per channel): `BOT_ACCOUNT=<name>` runs only this account, `GET /accounts` lists only it (even before it signs in), and any call for another account gets 404. Empty: every account in `/data/accounts`, as before.
-
 Payload debugging: `FBBOT_TRACE=acc2,shop2` (comma-separated account names) writes every raw listener event, including types the bot ignores (such as call signals), to `/data/trace/<name>-<UTC time>.jsonl` (mode `0600`, at most 20 MiB per file). The file holds message content: enable it only for test accounts, then delete the file and unset the variable.
 
 ## 🔄 Syncing with upstream
