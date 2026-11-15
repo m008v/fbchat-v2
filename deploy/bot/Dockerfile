@@ -3,7 +3,7 @@
 # .dockerignore vào thư mục gốc của upstream.
 
 # --- Stage 1: build Go E2EE bridge (static, không CGO) ---
-FROM golang:1.26.11-alpine AS bridge
+FROM golang:1.26.10-alpine AS bridge
 WORKDIR /src/bridge-e2ee
 COPY bridge-e2ee/ ./
 RUN --mount=type=cache,target=/root/go/pkg/mod \
