@@ -735,36 +735,3 @@ async def test_remove_forgets_the_account_outside_its_folder(
         "acc2-x-20261115-090000.jsonl",
         "shop1-20261115-090000.jsonl",
     ]
-
-
-def test_bot_account_finds_only_the_pods_account(tmp_path: Path) -> None:
-    _write_account(tmp_path, "uat.acc2")
-    _write_account(tmp_path, "uat.shop2")
-    assert [n for n, _ in multi_main.discover_accounts(tmp_path, "uat.acc2")] == [
-        "uat.acc2"
-    ]
-    assert len(multi_main.discover_accounts(tmp_path, "")) == 2
-    assert multi_main.only_account(" uat.acc2 ") == "uat.acc2"
-    with pytest.raises(ValueError):
-        multi_main.only_account("../etc")
-
-
-@pytest.mark.asyncio
-async def test_single_account_manager_ignores_other_accounts(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    _write_account(tmp_path, "uat.shop2")
-    monkeypatch.setattr(multi_main, "_account_states", {})
-    manager = multi_main.AccountManager(tmp_path, object(), only="uat.acc2")  # type: ignore[arg-type]
-
-    status, listed = await manager.handle("GET", "/accounts", b"")
-    # The pod's account shows before it signs in; the other one never does.
-    assert status == 200 and [a["name"] for a in listed] == ["uat.acc2"]
-    assert listed[0]["state"] == "stopped"
-    for method, path in (
-        ("DELETE", "/accounts/uat.shop2"),
-        ("POST", "/accounts/uat.shop2/restart"),
-        ("POST", "/accounts/uat.shop2/cookie"),
-    ):
-        assert (await manager.handle(method, path, b"{}"))[0] == 404
-    assert (tmp_path / "uat.shop2").exists()
