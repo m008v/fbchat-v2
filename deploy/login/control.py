@@ -10,6 +10,11 @@ admin Libredesk. Mỗi lúc một phiên (một màn hình ảo), hồ sơ Chrom
 mỗi phiên để tài khoản sau không nhận nhầm cookie của tài khoản trước.
 target "facebook" (mặc định) ghi cookie cho fb-bot (/data/accounts/<tên>), "fbweb"
 ghi cho agent Fanpage Web (FBWEB_LOGINS_DIR/<tên>, volume riêng; omnichannel D18).
+
+Giao cookie (omi, omnichannel D27: mỗi tài khoản Facebook một pod): với LOGIN_HANDOFF_DIR,
+target "facebook" không ghi vào volume của bot mà vào LOGIN_HANDOFF_DIR/<tên>/config.json (tmpfs,
+0600); gateway lấy một lần rồi đưa vào pod của tài khoản:
+  POST   /session/cookie {"account": "<tên>"} -> {"cookie": "..."}, rồi xoá; 404 nếu không có
 Không bao giờ in cookie ra log.
 """
 
@@ -38,6 +43,8 @@ ACCOUNT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 MAX_BODY = 4096
 VNC_PORT = 6080
 FBWEB_LOGINS_DIR = Path(os.environ.get("FBWEB_LOGINS_DIR", "/fbweb"))
+_handoff = os.environ.get("LOGIN_HANDOFF_DIR", "")
+HANDOFF_DIR: Path | None = Path(_handoff) if _handoff else None
 TARGETS = ("facebook", "fbweb")
 
 _lock = threading.Lock()
@@ -128,6 +135,8 @@ def start(account: str, target: str = "facebook") -> tuple[int, dict[str, Any]]:
                         "error": "Chưa gắn volume phiên Fanpage Web cho fb-login-ui."
                     }
                 env["CONFIG_PATH"] = str(FBWEB_LOGINS_DIR / account / "config.json")
+            elif HANDOFF_DIR is not None:
+                env["CONFIG_PATH"] = str(HANDOFF_DIR / account / "config.json")
             _proc = subprocess.Popen(
                 [sys.executable, str(SCRIPT)],
                 env=env,
@@ -144,6 +153,23 @@ def start(account: str, target: str = "facebook") -> tuple[int, dict[str, Any]]:
             log(f"Bắt đầu phiên đăng nhập cho {account}.")
     # Ngoài khóa: snapshot() tự lấy khóa.
     return (200 if running else 202), snapshot()
+
+
+def take_cookie(account: str) -> str | None:
+    """Cookie của lần đăng nhập xong gần nhất cho account (giao cookie), rồi xoá; None nếu không có."""
+    if HANDOFF_DIR is None:
+        return None
+    folder = HANDOFF_DIR / account
+    path = folder / "config.json"
+    with _lock:
+        try:
+            config = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+    cookie = config.get("cookies") if isinstance(config, dict) else None
+    return cookie if isinstance(cookie, str) and cookie.strip() else None
 
 
 def stop() -> dict[str, Any]:
@@ -190,7 +216,7 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(200, snapshot())
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path != "/session":
+        if self.path not in ("/session", "/session/cookie"):
             return self._reply(404, {"error": "not found"})
         if not self._authorized():
             return
@@ -204,6 +230,12 @@ class Handler(BaseHTTPRequestHandler):
         account = payload.get("account") if isinstance(payload, dict) else None
         if not isinstance(account, str) or not ACCOUNT_PATTERN.match(account):
             return self._reply(400, {"error": "Tên tài khoản không hợp lệ."})
+        if self.path == "/session/cookie":
+            cookie = take_cookie(account)
+            if cookie is None:
+                return self._reply(404, {"error": "no cookie"})
+            log(f"Đã giao cookie của {account}.")
+            return self._reply(200, {"cookie": cookie})
         target = payload.get("target") or "facebook"
         if target not in TARGETS:
             return self._reply(400, {"error": "target không hợp lệ."})
