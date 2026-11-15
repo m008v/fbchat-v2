@@ -678,3 +678,60 @@ def test_sender_key_events_logged_and_failures_recorded(
     items = multi_main.account_history("acc1").items
     assert [item["kind"] for item in items] == ["decrypt"]
     assert "không lưu được khoá nhóm" in items[0]["message"]
+
+
+@pytest.mark.asyncio
+async def test_undecryptable_notes_pending_when_the_account_stops_are_dropped(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_dataFB: dict[str, Any],
+    fake_listener: _FakeListener,
+) -> None:
+    # Tài khoản bị gỡ trong 15 giây chờ: tin báo lỗi không được gửi vào gateway nữa.
+    forwarded: list[str] = []
+
+    class _Gateway:
+        async def forward(self, account: str, bot: Any, message: dict) -> None:
+            forwarded.append(message["messageID"])
+
+    monkeypatch.setattr(multi_main, "_gateway", _Gateway())
+    monkeypatch.setattr(multi_main, "UNDECRYPTABLE_GRACE_SECONDS", 0.05)
+    bot = multi_main.AccountBot(mock_dataFB, account="acc1", device_path="/d.json")
+    bot._spawn_undecryptable({"messageID": "undecryptable-M1"})
+    bot._shutdown()
+    bot._spawn_undecryptable({"messageID": "undecryptable-M2"})  # tới sau khi dừng
+    await asyncio.sleep(0.1)
+    assert forwarded == []
+    assert not bot._lost_tasks
+
+
+@pytest.mark.asyncio
+async def test_remove_forgets_the_account_outside_its_folder(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _write_account(tmp_path, "acc2")
+    trace_dir = tmp_path / "trace"
+    trace_dir.mkdir()
+    for name in (
+        "acc2-20261115-090000.jsonl",
+        "acc2-x-20261115-090000.jsonl",
+        "shop1-20261115-090000.jsonl",
+    ):
+        (trace_dir / name).write_text("{}", encoding="utf-8")
+    forgotten: list[str] = []
+
+    class _Gateway:
+        def forget_account(self, account: str) -> None:
+            forgotten.append(account)
+
+    monkeypatch.setattr(multi_main, "_gateway", _Gateway())
+    monkeypatch.setattr(multi_main, "TRACE_DIR", trace_dir)
+    monkeypatch.setattr(multi_main, "_account_states", {})
+    manager = multi_main.AccountManager(tmp_path, object())  # type: ignore[arg-type]
+    assert (await manager.handle("DELETE", "/accounts/acc2", b""))[0] == 204
+
+    assert not (tmp_path / "acc2").exists()
+    assert forgotten == ["acc2"]
+    assert sorted(p.name for p in trace_dir.iterdir()) == [
+        "acc2-x-20261115-090000.jsonl",
+        "shop1-20261115-090000.jsonl",
+    ]

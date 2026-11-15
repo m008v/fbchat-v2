@@ -498,6 +498,23 @@ class GatewayLink:
         if self.bots.get(account) is bot:
             del self.bots[account]
 
+    def forget_account(self, account: str) -> None:
+        """Quên mọi thứ đã nhớ về một tài khoản vừa gỡ (tin, nhóm, thành viên, tin chờ echo)."""
+        self.bots.pop(account, None)
+        prefix = f"{account}:"
+        for cache in (
+            self._recent,
+            self._threads,
+            self._group_lookups,
+            self._members,
+            self._recalled,
+            self._edited,
+            self._last_typing,
+        ):
+            for key in [k for k in cache if k.startswith(prefix)]:
+                del cache[key]
+        self._pending = [p for p in self._pending if p.get("account") != account]
+
     def observe_raw(
         self, account: str, event: dict[str, Any]
     ) -> list[tuple[str, str, str]]:

@@ -115,7 +115,7 @@ Server HTTP của bot (cùng `GATEWAY_TOKEN` với `/send`) có thêm các route
 | `GET /accounts` | Danh sách: `name`, `state` (`starting`, `running`, `retrying`, `dropped`, `stopped`), `profile` (`uid`, `displayName`, `avatar`), `error` (lỗi gần nhất: `session_expired` khi cookie không còn cho ra dataFB, cần đăng nhập lại; `connection` cho lỗi khác; hết phiên thì `message` kèm "Nguyên nhân: …" và `cause`: `revoked` Facebook xoá cookie `c_user`/`xs`, `checkpoint`, `login`, `token`, `unknown`), `history` (lịch sử kết nối, mới nhất trước: `at`, `kind` `connected`/`manual`/`network`/`disconnected`/`platform`/`session_expired`/`decrypt`/`keycheck`, `message`, `count`/`last_at` khi lặp; lưu ở `<tài khoản>/history.json` 0600, tối đa 30 mốc) |
 | `POST /accounts/<tên>/cookie` `{"cookie": "..."}` | Chỉ dùng nội bộ (giao diện chỉ đăng nhập bằng trình duyệt). Cookie phải có `c_user` và `xs`; bot gọi `dataGetHome` để kiểm tra với Facebook (422 nếu bị từ chối, không lưu), rồi ghi `config.json` (0600) và chạy tài khoản |
 | `POST /accounts/<tên>/restart` | Kết nối lại (cũng dùng sau khi đăng nhập bằng trình duyệt) |
-| `DELETE /accounts/<tên>` | Dừng và xoá thư mục tài khoản |
+| `DELETE /accounts/<tên>` | Dừng và xoá thư mục tài khoản, cùng tin đã nhớ của tài khoản (trích dẫn, nhóm, thành viên) và tệp trace. Tin báo lỗi giải mã đang chờ bị huỷ |
 
 Tên/ảnh của chính tài khoản lấy từ `/chat/user_info`; một số tài khoản không tra được chính mình, khi đó lấy từ bảng danh bạ LightSpeed (`LSDeleteThenInsertContact`, `LSVerifyContactRowExists`) bridge gửi lúc kết nối. Bảng này cũng điền tên cho khách có trong danh bạ.
 

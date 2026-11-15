@@ -115,7 +115,7 @@ The bot's HTTP server (same `GATEWAY_TOKEN` as `/send`) also serves routes for t
 | `GET /accounts` | Accounts: `name`, `state` (`starting`, `running`, `retrying`, `dropped`, `stopped`), `profile` (`uid`, `displayName`, `avatar`), `error` (last error: `session_expired` when the cookie no longer yields dataFB, sign in again; `connection` otherwise; on expiry `message` adds "Nguyên nhân: …" and `cause`: `revoked` Facebook deleted the `c_user`/`xs` cookies, `checkpoint`, `login`, `token`, `unknown`), `history` (connection history, newest first: `at`, `kind` `connected`/`manual`/`network`/`disconnected`/`platform`/`session_expired`/`decrypt`/`keycheck`, `message`, `count`/`last_at` when repeated; saved in `<account>/history.json` 0600, at most 30 entries) |
 | `POST /accounts/<name>/cookie` `{"cookie": "..."}` | Internal only (the UI signs in with the browser). The cookie must contain `c_user` and `xs`; the bot runs `dataGetHome` to check it with Facebook (422 when rejected, nothing saved), then writes `config.json` (0600) and starts the account |
 | `POST /accounts/<name>/restart` | Reconnect (also used after a browser sign-in) |
-| `DELETE /accounts/<name>` | Stop and delete the account directory |
+| `DELETE /accounts/<name>` | Stop and delete the account directory, with what was remembered for it (quotes, groups, members) and its trace files. Pending undecryptable-message notes are cancelled |
 
 The account's own name/picture comes from `/chat/user_info`; some accounts cannot look themselves up, so the LightSpeed contact tables (`LSDeleteThenInsertContact`, `LSVerifyContactRowExists`) sent on connect fill it in. The same tables also name customers found in the contact list.
 

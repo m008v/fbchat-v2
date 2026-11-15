@@ -1446,3 +1446,33 @@ async def test_e2ee_reaction_without_sender_timestamp_is_flagged(
         True,
         False,
     ]
+
+
+def test_forget_account_drops_only_that_accounts_memory() -> None:
+    link = _link(lambda request: httpx.Response(204))
+    for account in ("acc2", "shop1"):
+        link._recent[f"{account}:m1"] = {"summary": f"tin của {account}"}
+        link._threads[f"{account}:t1"] = {"name": "Nhóm"}
+        link._members[f"{account}:t1"] = {"u": False}
+        link._recalled[f"{account}:m1"] = None
+        link._edited[f"{account}:m1"] = None
+        link._last_typing[f"{account}:t1"] = 1.0
+        link._group_lookups[f"{account}:t1"] = 1.0
+        link._pending.append({"account": account, "thread_id": "t1"})
+    link.bots["acc2"] = object()  # type: ignore[assignment]
+
+    link.forget_account("acc2")
+
+    for cache in (
+        link._recent,
+        link._threads,
+        link._members,
+        link._recalled,
+        link._edited,
+        link._last_typing,
+        link._group_lookups,
+    ):
+        assert not any(k.startswith("acc2:") for k in cache)
+        assert any(k.startswith("shop1:") for k in cache)
+    assert [p["account"] for p in link._pending] == ["shop1"]
+    assert "acc2" not in link.bots
