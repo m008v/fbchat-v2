@@ -121,7 +121,7 @@ Tên/ảnh của chính tài khoản lấy từ `/chat/user_info`; một số t�
 
 `AccountManager` (trong `multi_main.py`) chạy mỗi tài khoản trong một task; dừng hoặc kết nối lại là huỷ task, `SimpleBot.run()` tự dừng bridge. Khi bật gateway, bot vẫn khởi động khi chưa có tài khoản nào, và healthcheck vẫn `healthy`; chạy riêng lẻ (không có `GATEWAY_URL`) vẫn cần ít nhất một tài khoản.
 
-Đăng nhập bằng trình duyệt dùng dịch vụ `fb-login-ui` (image `login/`, lệnh `control.py`): rảnh chỉ có server điều khiển (~20 MiB); `POST /session {"account", "target"}` chạy `extract_cookie.py` với `FORCE_LOGIN=1` (Chromium + noVNC cổng 6080); `target` mặc định `facebook` ghi cookie cho fb-bot (`/data/accounts/<tên>`), `fbweb` ghi cho agent Fanpage Web của omnichannel (`/fbweb/<tên>/config.json`, volume `fbweb-logins`, D18), `GET /session` trả `starting` tới khi noVNC sẵn sàng rồi `running`, `saving` khi `extract_cookie.py` đã thấy đăng nhập và đóng Chromium để ghi cookie, `success` khi đã ghi cookie, `DELETE /session` huỷ. Mỗi lúc một phiên; hồ sơ Chromium bị xoá trước và sau mỗi phiên để tài khoản sau không nhận nhầm cookie. Server điều khiển cần `GATEWAY_TOKEN` và không log URL/header.
+Đăng nhập bằng trình duyệt dùng dịch vụ `fb-login-ui` (image `login/`, lệnh `control.py`): rảnh chỉ có server điều khiển (~20 MiB); `POST /session {"account", "target"}` chạy `extract_cookie.py` với `FORCE_LOGIN=1` (Chromium + noVNC cổng 6080); `target` mặc định `facebook` ghi cookie cho fb-bot (`/data/accounts/<tên>`), `fbweb` ghi cho agent Fanpage Web của omnichannel (`/fbweb/<tên>/config.json`, volume `fbweb-logins`, D18), `GET /session` trả `starting` tới khi noVNC sẵn sàng rồi `running`, `saving` khi `extract_cookie.py` đã thấy đăng nhập và đóng Chromium để ghi cookie, `success` khi đã ghi cookie, `DELETE /session` huỷ. Mỗi lúc một phiên; hồ sơ Chromium bị xoá trước và sau mỗi phiên để tài khoản sau không nhận nhầm cookie. Server điều khiển cần `GATEWAY_TOKEN` và không log URL/header. Giao cookie (omi, mỗi tài khoản một pod): đặt `LOGIN_HANDOFF_DIR` (tmpfs) thì `target` `facebook` không ghi vào volume bot mà giữ cookie ở đó; gateway gọi `POST /session/cookie {"account"}` lấy một lần (xoá ngay sau đó, 404 nếu không có) rồi đưa vào `POST /accounts/<tên>/cookie` của pod.
 
 ### Tin giàu nội dung và sự kiện
 
@@ -155,6 +155,8 @@ Từ 03/11/2026 app Messenger mới gửi tin Signal có trường protobuf mớ
 Mỗi lần E2EE kết nối, lịch sử có thêm mục `keycheck`: khoá E2EE server phát cho thiết bị bot khớp hay lệch khoá bot giữ (lệch khoá nào). Lệch thì người khác không mở được phiên mới với bot.
 
 fb-bot in mỗi sự kiện khoá nhóm (`e2eeSenderKey`) ra log với nhãn `[e2ee-key]`, chỉ kèm mã thiết bị đã băm: tin nhóm là lần gửi lại thứ mấy, có kèm khoá nhóm không, đã lưu khoá nhóm của thiết bị nào. Khi bước khoá nhóm hỏng (không lưu được khoá, khoá đến trong chat 1-1, không gửi được yêu cầu gửi lại) thì ghi thêm mục `decrypt` vào lịch sử.
+
+Chế độ một tài khoản (omi, mỗi kênh một pod và một PVC): `BOT_ACCOUNT=<tên>` chỉ chạy tài khoản này, `GET /accounts` chỉ hiện nó (kể cả khi chưa đăng nhập), mọi lệnh cho tài khoản khác trả 404. Trống: mọi tài khoản trong `/data/accounts` như trước.
 
 Debug payload: `FBBOT_TRACE=acc2,shop2` (tên tài khoản, cách nhau bởi dấu phẩy) ghi mọi sự kiện thô của listener, kể cả loại bot đang bỏ qua (vd. tín hiệu cuộc gọi), vào `/data/trace/<tên>-<giờ UTC>.jsonl` (quyền `0600`, tối đa 20 MiB mỗi tệp). Tệp có nội dung tin nhắn: chỉ bật cho tài khoản thử, xoá tệp và tắt biến khi xong.
 
