@@ -180,6 +180,10 @@ class EventTrace:
         self._size = 0
         self.path = path
 
+    def close(self) -> None:
+        if not self._file.closed:
+            self._file.close()
+
     def write(self, event: Any) -> None:
         if self._file.closed:
             return
@@ -207,6 +211,16 @@ def open_trace(account: str) -> EventTrace | None:
         return None
     log("trace", f"ghi sự kiện thô vào {trace.path}")
     return trace
+
+
+def remove_traces(account: str) -> None:
+    """Xoá các tệp trace của một tài khoản vừa gỡ (tên tài khoản-giờ.jsonl)."""
+    pattern = re.compile(rf"^{re.escape(account)}-\d{{8}}-\d{{6}}\.jsonl$")
+    if not TRACE_DIR.is_dir():
+        return
+    for path in TRACE_DIR.iterdir():
+        if pattern.match(path.name):
+            path.unlink(missing_ok=True)
 
 
 def install_labeled_log() -> None:
@@ -254,10 +268,33 @@ class AccountBot(SimpleBot):
         self._decrypt_watch = DecryptFailureWatch()
         # ID tin thật đã chuyển gateway (chỉ đọc/ghi trên event loop).
         self._arrived_ids: OrderedDict[str, None] = OrderedDict()
+        # Tin báo lỗi giải mã đang chờ (chỉ trên event loop): huỷ khi tài khoản dừng,
+        # kẻo tài khoản vừa gỡ còn gửi tin vào gateway.
+        self._lost_tasks: set[asyncio.Task[None]] = set()
+        self._stopped = False
 
     async def run(self) -> None:
         self._loop = asyncio.get_running_loop()
-        await super().run()
+        try:
+            await super().run()
+        finally:
+            self._shutdown()
+
+    def _shutdown(self) -> None:
+        """Tài khoản dừng: bỏ tin báo lỗi giải mã đang chờ, đóng trace."""
+        self._stopped = True
+        for task in list(self._lost_tasks):
+            task.cancel()
+        if self._trace is not None:
+            self._trace.close()
+
+    def _spawn_undecryptable(self, lost: dict[str, Any]) -> None:
+        """Hẹn đăng tin báo lỗi giải mã (chạy trên event loop)."""
+        if self._stopped:
+            return
+        task = asyncio.create_task(self._forward_undecryptable(lost))
+        self._lost_tasks.add(task)
+        task.add_done_callback(self._lost_tasks.discard)
 
     def _log_connection_status(self, status: dict[str, Any]) -> None:
         """Trạng thái kết nối của thư viện (từ 2.3.4 tự nối lại; gọi từ listener thread)."""
@@ -336,9 +373,7 @@ class AccountBot(SimpleBot):
                         _gateway.post_group_changes(self.account, self, changes), loop
                     )
                 if lost is not None:
-                    asyncio.run_coroutine_threadsafe(
-                        self._forward_undecryptable(lost), loop
-                    )
+                    loop.call_soon_threadsafe(self._spawn_undecryptable, lost)
             except RuntimeError:
                 pass  # loop đã đóng khi đang tắt
         if (
@@ -714,7 +749,11 @@ class AccountManager:
     async def remove(self, name: str) -> None:
         await self.stop(name)
         shutil.rmtree(self.root / name, ignore_errors=True)
-        log("multi", f"Đã gỡ tài khoản {name} và xoá dữ liệu đăng nhập.")
+        # Dữ liệu của tài khoản nằm ngoài thư mục của nó: tin đã nhớ của gateway, trace.
+        if _gateway is not None:
+            _gateway.forget_account(name)
+        remove_traces(name)
+        log("multi", f"Đã gỡ tài khoản {name}, xoá dữ liệu đăng nhập và tin đã nhớ.")
 
     async def handle(
         self, method: str, path: str, body: bytes
