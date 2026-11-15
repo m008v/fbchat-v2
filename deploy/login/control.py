@@ -11,9 +11,9 @@ mỗi phiên để tài khoản sau không nhận nhầm cookie của tài kho�
 target "facebook" (mặc định) ghi cookie cho fb-bot (/data/accounts/<tên>), "fbweb"
 ghi cho agent Fanpage Web (FBWEB_LOGINS_DIR/<tên>, volume riêng; omnichannel D18).
 
-Giao cookie (omi, omnichannel D27: mỗi tài khoản Facebook một pod): với LOGIN_HANDOFF_DIR,
-target "facebook" không ghi vào volume của bot mà vào LOGIN_HANDOFF_DIR/<tên>/config.json (tmpfs,
-0600); gateway lấy một lần rồi đưa vào pod của tài khoản:
+Giao cookie (omi, omnichannel D27: kênh chạy trong pod riêng): với LOGIN_HANDOFF_DIR, cả hai
+target không ghi vào volume nào mà vào LOGIN_HANDOFF_DIR/<tên>/config.json (tmpfs, 0600); gateway
+lấy một lần rồi đưa vào pod (tài khoản Facebook, hoặc pod Fanpage Web của phòng khám):
   POST   /session/cookie {"account": "<tên>"} -> {"cookie": "..."}, rồi xoá; 404 nếu không có
 Không bao giờ in cookie ra log.
 """
@@ -129,14 +129,15 @@ def start(account: str, target: str = "facebook") -> tuple[int, dict[str, Any]]:
         if not running:
             shutil.rmtree(PROFILE_DIR, ignore_errors=True)
             env = {**os.environ, "ACCOUNT": account, "FORCE_LOGIN": "1"}
-            if target == "fbweb":
+            if HANDOFF_DIR is not None:
+                # omi: mọi target giao cookie qua gateway (Fanpage Web: tới pod của phòng khám).
+                env["CONFIG_PATH"] = str(HANDOFF_DIR / account / "config.json")
+            elif target == "fbweb":
                 if not FBWEB_LOGINS_DIR.is_dir():
                     return 501, {
                         "error": "Chưa gắn volume phiên Fanpage Web cho fb-login-ui."
                     }
                 env["CONFIG_PATH"] = str(FBWEB_LOGINS_DIR / account / "config.json")
-            elif HANDOFF_DIR is not None:
-                env["CONFIG_PATH"] = str(HANDOFF_DIR / account / "config.json")
             _proc = subprocess.Popen(
                 [sys.executable, str(SCRIPT)],
                 env=env,

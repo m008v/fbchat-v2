@@ -145,6 +145,25 @@ def test_handoff_keeps_the_cookie_off_the_bot_volume_and_gives_it_once(
     assert not (handoff / "uat.shop2").exists()
 
 
+def test_handoff_also_takes_fanpage_web_logins(
+    fake_login: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # omi: Fanpage Web runs in the clinic's pod, so its login goes through the gateway too,
+    # and no fbweb volume is needed.
+    handoff = tmp_path / "handoff"
+    monkeypatch.setattr(control, "HANDOFF_DIR", handoff)
+    monkeypatch.setattr(control, "FBWEB_LOGINS_DIR", tmp_path / "missing")
+    monkeypatch.setattr(control, "_vnc_ready", lambda: True)
+    status, state = control.start("uat.owner", "fbweb")
+    assert status == 202 and state["target"] == "fbweb"
+    _wait(lambda: (tmp_path / "config_path").exists())
+    assert (tmp_path / "config_path").read_text() == str(
+        handoff / "uat.owner" / "config.json"
+    )
+    fake_login.write_text("1")
+    _wait(lambda: control.snapshot()["status"] == "success")
+
+
 def test_no_handoff_dir_gives_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(control, "HANDOFF_DIR", None)
     assert control.take_cookie("uat.shop2") is None
