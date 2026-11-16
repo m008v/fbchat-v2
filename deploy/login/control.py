@@ -11,10 +11,12 @@ mỗi phiên để tài khoản sau không nhận nhầm cookie của tài kho�
 target "facebook" (mặc định) ghi cookie cho fb-bot (/data/accounts/<tên>), "fbweb"
 ghi cho agent Fanpage Web (FBWEB_LOGINS_DIR/<tên>, volume riêng; omnichannel D18).
 
-Giao cookie (omi, omnichannel D27: mỗi tài khoản Facebook một pod): với LOGIN_HANDOFF_DIR,
+Giao cookie (omi, omnichannel D28: mỗi tài khoản Facebook một container và một volume): với LOGIN_HANDOFF_DIR,
 target "facebook" không ghi vào volume của bot mà vào LOGIN_HANDOFF_DIR/<tên>/config.json (tmpfs,
-0600); gateway lấy một lần rồi đưa vào pod của tài khoản:
+0600); gateway lấy một lần rồi đưa vào container của tài khoản:
   POST   /session/cookie {"account": "<tên>"} -> {"cookie": "..."}, rồi xoá; 404 nếu không có
+Ở chế độ này không nhận target "fbweb": phòng khám không gắn volume phiên Fanpage Web, cookie
+sẽ nằm trong container và mất khi container bị xoá.
 Không bao giờ in cookie ra log.
 """
 
@@ -122,6 +124,10 @@ def snapshot() -> dict[str, Any]:
 
 def start(account: str, target: str = "facebook") -> tuple[int, dict[str, Any]]:
     global _proc
+    if target == "fbweb" and HANDOFF_DIR is not None:
+        return 400, {
+            "error": "Trình duyệt đăng nhập của phòng khám chưa hỗ trợ Fanpage Web."
+        }
     with _lock:
         running = _proc is not None and _proc.poll() is None
         if running and (_state["account"], _state["target"]) != (account, target):

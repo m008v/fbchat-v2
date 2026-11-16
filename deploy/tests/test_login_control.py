@@ -123,7 +123,7 @@ def test_fbweb_target_writes_to_its_own_volume(
 def test_handoff_keeps_the_cookie_off_the_bot_volume_and_gives_it_once(
     fake_login: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # omi (D27): the bot runs in its own pod, so the cookie waits in tmpfs for the gateway.
+    # omi (D28): the bot runs in its own container, so the cookie waits in tmpfs for the gateway.
     handoff = tmp_path / "handoff"
     monkeypatch.setattr(control, "HANDOFF_DIR", handoff)
     monkeypatch.setattr(control, "_vnc_ready", lambda: True)
@@ -148,3 +148,14 @@ def test_handoff_keeps_the_cookie_off_the_bot_volume_and_gives_it_once(
 def test_no_handoff_dir_gives_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(control, "HANDOFF_DIR", None)
     assert control.take_cookie("uat.shop2") is None
+
+
+def test_handoff_refuses_fanpage_web(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A clinic's fb-login has no Fanpage Web volume: the cookie would be lost with the container.
+    monkeypatch.setattr(control, "HANDOFF_DIR", tmp_path / "handoff")
+    monkeypatch.setattr(control, "FBWEB_LOGINS_DIR", tmp_path)
+    status, body = control.start("owner", "fbweb")
+    assert status == 400 and "Fanpage Web" in body["error"]
+    assert control.snapshot()["status"] != "running"

@@ -70,8 +70,8 @@ ACCOUNT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 
 
 def only_account(value: str | None = None) -> str:
-    """Chế độ một tài khoản (omi, D27: mỗi kênh một pod): BOT_ACCOUNT là tài khoản duy nhất bot
-    chạy và nhận lệnh. Trống: mọi tài khoản trong thư mục."""
+    """Chế độ một tài khoản (omi, D28: một container và một volume mỗi tài khoản): BOT_ACCOUNT là
+    tài khoản duy nhất bot chạy và nhận lệnh. Trống: mọi tài khoản trong thư mục. main() đọc một lần."""
     name = (os.environ.get("BOT_ACCOUNT", "") if value is None else value).strip()
     if name and not ACCOUNT_NAME_PATTERN.match(name):
         raise ValueError(f"BOT_ACCOUNT không hợp lệ: {name!r}")
@@ -505,9 +505,8 @@ def set_account_state(name: str, state: str | None) -> None:
         log("multi", f"Không ghi được file health: {error}")
 
 
-def discover_accounts(root: Path, only: str | None = None) -> list[tuple[str, Path]]:
-    """Trả về (tên, thư mục) của mọi tài khoản có config.json, sắp theo tên (chỉ BOT_ACCOUNT nếu có)."""
-    only = only_account() if only is None else only
+def discover_accounts(root: Path, only: str = "") -> list[tuple[str, Path]]:
+    """Trả về (tên, thư mục) của mọi tài khoản có config.json, sắp theo tên (chỉ `only` nếu có)."""
     if not root.is_dir():
         return []
     accounts: list[tuple[str, Path]] = []
@@ -686,12 +685,12 @@ class AccountManager:
     """Chạy/dừng từng tài khoản khi bot đang chạy (trang "Tài khoản kênh")."""
 
     def __init__(
-        self, root: Path, http_client: httpx.AsyncClient, only: str | None = None
+        self, root: Path, http_client: httpx.AsyncClient, only: str = ""
     ) -> None:
         self.root = root
         self.http_client = http_client
         self.tasks: dict[str, asyncio.Task[bool]] = {}
-        self.only = only_account() if only is None else only
+        self.only = only
 
     def start(self, name: str) -> asyncio.Task[bool]:
         task = self.tasks.get(name)
@@ -724,12 +723,11 @@ class AccountManager:
         self.start(name)
 
     def list(self) -> list[dict[str, Any]]:
-        names = {n for n, _ in discover_accounts(self.root, self.only)} | set(
-            _account_states
-        )
         if self.only:
-            # Tài khoản của pod luôn hiện, kể cả khi chưa đăng nhập; không hiện tài khoản khác.
+            # Tài khoản của container luôn hiện, kể cả khi chưa đăng nhập; không hiện tài khoản khác.
             names = {self.only}
+        else:
+            names = {n for n, _ in discover_accounts(self.root)} | set(_account_states)
         # Tên/ảnh chưa tra được lúc khởi động: lấy từ danh bạ LightSpeed đã thấy.
         for profile in _account_profiles.values():
             if (
@@ -815,7 +813,8 @@ class AccountManager:
 
 async def main() -> None:
     install_labeled_log()
-    accounts = discover_accounts(ACCOUNTS_DIR)
+    only = only_account()
+    accounts = discover_accounts(ACCOUNTS_DIR, only)
     log(
         "multi",
         f"Chạy {len(accounts)} tài khoản: "
@@ -828,7 +827,7 @@ async def main() -> None:
             raise RuntimeError(
                 f"Không có tài khoản nào trong {ACCOUNTS_DIR} (cần <tên>/config.json)."
             )
-        manager = AccountManager(ACCOUNTS_DIR, http_client)
+        manager = AccountManager(ACCOUNTS_DIR, http_client, only)
         set_account_state("", None)  # ghi file health ngay cả khi chưa có tài khoản
         if _gateway is not None:
             _gateway.routes = manager.handle
