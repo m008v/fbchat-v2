@@ -94,7 +94,7 @@ def test_login_uses_default_fb4a_token_without_env(monkeypatch):
 
 
 def test_totp_is_generated_locally_and_direct_otp_is_preserved():
-    token = _get_token_2fa_local("JBSWY3DPEHPK3PXP")
+    token = _get_token_2fa_local("JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP")
 
     assert token.isdigit() and len(token) == 6
     assert _get_token_2fa_local("123456") == "123456"
