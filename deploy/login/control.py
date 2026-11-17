@@ -15,8 +15,9 @@ Giao cookie (omi, omnichannel D28: mỗi tài khoản Facebook một container v
 target "facebook" không ghi vào volume của bot mà vào LOGIN_HANDOFF_DIR/<tên>/config.json (tmpfs,
 0600); gateway lấy một lần rồi đưa vào container của tài khoản:
   POST   /session/cookie {"account": "<tên>"} -> {"cookie": "..."}, rồi xoá; 404 nếu không có
-Ở chế độ này không nhận target "fbweb": phòng khám không gắn volume phiên Fanpage Web, cookie
-sẽ nằm trong container và mất khi container bị xoá.
+Ở chế độ này target "fbweb" chỉ nhận khi FBWEB_LOGINS_DIR được đặt rõ (omi-host gắn volume phiên
+Fanpage Web của phòng khám ở đó, omnichannel docs/plan-omi-fbweb-sms.md): thư mục /fbweb có sẵn trong
+image, không gắn volume thì cookie nằm trong container và mất khi container bị xoá.
 Không bao giờ in cookie ra log.
 """
 
@@ -45,6 +46,8 @@ ACCOUNT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 MAX_BODY = 4096
 VNC_PORT = 6080
 FBWEB_LOGINS_DIR = Path(os.environ.get("FBWEB_LOGINS_DIR", "/fbweb"))
+# Đặt rõ FBWEB_LOGINS_DIR: có volume phiên Fanpage Web gắn vào (bắt buộc khi giao cookie).
+FBWEB_MOUNTED = "FBWEB_LOGINS_DIR" in os.environ
 _handoff = os.environ.get("LOGIN_HANDOFF_DIR", "")
 HANDOFF_DIR: Path | None = Path(_handoff) if _handoff else None
 TARGETS = ("facebook", "fbweb")
@@ -124,7 +127,7 @@ def snapshot() -> dict[str, Any]:
 
 def start(account: str, target: str = "facebook") -> tuple[int, dict[str, Any]]:
     global _proc
-    if target == "fbweb" and HANDOFF_DIR is not None:
+    if target == "fbweb" and HANDOFF_DIR is not None and not FBWEB_MOUNTED:
         return 400, {
             "error": "Trình duyệt đăng nhập của phòng khám chưa hỗ trợ Fanpage Web."
         }
