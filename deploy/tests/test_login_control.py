@@ -150,12 +150,38 @@ def test_no_handoff_dir_gives_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     assert control.take_cookie("uat.shop2") is None
 
 
-def test_handoff_refuses_fanpage_web(
+def test_handoff_refuses_fanpage_web_without_its_volume(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # A clinic's fb-login has no Fanpage Web volume: the cookie would be lost with the container.
+    # /fbweb exists in the image: without FBWEB_LOGINS_DIR set (no volume mounted there) the
+    # cookie would be lost with the container.
     monkeypatch.setattr(control, "HANDOFF_DIR", tmp_path / "handoff")
     monkeypatch.setattr(control, "FBWEB_LOGINS_DIR", tmp_path)
+    monkeypatch.setattr(control, "FBWEB_MOUNTED", False)
     status, body = control.start("owner", "fbweb")
     assert status == 400 and "Fanpage Web" in body["error"]
     assert control.snapshot()["status"] != "running"
+
+
+def test_handoff_writes_fanpage_web_to_the_clinics_volume(
+    fake_login: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # omi-host mounts the clinic's Fanpage Web volume and sets FBWEB_LOGINS_DIR: the session goes
+    # there for the clinic's agent, never through the handoff (which is for fb-bot containers).
+    monkeypatch.setattr(control, "_vnc_ready", lambda: True)
+    handoff = tmp_path / "handoff"
+    logins = tmp_path / "fbweb"
+    logins.mkdir()
+    monkeypatch.setattr(control, "HANDOFF_DIR", handoff)
+    monkeypatch.setattr(control, "FBWEB_LOGINS_DIR", logins)
+    monkeypatch.setattr(control, "FBWEB_MOUNTED", True)
+    status, state = control.start("vetgo-test.owner", "fbweb")
+    assert status == 202 and state["target"] == "fbweb"
+    _wait(lambda: (tmp_path / "config_path").exists())
+    assert (tmp_path / "config_path").read_text() == str(
+        logins / "vetgo-test.owner" / "config.json"
+    )
+    fake_login.write_text("1")
+    _wait(lambda: control.snapshot()["status"] == "success")
+    assert not handoff.exists() or not any(handoff.iterdir())
+    assert control.take_cookie("vetgo-test.owner") is None
