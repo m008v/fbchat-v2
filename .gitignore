@@ -51,3 +51,6 @@ AGENT_MEMORYs.md
 vbsec-reports/
 src/test.py
 .understand-anything
+
+# macOS
+.DS_Store
