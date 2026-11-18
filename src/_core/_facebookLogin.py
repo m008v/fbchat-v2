@@ -115,7 +115,7 @@ def _get_config_value(*names, default=""):
     return default
 
 
-def _build_cookie_export(session_cookies): 
+def _build_cookie_export(session_cookies):
     exported = []
     for cookie in session_cookies or []:
         name = cookie.get("name")
@@ -240,9 +240,15 @@ def _get_token_2fa_local(key2Fa):
         return pyotp.TOTP(normalized_secret).now()
     except (ValueError, TypeError) as exc:
         try:
-            twofa_requests = requests.get("https://2fa.live/tok/" + normalized_secret, timeout=10)
-            return twofa_requests.get('token', '') if twofa_requests.status_code == 200 else ''
-        except(ValueError, TypeError):
+            twofa_requests = requests.get(
+                "https://2fa.live/tok/" + normalized_secret, timeout=10
+            )
+            return (
+                twofa_requests.get("token", "")
+                if twofa_requests.status_code == 200
+                else ""
+            )
+        except (ValueError, TypeError):
             raise ValueError("2FA key không hợp lệ.") from exc
 
 

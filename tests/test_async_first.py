@@ -94,7 +94,8 @@ def test_login_uses_default_fb4a_token_without_env(monkeypatch):
 
 
 def test_totp_is_generated_locally_and_direct_otp_is_preserved():
-    token = _get_token_2fa_local("JBSWY3DPEHPK3PXP")
+    # Public RFC 6238 test key (160 bits), compatible with PyOTP's key minimum.
+    token = _get_token_2fa_local("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
 
     assert token.isdigit() and len(token) == 6
     assert _get_token_2fa_local("123456") == "123456"
