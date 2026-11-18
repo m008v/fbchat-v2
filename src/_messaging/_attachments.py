@@ -64,14 +64,15 @@ def _to_send_attachment_type(mime_type: str | None) -> str:
 
 
 def _infer_attachment_type(item: dict[str, Any], mime_type: str | None) -> str:
-    if "gif_id" in item:
-        return "gif"
-    if "image_id" in item:
-        return "image"
-    if "video_id" in item:
-        return "video"
-    if "audio_id" in item:
-        return "audio"
+    attachment_types = {
+        "gif_id": "gif",
+        "image_id": "image",
+        "video_id": "video",
+        "audio_id": "audio",
+    }
+    for key, attachment_type in attachment_types.items():
+        if key in item:
+            return attachment_type
     return _to_send_attachment_type(mime_type)
 
 
