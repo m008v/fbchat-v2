@@ -3,7 +3,7 @@
 The repository keeps the historical ``src/_core``, ``src/_features`` and
 ``src/_messaging`` trees as the editable implementation.  Published wheels,
 however, must expose only the collision-safe ``fbchat_v2`` namespace.  This
-script creates a deterministic source snapshot for that namespace and rewrites
+script creates an ignored build snapshot for that namespace and rewrites
 internal absolute imports so an installed wheel never depends on generic
 top-level packages such as ``_core``.
 """
@@ -20,7 +20,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = PROJECT_ROOT / "src"
-TARGET_ROOT = SOURCE_ROOT / "fbchat_v2"
+TARGET_ROOT = PROJECT_ROOT / "build" / "fbchat_v2"
+TEMPLATE_ROOT = PROJECT_ROOT / "package_templates"
 SOURCE_PACKAGES = ("_core", "_features", "_messaging")
 MANUAL_TARGET_FILES = frozenset(
     {
@@ -89,7 +90,7 @@ def _legacy_imports(source: str, origin: Path) -> list[str]:
 
     invalid: list[str] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module:
+        if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
             root = node.module.partition(".")[0]
             if root in SOURCE_PACKAGES:
                 invalid.append(f"line {node.lineno}: from {node.module}")
@@ -172,6 +173,10 @@ def expected_snapshot() -> dict[Path, str]:
 
     features_init = TARGET_ROOT / "_features" / "__init__.py"
     expected[features_init] = GENERATED_HEADER + FEATURES_INIT
+    for target_path in MANUAL_TARGET_FILES:
+        expected[target_path] = (TEMPLATE_ROOT / target_path.name).read_text(
+            encoding="utf-8", errors="strict"
+        )
     return expected
 
 
@@ -182,7 +187,7 @@ def canonical_package_members(
     if expected is None:
         expected = expected_snapshot()
     paths = set(expected) | set(MANUAL_TARGET_FILES)
-    return frozenset(path.relative_to(SOURCE_ROOT).as_posix() for path in paths)
+    return frozenset(path.relative_to(TARGET_ROOT.parent).as_posix() for path in paths)
 
 
 def is_link_like_stat(mode: int, file_attributes: int = 0) -> bool:
@@ -360,7 +365,7 @@ def main() -> int:
     differences = snapshot_differences(expected)
     if differences:  # pragma: no cover - filesystem failure guard
         raise RuntimeError("Could not synchronize the canonical package")
-    print(f"Synced {len(expected)} files into src/fbchat_v2")
+    print(f"Generated {len(expected)} files in build/fbchat_v2")
     return 0
 
 

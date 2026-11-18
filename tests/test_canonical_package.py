@@ -37,7 +37,7 @@ from scripts.sync_canonical_package import (
 def _legacy_runtime_imports(source: str) -> list[str]:
     imports: list[str] = []
     for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.ImportFrom) and node.module:
+        if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
             if node.module.partition(".")[0] in SOURCE_PACKAGES:
                 imports.append(node.module)
         elif isinstance(node, ast.Import):
@@ -51,6 +51,12 @@ def _legacy_runtime_imports(source: str) -> list[str]:
 
 def test_canonical_snapshot_is_current() -> None:
     assert snapshot_differences() == []
+
+
+def test_generated_package_stays_outside_the_source_tree() -> None:
+    assert not (PROJECT_ROOT / "src" / "fbchat_v2").exists()
+    assert TARGET_ROOT == PROJECT_ROOT / "build" / "fbchat_v2"
+    assert all(path.is_relative_to(TARGET_ROOT) for path in expected_snapshot())
 
 
 @pytest.mark.parametrize("relative_name", [".env", "_core/config.json"])

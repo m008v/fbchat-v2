@@ -79,6 +79,11 @@ python scripts/verify_distribution.py
 Sau khi cài ở chế độ editable, các script trong virtual environment có thể import `fbchat_v2`.
 Không cần đặt `PYTHONPATH=src` hoặc thêm prefix `src.` vào import.
 
+Sửa thư viện trong `src/_core`, `src/_features` và `src/_messaging`. Khi cài hoặc
+build, package `fbchat_v2` được sinh vào `build/fbchat_v2`; thư mục này không
+đưa vào Git. Sau khi sửa source, chạy `python scripts/sync_canonical_package.py`
+hoặc cài editable lại để cập nhật package trước khi thử bot.
+
 ```python
 from fbchat_v2._core._session import dataGetHome
 from fbchat_v2._features._facebook import _search

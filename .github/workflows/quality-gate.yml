@@ -38,17 +38,17 @@ jobs:
       - name: Verify canonical package snapshot
         run: python scripts/sync_canonical_package.py --check
       - name: Compile Python sources
-        run: python -m compileall -q src tests scripts examples
+        run: python -m compileall -q src tests scripts examples package_templates hatch_build.py
       - name: Run Ruff
-        run: ruff check src tests scripts examples
+        run: ruff check src tests scripts examples package_templates hatch_build.py
       - name: Check Python formatting
-        run: black --check src tests scripts examples
+        run: black --check src tests scripts examples package_templates hatch_build.py
       - name: Type-check source and release tooling
         shell: bash
         run: |
           mypy
-          MYPYPATH=src mypy --explicit-package-bases src/fbchat_v2
-          MYPYPATH=src:examples mypy --explicit-package-bases examples
+          MYPYPATH=build mypy --explicit-package-bases build/fbchat_v2
+          MYPYPATH=build:src:examples mypy --explicit-package-bases examples
       - name: Set up Node.js when website source is tracked
         if: ${{ hashFiles('website/script.js') != '' }}
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -124,8 +124,8 @@ jobs:
         shell: bash
         run: |
           python -m pip install --disable-pip-version-check "build==1.5.0" "hatchling==1.32.0" "twine==7.0.0"
-          python scripts/sync_canonical_package.py --check
           python -m build --no-isolation --outdir dist
+          python scripts/sync_canonical_package.py --check
           python -m twine check --strict dist/*
 
           wheel_path="$(find dist -maxdepth 1 -type f -name '*.whl' -print -quit)"

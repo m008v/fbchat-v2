@@ -42,6 +42,7 @@ ALLOWED_SDIST_FILES = frozenset(
         "README.md",
         "README_EN.md",
         "pyproject.toml",
+        "hatch_build.py",
         "PKG-INFO",
         *(f"src/{member}" for member in REQUIRED_WHEEL_MEMBERS),
     }

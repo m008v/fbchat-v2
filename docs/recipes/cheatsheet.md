@@ -443,7 +443,7 @@ Chỉ tại entry point sync hoặc integration chưa có event loop. Trong coro
 
 Chi tiết theo module:
 
-- [`src/fbchat_v2/_core/README.md`](../../src/fbchat_v2/_core/README.md)
-- [`src/fbchat_v2/_features/README.md`](../../src/fbchat_v2/_features/README.md)
-- [`src/fbchat_v2/_messaging/README.md`](../../src/fbchat_v2/_messaging/README.md)
+- [`src/_core/README.md`](../../src/_core/README.md)
+- [`src/_features/README.md`](../../src/_features/README.md)
+- [`src/_messaging/README.md`](../../src/_messaging/README.md)
 - [`bridge-e2ee/README.md`](../../bridge-e2ee/README.md)

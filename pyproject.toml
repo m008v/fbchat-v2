@@ -67,17 +67,24 @@ dev = [
     "ruff>=0.4.0",
 ]
 
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
 [tool.hatch.build.targets.wheel]
+# This path exists in sdists; checkout builds supply files through hatch_build.py.
 packages = ["src/fbchat_v2"]
+dev-mode-dirs = ["build", "src"]
 
 [tool.hatch.build.targets.sdist]
 include = [
+    "/.gitignore",
     "/src/fbchat_v2/**",
     "/README.md",
     "/README_EN.md",
     "/CHANGELOG.md",
     "/LICENSE",
     "/pyproject.toml",
+    "/hatch_build.py",
 ]
 exclude = [
     "**/__pycache__",
@@ -113,6 +120,7 @@ files = [
     "src/_messaging",
     "src/main.py",
     "scripts",
+    "hatch_build.py",
 ]
 
 [tool.pytest.ini_options]
