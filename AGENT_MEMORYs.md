@@ -17,8 +17,15 @@
   build/Twine strict đạt; từng member wheel local khớp production. Cài wheel
   và sdist production trong hai venv mới, verifier và dependency check đạt.
   UTF-8/mojibake, secret và diff được kiểm trước commit.
-- **Việc còn lại:** push pypi, public draft và upload đúng hai artifact;
-  tải lại public registry để xác nhận hash. Không mở Facebook live.
+- **Kết quả phát hành:** commit 0bc402e đã push pypi trước khi public stable
+  GitHub Release 450278464 thành Latest và upload nguyên hai artifact lên PyPI.
+  Registry latest xác nhận 2.3.5; hai file không yanked, tải lại khớp byte GitHub.
+  Wheel SHA-256: 77fcfc3aed1c6726561413e4e5d2947408ee59c1798597645a73ccc64f4221d8.
+  Sdist SHA-256: 3e071bd5e45f9c2b87f4b40636935c1c80ea9f60a825cfcf6980c990a068da70.
+  Fresh install trực tiếp pypi.org/simple, verifier và dependency check 13
+  package đạt. Endpoint version JSON từng cache 404 sau upload; project JSON
+  và Simple JSON xác nhận version/hash đúng, không upload lại để xử lý cache.
+- **Việc còn lại:** không còn bước phát hành 2.3.5; không mở Facebook live.
 
 ## 2026-11-18 — Đồng bộ package sau khi main bỏ source trùng
 
