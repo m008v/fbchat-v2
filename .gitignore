@@ -38,6 +38,7 @@ venv.bak/
 .settings/
 .docs/
 
+.vs/
 *.log
 logs/
 .tmp/
