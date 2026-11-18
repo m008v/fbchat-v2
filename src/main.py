@@ -12,7 +12,7 @@ import sys
 import time
 import traceback
 from collections import deque
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -220,32 +220,37 @@ class SimpleBot:
             self.listener.connect_mqtt(), name="fbchat-e2ee-listener"
         )
         try:
-            while True:
-                ready = await asyncio.to_thread(
-                    self.listener.wait_until_connected,
-                    self.listener.startup_timeout,
-                    require_e2ee=True,
-                )
-                if ready:
-                    break
-                if listener_task.done():
-                    listener_task.result()
-                    raise RuntimeError("E2EE listener đã dừng khi đang khởi động.")
-                if getattr(self.listener, "connection_state", None) == "reconnecting":
-                    log("bot", "Mạng chưa sẵn sàng; listener đang tự nối lại.")
-                    continue
-                raise RuntimeError("E2EE listener chưa sẵn sàng trước timeout.")
+            await self._wait_until_ready(listener_task)
             log("bot", "E2EE listener đã sẵn sàng. Nhấn Ctrl+C để thoát.")
-            while True:
-                if listener_task.done():
-                    listener_task.result()
-                    raise RuntimeError("E2EE listener đã dừng ngoài dự kiến.")
-                event = await self._get_event(timeout=1.0)
-                message = self._message_from_event(event) if event else None
-                if message is not None:
-                    await self._dispatch(message)
+            await self._consume_events(listener_task)
         finally:
             await self._shutdown_listener(listener_task)
+
+    async def _wait_until_ready(self, listener_task: asyncio.Task[None]) -> None:
+        while True:
+            ready = await asyncio.to_thread(
+                self.listener.wait_until_connected,
+                self.listener.startup_timeout,
+                require_e2ee=True,
+            )
+            if ready:
+                return
+            if listener_task.done():
+                listener_task.result()
+                raise RuntimeError("E2EE listener đã dừng khi đang khởi động.")
+            if getattr(self.listener, "connection_state", None) != "reconnecting":
+                raise RuntimeError("E2EE listener chưa sẵn sàng trước timeout.")
+            log("bot", "Mạng chưa sẵn sàng; listener đang tự nối lại.")
+
+    async def _consume_events(self, listener_task: asyncio.Task[None]) -> None:
+        while True:
+            if listener_task.done():
+                listener_task.result()
+                raise RuntimeError("E2EE listener đã dừng ngoài dự kiến.")
+            event = await self._get_event(timeout=1.0)
+            message = self._message_from_event(event) if event else None
+            if message is not None:
+                await self._dispatch(message)
 
     def run_blocking(self) -> None:
         """Wrapper CLI tương thích; trong ứng dụng async hãy await run()."""
@@ -266,7 +271,10 @@ class SimpleBot:
 
     async def _shutdown_listener(self, listener_task: asyncio.Task[None]) -> None:
         """Dừng bridge E2EE và chờ task listener thoát gọn."""
-        await asyncio.to_thread(self.listener.stop)
+        try:
+            await asyncio.to_thread(self.listener.stop)
+        except Exception:
+            log("bot", "Listener stop thất bại; tiếp tục thu dọn task.")
         try:
             await asyncio.wait_for(asyncio.shield(listener_task), timeout=5)
         except asyncio.TimeoutError:
@@ -283,7 +291,7 @@ class SimpleBot:
             raise
         except Exception:
             # Cleanup không được che mất lỗi startup/runtime gốc của run().
-            pass
+            log("bot", "Task listener kết thúc với lỗi trong lúc thu dọn.")
 
     def _forward_listener_event(
         self, loop: asyncio.AbstractEventLoop, event: dict[str, Any]
@@ -397,21 +405,12 @@ class SimpleBot:
             if self.debug_errors:
                 log("recv", "Bỏ qua message do chính tài khoản bot gửi.")
             return
-        body_for_log = (
-            repr(body)
-            if self.log_message_content
-            else f"<redacted length={len(str(body))}>"
-        )
+        body_for_log = self._content_for_log(body)
         log("recv", f"[{message.get('type')}] message nhận được: {body_for_log}")
-        if not str(body).startswith(self.prefix):
+        parsed = self._parse_command(body)
+        if parsed is None:
             return
-
-        command_line = str(body)[len(self.prefix) :].strip()
-        if not command_line:
-            return
-        parts = command_line.split(maxsplit=1)
-        command = parts[0].lower()
-        argument = parts[1] if len(parts) > 1 else ""
+        command, argument = parsed
         handler = self._handlers.get(command)
         if handler is None:
             detail = command if self.log_message_content else "<redacted>"
@@ -435,6 +434,27 @@ class SimpleBot:
                     "bật debug_errors để xem chi tiết.",
                 )
 
+    def _parse_command(self, body: str) -> tuple[str, str] | None:
+        if not body.startswith(self.prefix):
+            return None
+        parts = body[len(self.prefix) :].strip().split(maxsplit=1)
+        if not parts:
+            return None
+        return parts[0].lower(), parts[1] if len(parts) > 1 else ""
+
+    def _content_for_log(self, content: str) -> str:
+        if self.log_message_content:
+            return repr(content)
+        return f"<redacted length={len(content)}>"
+
+    def _log_send_result(
+        self, result: Mapping[str, object], transport: str, content: str
+    ) -> None:
+        if result.get("messageId") or result.get("id"):
+            log("send", f"{transport} gửi thành công: {self._content_for_log(content)}")
+        else:
+            log("send", f"{transport} gửi thất bại; keys={sorted(result)}")
+
     async def _reply(self, message: dict[str, Any], content: str) -> None:
         chat_jid = message.get("chatJid")
         if chat_jid:
@@ -453,14 +473,7 @@ class SimpleBot:
                 return
             if message_id:
                 self._last_bot_message[str(chat_jid)] = (str(chat_jid), str(message_id))
-                content_for_log = (
-                    repr(content)
-                    if self.log_message_content
-                    else f"<redacted length={len(content)}>"
-                )
-                log("send", f"E2EE gửi thành công: {content_for_log}")
-            else:
-                log("send", f"E2EE gửi thất bại; keys={sorted(result)}")
+            self._log_send_result(result, "E2EE", content)
             return
 
         thread_id = message.get("replyToID")
@@ -475,16 +488,7 @@ class SimpleBot:
             content,
             reply_to_id=str(message.get("messageID") or ""),
         )
-        message_id = result.get("messageId") or result.get("id")
-        if message_id:
-            content_for_log = (
-                repr(content)
-                if self.log_message_content
-                else f"<redacted length={len(content)}>"
-            )
-            log("send", f"regular gửi thành công: {content_for_log}")
-        else:
-            log("send", f"regular gửi thất bại; keys={sorted(result)}")
+        self._log_send_result(result, "regular", content)
 
     async def _cmd_ping(self, message: dict[str, Any], argument: str) -> None:
         sent_ts = int(message.get("timestamp") or 0)

@@ -34,6 +34,81 @@ class _RecordingLoop:
         self.calls.append((callback, args))
 
 
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ("ping", None),
+        ("/", None),
+        ("/   ", None),
+        ("/PING", ("ping", "")),
+        ("/ echo   Tiếng Việt  ", ("echo", "Tiếng Việt")),
+        ("/echo một\nhai", ("echo", "một\nhai")),
+    ],
+)
+def test_command_parser_preserves_prefix_case_and_arguments(
+    monkeypatch, mock_dataFB, body, expected
+) -> None:
+    bot = _make_bot(monkeypatch, mock_dataFB)
+    assert bot._parse_command(body) == expected
+
+
+@pytest.mark.asyncio
+async def test_stop_failure_does_not_replace_startup_error(
+    monkeypatch, mock_dataFB
+) -> None:
+    original = RuntimeError("startup failed")
+    logs: list[str] = []
+
+    class Listener:
+        startup_timeout = 0.01
+
+        def on_message(self, callback):
+            return None
+
+        async def connect_mqtt(self):
+            raise original
+
+        def wait_until_connected(self, timeout, *, require_e2ee):
+            raise original
+
+        def stop(self):
+            raise RuntimeError("PRIVATE_STOP_DETAIL")
+
+    monkeypatch.setattr(sample_main, "listeningE2EEEvent", lambda *a, **kw: Listener())
+    monkeypatch.setattr(sample_main, "log", lambda tag, text: logs.append(text))
+    bot = sample_main.SimpleBot(mock_dataFB)
+    with pytest.raises(RuntimeError) as caught:
+        await bot.run()
+    assert caught.value is original
+    assert all("PRIVATE_STOP_DETAIL" not in line for line in logs)
+    assert not [
+        t
+        for t in asyncio.all_tasks()
+        if t.get_name() == "fbchat-e2ee-listener" and not t.done()
+    ]
+
+
+@pytest.mark.asyncio
+async def test_regular_reply_uses_shared_redacted_result_logging(
+    monkeypatch, mock_dataFB
+) -> None:
+    bot = _make_bot(monkeypatch, mock_dataFB)
+    calls = []
+    logs: list[str] = []
+
+    class Listener:
+        async def send_message(self, thread_id, content, *, reply_to_id):
+            calls.append((thread_id, content, reply_to_id))
+            return {"messageId": "reply-1"}
+
+    bot.listener = Listener()
+    monkeypatch.setattr(sample_main, "log", lambda tag, text: logs.append(text))
+    await bot._reply({"replyToID": "42", "messageID": "incoming-1"}, "PRIVATE_REPLY")
+    assert calls == [(42, "PRIVATE_REPLY", "incoming-1")]
+    assert logs == ["regular gửi thành công: <redacted length=13>"]
+    assert bot._last_bot_message == {}
+
+
 def _make_bot(
     monkeypatch: pytest.MonkeyPatch, mock_dataFB: dict[str, Any], **kwargs: Any
 ) -> sample_main.SimpleBot:
