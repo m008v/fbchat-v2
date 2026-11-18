@@ -14,21 +14,11 @@ from fbchat_v2._messaging._listening import listeningEvent
 from fbchat_v2._messaging import _listening_e2ee as e2ee
 
 EXPECTED_BRIDGE_SHA256 = {
-    "fbchat-bridge-e2ee-darwin-amd64": (
-        "f0d7a95eddf21cf0fc96bed33275d8f25e430626f0caba736eed40ff34b98f3b"
-    ),
-    "fbchat-bridge-e2ee-darwin-arm64": (
-        "8eec475a33cbe3b836717e793a5d09827dd331e9b08c14b56c500ca7a4a31d10"
-    ),
-    "fbchat-bridge-e2ee-linux-amd64": (
-        "6de0ce8db4986da2fd471385d63b61a5334084edb78bc6de2f53ecea6500189d"
-    ),
-    "fbchat-bridge-e2ee-linux-arm64": (
-        "4d61087632c2c157294502265cb1e8807c0c5ac9c3d8addca2c109dd1eec1544"
-    ),
-    "fbchat-bridge-e2ee-windows-amd64.exe": (
-        "dd304ef952eccfabae8c7c1f6dce71decc1ed0bf275f5aec59e155460fe235e3"
-    ),
+    "fbchat-bridge-e2ee-darwin-amd64": "1514c1983cbe93b7d4a8ce6bb8b34863061b5ab05a45644707fba74a5fed19e5",
+    "fbchat-bridge-e2ee-darwin-arm64": "2917a276fb73199aba54ca95d093d8ad3f34f9cd3f969b1ab0d81f6c04c8e21d",
+    "fbchat-bridge-e2ee-linux-amd64": "cab46a9b9c6348246f2097464430c4eff61953396dbb463d8f46fab9fc9e48e0",
+    "fbchat-bridge-e2ee-linux-arm64": "c52a034d264acf964fcb6bb484e783393ec043f4c3c04b89f3ad83ab813ea700",
+    "fbchat-bridge-e2ee-windows-amd64.exe": "2c35925507e3fdf58379c4845132d8833ede3c93a04ded578dfb0faf90549523",
 }
 
 
@@ -69,7 +59,7 @@ class _StreamResponse:
 
 
 def test_public_namespace_and_version_are_stable() -> None:
-    assert fbchat_v2.__version__ == version("fbchat-v2") == "2.3.4"
+    assert fbchat_v2.__version__ == version("fbchat-v2") == "2.3.5"
     assert callable(_unFriend.func)
 
 
@@ -107,10 +97,10 @@ def test_explicit_reconnect_policy_requires_structured_bridge_status(
     bridge._reconnect_policy = fbchat_v2.ReconnectPolicy()
     hello = {
         "protocolVersion": 1,
-        "bridgeVersion": "2.3.4",
+        "bridgeVersion": "2.3.5",
         "capabilities": sorted(e2ee._BRIDGE_REQUIRED_CAPABILITIES),
     }
-    monkeypatch.setattr(e2ee, "BRIDGE_RELEASE_VERSION", "2.3.4")
+    monkeypatch.setattr(e2ee, "BRIDGE_RELEASE_VERSION", "2.3.5")
     monkeypatch.setattr(bridge, "call_blocking", lambda *args, **kwargs: hello)
 
     with pytest.raises(e2ee.BridgeError, match="structuredConnectionStatus"):
@@ -139,13 +129,13 @@ def test_blocking_sequence_refresh_never_calls_async_transport(monkeypatch) -> N
 
 def test_release_bridge_checksums_are_bound(monkeypatch: pytest.MonkeyPatch) -> None:
     assert e2ee._BRIDGE_RELEASE_REPOSITORY == "m008v/fbchat-v2"
-    assert e2ee.BRIDGE_RELEASE_VERSION == "2.3.4"
+    assert e2ee.BRIDGE_RELEASE_VERSION == "2.3.5"
     assert e2ee.BRIDGE_SHA256 == EXPECTED_BRIDGE_SHA256
 
     binary_name = "fbchat-bridge-e2ee-windows-amd64.exe"
-    monkeypatch.setattr(e2ee, "_PACKAGE_VERSION", "2.3.4")
+    monkeypatch.setattr(e2ee, "_PACKAGE_VERSION", "2.3.5")
     assert e2ee._release_version_and_digest(binary_name) == (
-        "2.3.4",
+        "2.3.5",
         EXPECTED_BRIDGE_SHA256[binary_name],
     )
 
@@ -157,7 +147,7 @@ def test_namespaced_checkout_resolves_source_and_installed_paths(
     module_path.parent.mkdir(parents=True)
     module_path.touch()
     (tmp_path / "pyproject.toml").write_text(
-        '[project]\nname = "fbchat-v2"\nversion = "2.3.4"\n', encoding="utf-8"
+        '[project]\nname = "fbchat-v2"\nversion = "2.3.5"\n', encoding="utf-8"
     )
 
     monkeypatch.setattr(e2ee, "__file__", str(module_path))
@@ -166,26 +156,26 @@ def test_namespaced_checkout_resolves_source_and_installed_paths(
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "cache"))
 
     assert e2ee._is_source_checkout() is True
-    assert e2ee._expected_package_version() == "2.3.4"
+    assert e2ee._expected_package_version() == "2.3.5"
     assert e2ee._default_binary_path() == (
         tmp_path / "build" / "fbchat-bridge-e2ee.exe"
     )
 
-    monkeypatch.setattr(e2ee, "_PACKAGE_VERSION", "2.3.4")
+    monkeypatch.setattr(e2ee, "_PACKAGE_VERSION", "2.3.5")
     assert e2ee._release_version_and_digest("fbchat-bridge-e2ee-windows-amd64.exe") == (
-        "2.3.4",
+        "2.3.5",
         EXPECTED_BRIDGE_SHA256["fbchat-bridge-e2ee-windows-amd64.exe"],
     )
 
     (tmp_path / "pyproject.toml").unlink()
     assert e2ee._is_source_checkout() is False
-    assert e2ee._expected_package_version() == "2.3.4"
+    assert e2ee._expected_package_version() == "2.3.5"
     assert e2ee._default_binary_path() == (
         tmp_path
         / "cache"
         / "fbchat-v2"
         / "bridge"
-        / "v2.3.4"
+        / "v2.3.5"
         / "fbchat-bridge-e2ee.exe"
     )
 
@@ -193,7 +183,7 @@ def test_namespaced_checkout_resolves_source_and_installed_paths(
 def test_download_bridge_accepts_canonical_release_owner(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    version_number = "2.3.4"
+    version_number = "2.3.5"
     binary_name = "fbchat-bridge-e2ee-windows-amd64.exe"
     content = b"verified bridge payload"
     expected_digest = hashlib.sha256(content).hexdigest()

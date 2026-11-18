@@ -1,5 +1,25 @@
 # Agent Memories
 
+## 2026-11-18 — Đồng bộ source phát hành 2.3.5
+
+- **Mục tiêu:** cập nhật nhánh pypi từ release v2.3.5 đã xác minh, rồi public
+  GitHub và upload đúng artifact lên PyPI theo kế hoạch được m008v duyệt.
+- **Đã thực hiện:** lấy 55 file package và ba tài liệu gốc từ sdist của draft
+  release 450278464, source ec26e54c550d99aab31c666e5e2865794527bdf2. Cả
+  58/58 file khớp byte; cập nhật metadata, PACKAGING và fixture năm hash mới.
+  Giữ cấu hình package-only, MANIFEST.in và mypy riêng; không merge main.
+- **Quyết định kỹ thuật:** version stable 2.3.5 thay cho tên alpha ban đầu.
+  Checksum bridge lấy từ artifact mới, không giữ hash 2.3.4 hoặc placeholder.
+  Build local chỉ kiểm thử; upload sẽ dùng nguyên wheel/sdist GitHub đã tải.
+- **Kiểm tra:** release workflow 44350683239 success, đủ chín asset khớp API
+  digest và hai manifest; embedded checksum và native Windows RPC đạt.
+  PyPI checkout 7/7 test offline, Ruff, Black, mypy 46 file, compileall,
+  build/Twine strict đạt; từng member wheel local khớp production. Cài wheel
+  và sdist production trong hai venv mới, verifier và dependency check đạt.
+  UTF-8/mojibake, secret và diff được kiểm trước commit.
+- **Việc còn lại:** push pypi, public draft và upload đúng hai artifact;
+  tải lại public registry để xác nhận hash. Không mở Facebook live.
+
 ## 2026-11-18 — Đồng bộ package sau khi main bỏ source trùng
 
 - **Mục tiêu:** cập nhật checkout fbchat-v2-pypi và push nhánh pypi theo main;

@@ -18,6 +18,6 @@ File liên quan:
 Author: @m008v (MinhHuyDev)
 """
 
-__version__ = "2.3.4"
+__version__ = "2.3.5"
 
 __all__ = ["_session", "_utils", "_facebookLogin", "__version__"]

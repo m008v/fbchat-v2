@@ -7,7 +7,7 @@
 [![Status](https://img.shields.io/badge/status-active-22c55e)](https://github.com/m008v/fbchat-v2)
 [![PyPI](https://img.shields.io/pypi/v/fbchat-v2?color=3775A9&logo=pypi&logoColor=white)](https://pypi.org/project/fbchat-v2/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-2.3.4-blue)](https://github.com/m008v/fbchat-v2/releases)
+[![Version](https://img.shields.io/badge/version-2.3.5-blue)](https://github.com/m008v/fbchat-v2/releases)
 [![Issues](https://img.shields.io/github/issues/m008v/fbchat-v2?color=orange)](https://github.com/m008v/fbchat-v2/issues)
 [![License](https://img.shields.io/badge/license-See%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
@@ -20,7 +20,7 @@
 
 
 > [!IMPORTANT]
-> Version 2.3.4 uses `async/await`. If you're upgrading from an older version, update your function calls using the examples below. To keep using the synchronous API, use [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4).
+> Version 2.3.5 uses `async/await`. If you're upgrading from an older version, update your function calls using the examples below. To keep using the synchronous API, use [v2.1.4](https://github.com/m008v/fbchat-v2/tree/v2.1.4).
 
 > [!WARNING]
 > This is not an official Facebook product. For the official chatbot API, see [Messenger Platform](https://developers.facebook.com/docs/messenger-platform/). `fbchat-v2` uses personal Facebook accounts and session cookies, which carries risks for your session credentials and account. Consider those risks before using it.
@@ -36,7 +36,7 @@ I'm MinhHuyDev (`m008v`), the author and maintainer of this project.
 Version 2.3.4 adds MQTT/E2EE reconnect support: network retries, separate
 authentication failures, and connection-state callbacks.
 See the [configuration guide](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/e2ee.md#tự-nối-lại).
-E2EE requires the 2.3.4 bridge; the wrapper rejects older binaries without the reconnect contract.
+E2EE requires the 2.3.5 bridge; the wrapper rejects older binaries without the reconnect contract.
 
 Thanks to everyone who has shared ideas and reported bugs. This is an unofficial API, so features can break when Facebook changes. If you run into a problem, open an issue on [GitHub](https://github.com/m008v/fbchat-v2/issues) with reproduction steps and redacted logs, or reach me on [Telegram](https://t.me/MinhHuyDev).
 
@@ -311,9 +311,9 @@ The first build may take a few minutes and about 300 MB of Go module cache. Afte
 ```bash
 cd ..
 # Windows
-python scripts/smoke_bridge_rpc.py .\build\fbchat-bridge-e2ee.exe --expected-version 2.3.4
+python scripts/smoke_bridge_rpc.py .\build\fbchat-bridge-e2ee.exe --expected-version 2.3.5
 # Linux/macOS
-python scripts/smoke_bridge_rpc.py ./build/fbchat-bridge-e2ee --expected-version 2.3.4
+python scripts/smoke_bridge_rpc.py ./build/fbchat-bridge-e2ee --expected-version 2.3.5
 ```
 
 If the binary is not in the default location, set the environment variable:
@@ -622,7 +622,7 @@ ruff check src tests scripts
 black --check src tests scripts
 mypy
 python -m build --wheel
-python scripts/verify_distribution.py dist/fbchat_v2-2.3.4-py3-none-any.whl
+python scripts/verify_distribution.py dist/fbchat_v2-2.3.5-py3-none-any.whl
 git diff --check
 ```
 

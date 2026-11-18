@@ -43,6 +43,28 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
   khoảng trắng thừa đầu hero, CSS variable thiếu, V2 badge bị ẩn và layout
   contributor/preloader trên màn hình nhỏ.
 
+## [2.3.5] - 2026-11-18
+
+### Added
+
+- Thêm ba ví dụ tăng dần độ khó trong `examples/`: echo, quản lý nhóm với
+  poll bằng tin nhắn và E2EE có Go bridge.
+
+### Changed
+
+- Chia DOCS.md thành năm trang theo tác vụ trong `docs/`, cập nhật link Việt/Anh.
+- Refactor bot mẫu `src/main.py` và suy luận loại attachment bằng mapping,
+  giữ nguyên thứ tự ưu tiên và fallback MIME.
+- Sinh namespace package vào `build/fbchat_v2` khi cài/build, bỏ source trùng
+  khỏi main; public imports và layout wheel không đổi.
+- Nâng Go lên 1.26.11, brotli 1.2.7, compress 1.20.2 và x/net 0.62.0 để vá
+  các lỗ hổng dependency được CI phát hiện.
+
+### Fixed
+
+- Sửa fixture TOTP quá ngắn bị PyOTP 2.12 từ chối; giữ fallback 2FA hiện có.
+- Bỏ cache IDE khỏi Git và bổ sung rule ignore cho cache công cụ phát triển.
+
 ## [2.3.4] - 2026-10-21
 
 ### Added
