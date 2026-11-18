@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/license-See%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
 
-[🇻🇳 Tiếng Việt](README.md) · [📖 Documentation](DOCS.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Flowchart](FLOWCHART.md) · [🐛 Report bugs](https://github.com/m008v/fbchat-v2/issues)
+[🇻🇳 Tiếng Việt](README.md) · [📖 Documentation](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Flowchart](FLOWCHART.md) · [🐛 Report bugs](https://github.com/m008v/fbchat-v2/issues)
 
 </div>
 
@@ -35,7 +35,7 @@ I'm MinhHuyDev (`m008v`), the author and maintainer of this project.
 
 Version 2.3.4 adds MQTT/E2EE reconnect support: network retries, separate
 authentication failures, and connection-state callbacks.
-See the [configuration guide](DOCS.md#tự-nối-lại).
+See the [configuration guide](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/e2ee.md#tự-nối-lại).
 E2EE requires the 2.3.4 bridge; the wrapper rejects older binaries without the reconnect contract.
 
 Thanks to everyone who has shared ideas and reported bugs. This is an unofficial API, so features can break when Facebook changes. If you run into a problem, open an issue on [GitHub](https://github.com/m008v/fbchat-v2/issues) with reproduction steps and redacted logs, or reach me on [Telegram](https://t.me/MinhHuyDev).
@@ -174,7 +174,7 @@ fbchat-v2/
 │   └── README.md
 ├── build/                            # Local bridge binary
 ├── tests/                            # Unit and async contract tests
-├── DOCS.md                           # Full API guide
+├── docs/                             # Full API guide
 ├── FLOWCHART.md                      # Runtime flow
 ├── mindmap-mermaid.md                # Codebase map
 ├── CHANGELOG.md
@@ -591,7 +591,11 @@ The bot queue holds up to 1000 events and drops the oldest event when full. This
 
 | Documentation | Content |
 |---|---|
-| [DOCS.md](DOCS.md) | Full API and workflow guide |
+| [Getting started](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md) | Installation, sessions and the sample bot (Vietnamese) |
+| [Standard messaging](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/standard.md) | Send/receive, attachments, reactions and Notes (Vietnamese) |
+| [E2EE](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/e2ee.md) | Bridge, readiness, reconnect and testing (Vietnamese) |
+| [Facebook actions](https://github.com/m008v/fbchat-v2/blob/main/docs/features/facebook-actions.md) | Posts, users and group management (Vietnamese) |
+| [Cheatsheet](https://github.com/m008v/fbchat-v2/blob/main/docs/recipes/cheatsheet.md) | Timeouts, migration and troubleshooting (Vietnamese) |
 | [Core](src/fbchat_v2/_core/README.md) | Session, HTTP, storage, and login |
 | [Features](src/fbchat_v2/_features/README.md) | Facebook features and threads |
 | [Messaging](src/fbchat_v2/_messaging/README.md) | Send, listener, attachment, and E2EE |

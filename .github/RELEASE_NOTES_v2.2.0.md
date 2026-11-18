@@ -265,7 +265,7 @@ go vet ./...
 
 - 📖 README: [README.md](../README.md)
 - 🌐 README English: [README_EN.md](../README_EN.md)
-- 📚 Docs: [DOCS.md](../DOCS.md)
+- 📚 Docs: [DOCS.md](../docs/getting-started/quickstart.md)
 - 📊 Flowchart: [FLOWCHART.md](../FLOWCHART.md)
 - 🧩 Messaging docs: [src/_messaging/README.md](../src/_messaging/README.md)
 - 🌉 Bridge docs: [bridge-e2ee/README.md](../bridge-e2ee/README.md)

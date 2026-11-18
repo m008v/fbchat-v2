@@ -49,7 +49,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/m008v/fbchat-v2"
-Documentation = "https://github.com/m008v/fbchat-v2/blob/main/DOCS.md"
+Documentation = "https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md"
 Repository = "https://github.com/m008v/fbchat-v2"
 Issues = "https://github.com/m008v/fbchat-v2/issues"
 Changelog = "https://github.com/m008v/fbchat-v2/blob/main/CHANGELOG.md"

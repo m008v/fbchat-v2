@@ -1,6 +1,6 @@
 # fbchat-v2 - Sơ đồ luồng async
 
-[README](README.md) | [Tài liệu API](DOCS.md) | [Mindmap](mindmap-mermaid.md)
+[README](README.md) | [Tài liệu API](docs/getting-started/quickstart.md) | [Mindmap](mindmap-mermaid.md)
 
 Các sơ đồ dưới đây mô tả đường đi của dữ liệu khi ứng dụng chạy. Worker thread được dùng ở những chỗ gọi thư viện blocking; các feature HTTP chạy async qua `httpx`.
 

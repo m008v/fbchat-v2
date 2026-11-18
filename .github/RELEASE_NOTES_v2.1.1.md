@@ -1,6 +1,6 @@
 ## fbchat-v2 v2.1.1 - Phân phối qua PyPI
 
-> Đây là ghi chú phát hành của v2.1.1. Khi dùng phiên bản mới, xem [`README.md`](../README.md) và [`DOCS.md`](../DOCS.md) để biết API async hiện hành.
+> Đây là ghi chú phát hành của v2.1.1. Khi dùng phiên bản mới, xem [`README.md`](../README.md) và [`DOCS.md`](../docs/getting-started/quickstart.md) để biết API async hiện hành.
 
 > Bản vá này cập nhật tài liệu và cách phân phối, không thay đổi runtime hoặc API.
 > Từ v2.1.1, có thể cài trực tiếp qua PyPI:
@@ -65,7 +65,7 @@ Người dùng E2EE (`_listening_e2ee.py`) vẫn cần bridge Go - xem
 ### 🔗 Liên kết
 
 - 📦 PyPI: https://pypi.org/project/fbchat-v2/
-- 📖 Docs: [DOCS.md](../DOCS.md)
+- 📖 Docs: [DOCS.md](../docs/getting-started/quickstart.md)
 - 📊 Flowchart: [FLOWCHART.md](../FLOWCHART.md)
 - 📋 Changelog: [CHANGELOG.md](../CHANGELOG.md)
 - 🐛 Báo lỗi: https://github.com/m008v/fbchat-v2/issues

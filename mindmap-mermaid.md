@@ -1,6 +1,6 @@
 # fbchat-v2 - Mindmap kiến trúc async
 
-[README](README.md) | [Tài liệu API](DOCS.md) | [Flowchart](FLOWCHART.md)
+[README](README.md) | [Tài liệu API](docs/getting-started/quickstart.md) | [Flowchart](FLOWCHART.md)
 
 ```mermaid
 mindmap
@@ -154,4 +154,4 @@ mindmap
       Changelog
 ```
 
-Mindmap cho biết mỗi phần phụ trách việc gì, không mô tả từng lời gọi hàm. Xem [FLOWCHART.md](FLOWCHART.md) để theo dõi luồng chạy và [DOCS.md](DOCS.md) để tra chữ ký API.
+Mindmap cho biết mỗi phần phụ trách việc gì, không mô tả từng lời gọi hàm. Xem [FLOWCHART.md](FLOWCHART.md) để theo dõi luồng chạy và [tài liệu API](docs/getting-started/quickstart.md) để tra chữ ký API.

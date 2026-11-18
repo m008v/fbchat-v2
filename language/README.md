@@ -9,7 +9,7 @@ Tài liệu tổng quan và module có bản tiếng Việt và tiếng Anh:
 | Features | [`../src/_features/README.md`](../src/_features/README.md) | [`../src/_features/README_EN.md`](../src/_features/README_EN.md) |
 | Messaging | [`../src/_messaging/README.md`](../src/_messaging/README.md) | [`../src/_messaging/README_EN.md`](../src/_messaging/README_EN.md) |
 
-[`../DOCS.md`](../DOCS.md) là tài liệu API chi tiết bằng tiếng Việt. [`../FLOWCHART.md`](../FLOWCHART.md) và [`../mindmap-mermaid.md`](../mindmap-mermaid.md) mô tả kiến trúc bằng Mermaid.
+[Tài liệu API](../docs/getting-started/quickstart.md) viết bằng tiếng Việt. [`../FLOWCHART.md`](../FLOWCHART.md) và [`../mindmap-mermaid.md`](../mindmap-mermaid.md) mô tả kiến trúc bằng Mermaid.
 
 ## 📏 Quy tắc cập nhật
 

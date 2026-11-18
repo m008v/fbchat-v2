@@ -1,6 +1,6 @@
 # CLAUDE.md - Hướng dẫn codebase fbchat-v2 cho contributor và coding agent
 
-File này cung cấp context triển khai. Tài liệu cho người dùng nằm ở `README.md`, `README_EN.md` và `DOCS.md`.
+File này cung cấp context triển khai. Tài liệu cho người dùng nằm ở `README.md`, `README_EN.md` và `docs/`.
 
 ## 📌 Tóm tắt bắt buộc
 
@@ -51,7 +51,7 @@ fbchat-v2/
 ├── tests/
 ├── README.md
 ├── README_EN.md
-├── DOCS.md
+├── docs/
 ├── FLOWCHART.md
 └── pyproject.toml
 ```
@@ -496,7 +496,7 @@ Khi đổi RPC:
 |---|---|
 | `README.md` | User Việt |
 | `README_EN.md` | User English |
-| `DOCS.md` | API/workflow đầy đủ |
+| `docs/` | API/workflow đầy đủ |
 | `src/_core/README*.md` | Core contributor/user |
 | `src/_features/README*.md` | Feature contributor/user |
 | `src/_messaging/README*.md` | Messaging/E2EE contributor/user |

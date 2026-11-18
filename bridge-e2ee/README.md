@@ -429,7 +429,7 @@ Memory-only không tự ghi key hoặc pair device mới: listener dừng với 
 của server; ứng dụng vẫn phải theo dõi queue drop/khoảng trống dữ liệu.
 
 Ứng dụng cần theo dõi `connection_status`, listener task và lỗi terminal.
-Xem [ReconnectPolicy](../DOCS.md#tự-nối-lại--source-chưa-phát-hành) để cấu hình.
+Xem [ReconnectPolicy](../docs/messaging/e2ee.md#tự-nối-lại) để cấu hình.
 
 Shutdown Python:
 

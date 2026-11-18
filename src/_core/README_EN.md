@@ -3,7 +3,7 @@
 > Session management, HTTP transport, cookie storage, and login for `fbchat-v2`.
 
 [![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-0b8ecf?style=flat-square)](README.md)
-[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
+[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md)
 
 ## 📋 Contents
 

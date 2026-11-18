@@ -1,6 +1,6 @@
 # fbchat-v2 v2.1.0 - Listener E2EE cho Messenger
 
-> Đây là ghi chú phát hành của v2.1.0. Ví dụ bên dưới đã được chuyển sang API async ở lần cập nhật tài liệu sau đó. Khi dùng phiên bản mới, xem [`README.md`](../README.md) và [`DOCS.md`](../DOCS.md).
+> Đây là ghi chú phát hành của v2.1.0. Ví dụ bên dưới đã được chuyển sang API async ở lần cập nhật tài liệu sau đó. Khi dùng phiên bản mới, xem [`README.md`](../README.md) và [`DOCS.md`](../docs/getting-started/quickstart.md).
 
 > *Release date: 2026-05-12*
 

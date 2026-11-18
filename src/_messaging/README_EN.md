@@ -3,7 +3,7 @@
 > Send and receive messages, handle attachments and reactions, manage themes and notes, and use Messenger E2EE.
 
 [![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-0b8ecf?style=flat-square)](README.md)
-[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
+[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md)
 [![E2EE bridge](https://img.shields.io/badge/E2EE-bridge-ff6b35?style=flat-square)](../../bridge-e2ee/README.md)
 
 ## 📋 Contents
@@ -506,7 +506,7 @@ socket reconnection. With `e2ee_memory_only=True`, a process crash reports
 `device_state_lost` instead of pairing a new device; use `e2ee_memory_only=False`
 and a dedicated `device_path` to retain state across processes.
 Monitor `connection_status`, the listener task, and `bridge_fatal`; see
-[DOCS](../../DOCS.md#tự-nối-lại--source-chưa-phát-hành) for configuration.
+[DOCS](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/e2ee.md#tự-nối-lại) for configuration.
 
 ---
 

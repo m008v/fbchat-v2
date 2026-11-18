@@ -1,6 +1,6 @@
 ### fbchat-v2 v2.1.4 - Đóng gói và tự tải E2EE bridge
 
-> Đây là ghi chú phát hành của v2.1.4. Khi dùng phiên bản mới, xem [`README.md`](../README.md) và [`DOCS.md`](../DOCS.md) để biết API async hiện hành.
+> Đây là ghi chú phát hành của v2.1.4. Khi dùng phiên bản mới, xem [`README.md`](../README.md) và [`DOCS.md`](../docs/getting-started/quickstart.md) để biết API async hiện hành.
 
 `v2.1.4` chuyển cấu hình đóng gói sang `pyproject.toml` và thêm cơ chế tải E2EE bridge khi máy chưa có binary.
 

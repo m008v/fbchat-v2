@@ -4,7 +4,7 @@
 > Gửi và nhận tin nhắn, xử lý tệp đính kèm, cảm xúc, theme, notes và E2EE trên Messenger.
 
 [![English](https://img.shields.io/badge/English-0b8ecf?style=flat-square)](README_EN.md)
-[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
+[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md)
 [![Bridge E2EE](https://img.shields.io/badge/Bridge-E2EE-ff6b35?style=flat-square)](../../bridge-e2ee/README.md)
 
 ## 📋 Mục lục
@@ -575,7 +575,7 @@ Socket Go tự nối lại khi process còn khỏe. Với `e2ee_memory_only=True
 process báo `device_state_lost` thay vì tự pair device mới; muốn giữ state qua
 process mới, chọn `e2ee_memory_only=False` cùng `device_path` riêng.
 Theo dõi `connection_status`, listener task và `bridge_fatal`; xem cấu hình
-chi tiết trong [DOCS](../../DOCS.md#tự-nối-lại--source-chưa-phát-hành).
+chi tiết trong [DOCS](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/e2ee.md#tự-nối-lại).
 
 ---
 

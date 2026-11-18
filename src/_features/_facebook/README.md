@@ -3,7 +3,7 @@
 > Thao tác với bài viết, trang cá nhân, bạn bè và Marketplace bằng `dataFB` và transport `httpx` async.
 
 [![English](https://img.shields.io/badge/English-0b8ecf?style=flat-square)](README_EN.md)
-[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../../DOCS.md)
+[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md)
 
 ---
 

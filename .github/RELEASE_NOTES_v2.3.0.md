@@ -167,6 +167,6 @@ thật vẫn phải được xác minh sau khi tạo tag và chạy release work
 
 - [README tiếng Việt](../README.md)
 - [README English](../README_EN.md)
-- [Hướng dẫn sử dụng](../DOCS.md)
+- [Hướng dẫn sử dụng](../docs/getting-started/quickstart.md)
 - [E2EE bridge](../bridge-e2ee/README.md)
 - [Changelog](../CHANGELOG.md)
