@@ -592,6 +592,7 @@ The bot queue holds up to 1000 events and drops the oldest event when full. This
 | Documentation | Content |
 |---|---|
 | [Getting started](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md) | Installation, sessions and the sample bot (Vietnamese) |
+| [Examples](https://github.com/m008v/fbchat-v2/blob/main/examples/README.md) | Basic echo, group management and E2EE (instructions in Vietnamese) |
 | [Standard messaging](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/standard.md) | Send/receive, attachments, reactions and Notes (Vietnamese) |
 | [E2EE](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/e2ee.md) | Bridge, readiness, reconnect and testing (Vietnamese) |
 | [Facebook actions](https://github.com/m008v/fbchat-v2/blob/main/docs/features/facebook-actions.md) | Posts, users and group management (Vietnamese) |

@@ -585,6 +585,7 @@ Queue của bot chứa tối đa 1000 event và bỏ event cũ nhất khi đầy
 | Tài liệu | Nội dung |
 |---|---|
 | [Bắt đầu](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md) | Cài đặt, tạo session và chạy bot mẫu |
+| [Ví dụ tăng dần độ khó](https://github.com/m008v/fbchat-v2/blob/main/examples/README.md) | Echo cơ bản, quản lý nhóm và E2EE |
 | [Tin nhắn thường](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/standard.md) | Gửi/nhận, attachment, reaction và Notes |
 | [E2EE](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/e2ee.md) | Bridge, readiness, reconnect và kiểm thử |
 | [Thao tác Facebook](https://github.com/m008v/fbchat-v2/blob/main/docs/features/facebook-actions.md) | Bài viết, user và quản lý nhóm |

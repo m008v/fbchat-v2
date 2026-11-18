@@ -7,6 +7,7 @@ Trong trang này:
 - [Cài package và kiểm tra session](#cài-package-và-kiểm-tra-session)
 - [Làm việc với source](#làm-việc-với-source)
 - [Tạo session và `dataFB`](#tạo-session-và-datafb)
+- [Chọn bot mẫu](#chọn-bot-mẫu)
 - [Bot mẫu `src/main.py`](#bot-mẫu-srcmainpy)
 - [Session storage](#session-storage)
 
@@ -141,6 +142,14 @@ logger.debug("session=%r", data_fb)
 logger.info("Facebook session ready for uid=%s", data_fb["FacebookID"])
 ```
 
+
+## Chọn bot mẫu
+
+Bắt đầu với [echo cơ bản](../../examples/01_echo_bot.py), rồi thử
+[quản lý nhóm](../../examples/02_group_manager.py) hoặc
+[E2EE có Go bridge](../../examples/03_e2ee_bot.py).
+[Hướng dẫn chạy](../../examples/README.md) ghi các biến môi trường và lệnh cho
+từng mẫu. Mẫu echo có dưới 20 dòng; phần kết nối/cleanup dùng chung ở `_common.py`.
 
 ## Bot mẫu `src/main.py`
 

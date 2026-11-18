@@ -38,16 +38,17 @@ jobs:
       - name: Verify canonical package snapshot
         run: python scripts/sync_canonical_package.py --check
       - name: Compile Python sources
-        run: python -m compileall -q src tests scripts
+        run: python -m compileall -q src tests scripts examples
       - name: Run Ruff
-        run: ruff check src tests scripts
+        run: ruff check src tests scripts examples
       - name: Check Python formatting
-        run: black --check src tests scripts
+        run: black --check src tests scripts examples
       - name: Type-check source and release tooling
         shell: bash
         run: |
           mypy
           MYPYPATH=src mypy --explicit-package-bases src/fbchat_v2
+          MYPYPATH=src:examples mypy --explicit-package-bases examples
       - name: Set up Node.js when website source is tracked
         if: ${{ hashFiles('website/script.js') != '' }}
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
