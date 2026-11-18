@@ -39,6 +39,17 @@ venv.bak/
 .docs/
 
 .vs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.venv*/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
 *.log
 logs/
 .tmp/
