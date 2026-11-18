@@ -1,5 +1,17 @@
 # Agent Memories
 
+## 2026-11-18 — Rà cache và đồng bộ ignore với main
+
+- Mục tiêu: bỏ cache khỏi Git nếu còn, đồng bộ rule ignore và giữ file cục bộ.
+- Đã thực hiện: rà tracked paths và tracked-but-ignored; không tìm thấy cache
+  hoặc artifact thông dụng đang được track. Bổ sung rule Visual Studio, IDE,
+  Hypothesis/tox/nox, coverage, venv, log, database và công cụ cục bộ từ main.
+- Quyết định kỹ thuật: giữ rule riêng cho package, artifact và config runtime;
+  giữ AGENT_MEMORYs.md đang được track để lưu lịch sử kỹ thuật của nhánh pypi.
+- Kiểm tra: ignore probes, tracked cache scan, diff và UTF-8/mojibake;
+  không đổi source, metadata, dependency hoặc artifact phát hành.
+- Việc còn lại: không sửa lịch sử Git, không xóa file trên máy.
+
 ## 2026-10-21 — Đồng bộ reconnect và chuẩn bị PyPI 2.3.4
 
 ### Mục tiêu

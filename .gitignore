@@ -21,9 +21,15 @@ src/fbchat_v2/config.json
 /.state/
 
 # IDE
+.vs/
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
 
 # OS
 .DS_Store
@@ -33,5 +39,26 @@ Thumbs.db
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.hypothesis/
+.tox/
+.nox/
 htmlcov/
 .coverage
+.coverage.*
+coverage.xml
+
+# Runtime / local tools
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+*.log
+logs/
+.tmp/
+*.sqlite3
+*.db
+*.db-journal
+.vbsec-tmp/
+vbsec-reports/
+.understand-anything
