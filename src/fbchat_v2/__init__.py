@@ -1,4 +1,4 @@
-"""Public namespace for the fbchat-v2 distribution."""
+"""Public namespace copied into the generated fbchat-v2 package during builds."""
 
 from __future__ import annotations
 

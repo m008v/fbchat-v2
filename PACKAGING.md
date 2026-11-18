@@ -1,8 +1,8 @@
 # fbchat-v2 - PyPI distribution
 
 Checkout này lưu source của package [`fbchat-v2`](https://pypi.org/project/fbchat-v2/)
-trên nhánh `pypi`. Package dùng namespace `fbchat_v2`; source được lấy từ sdist
-đã xác minh của GitHub Release, không merge trực tiếp nhánh `main`.
+trên nhánh `pypi`. Package dùng namespace `fbchat_v2`; không merge trực tiếp
+nhánh `main`. `src/fbchat_v2` là source duy nhất ở đây, không phải bản trùng.
 
 ---
 
@@ -30,9 +30,21 @@ fbchat-v2-pypi/
 
 ## 🚧 Trạng thái
 
-Nhánh `pypi` đồng bộ package `2.3.4` từ sdist của
+Metadata vẫn là `2.3.4`. Bản phát hành hiện có lấy từ sdist của
 [GitHub Release `v2.3.4`](https://github.com/m008v/fbchat-v2/releases/tag/v2.3.4).
-Các module dùng import `fbchat_v2.*` để chạy sau khi cài qua `pip`.
+Nhánh này đã cập nhật tài liệu và facade theo main `c3daad3`; các cập nhật đó
+chưa được phát hành lại. Các module tiếp tục dùng import `fbchat_v2.*`.
+
+Ở checkout main, code package được sinh vào `build/fbchat_v2` khi cài/build,
+không còn được track trong `src/fbchat_v2`. Khi đồng bộ development sang đây,
+lấy output đã kiểm tra của generator và README hai ngôn ngữ. Giữ layout
+package-only cùng cấu hình build riêng của nhánh `pypi`; không chép build hook
+của main vì checkout này không có source legacy để sinh lại package.
+
+Giữ nguyên `_messaging/_bridge_checksums.py` đã bind cho release `2.3.4`.
+Main chưa bind checksum có thể chứa placeholder; chép đè file này sẽ làm hỏng
+tải bridge. Không dùng bản build thử từ snapshot development để thay artifact
+đã phát hành hoặc upload lại cùng version.
 
 Giữ cấu hình mypy cho layout package-only và không format lại file checksum
 do workflow release sinh ra. Hai artifact dùng để phát hành phải giữ nguyên

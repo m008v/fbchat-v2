@@ -4,7 +4,7 @@
 > Các thao tác tài khoản Facebook và quản trị cuộc trò chuyện, dùng `dataFB` và transport `httpx` từ `_core`.
 
 [![English](https://img.shields.io/badge/English-0b8ecf?style=flat-square)](README_EN.md)
-[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
+[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md)
 
 ## 📋 Mục lục
 
@@ -583,7 +583,7 @@ flowchart LR
 7. Không báo thành công khi response thiếu `data` hoặc có `errors`.
 8. Không âm thầm bỏ tham số chưa hỗ trợ.
 9. Kiểm thử đầu vào rỗng, response thiếu field, lỗi GraphQL và trường hợp thành công.
-10. Cập nhật cả README Việt, Anh và `DOCS.md`.
+10. Cập nhật cả README Việt, Anh và trang tương ứng trong `docs/`.
 
 ---
 

@@ -1,5 +1,26 @@
 # Agent Memories
 
+## 2026-11-18 — Đồng bộ package sau khi main bỏ source trùng
+
+- **Mục tiêu:** cập nhật checkout fbchat-v2-pypi và push nhánh pypi theo main;
+  chưa phát hành hoặc mở live.
+- **Đã thực hiện:** đồng bộ 54/54 file package từ output generator của main
+  c3daad3, gồm facade và tài liệu module; giữ nguyên file checksum bridge đã
+  bind cho 2.3.4. Đồng bộ README Việt/Anh, link docs mới và ví dụ; cập nhật URL
+  Documentation, include .gitignore trong sdist và hướng dẫn PACKAGING.md.
+- **Quyết định kỹ thuật:** src/fbchat_v2 là source duy nhất của checkout này,
+  không phải bản trùng như ở main. Giữ layout package-only, MANIFEST.in và
+  mypy riêng; không merge main, copy source legacy hoặc thêm build hook cần
+  generator. Main dùng build/fbchat_v2 để sinh package; version hai bên vẫn 2.3.4.
+- **Kiểm tra:** pytest có guard offline 7/7 đạt; Ruff, Black, mypy 46 file,
+  compileall, build wheel/sdist, exact archive allowlist và Twine strict đạt.
+  Cài riêng wheel và sdist bằng dependency cache offline; import/verifier,
+  metadata Documentation, năm bridge checksum và dependency check 13 package
+  mỗi môi trường đạt. UTF-8/mojibake, secret, diff và phạm vi staging được
+  kiểm trước commit. Không đọc cookie/device hoặc kết nối Facebook live.
+- **Việc còn lại:** đây là snapshot development chưa phát hành lại. Không đổi
+  tag, GitHub Release, artifact production hoặc upload PyPI cùng version.
+
 ## 2026-11-18 — Rà cache và đồng bộ ignore với main
 
 - Mục tiêu: bỏ cache khỏi Git nếu còn, đồng bộ rule ignore và giữ file cục bộ.

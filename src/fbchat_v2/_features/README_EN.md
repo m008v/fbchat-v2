@@ -4,7 +4,7 @@
 > Facebook account actions and thread administration using `dataFB` and the `httpx` transport from `_core`.
 
 [![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-0b8ecf?style=flat-square)](README.md)
-[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](../../DOCS.md)
+[![DOCS](https://img.shields.io/badge/DOCS-2563eb?style=flat-square)](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md)
 
 ## 📋 Contents
 
@@ -553,7 +553,7 @@ flowchart LR
 7. Do not report success when `data` is missing or `errors` exists.
 8. Do not silently ignore unsupported arguments.
 9. Test empty input, missing fields, GraphQL errors, and success.
-10. Update Vietnamese, English, and `DOCS.md` documentation.
+10. Update the Vietnamese and English READMEs and the relevant page in `docs/`.
 
 ---
 

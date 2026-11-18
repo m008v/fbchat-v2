@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/license-Xem%20LICENSE-lightgrey)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-MinhHuyDev-26A5E4?logo=telegram&logoColor=white)](https://t.me/MinhHuyDev)
 
-[🇬🇧 English](README_EN.md) · [📖 Tài liệu](DOCS.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Sơ đồ luồng](FLOWCHART.md) · [🐛 Báo lỗi](https://github.com/m008v/fbchat-v2/issues)
+[🇬🇧 English](README_EN.md) · [📖 Tài liệu](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md) · [📦 PyPI](https://pypi.org/project/fbchat-v2/) · [ 📊 Sơ đồ luồng](FLOWCHART.md) · [🐛 Báo lỗi](https://github.com/m008v/fbchat-v2/issues)
 
 </div>
 
@@ -32,7 +32,7 @@ Mình là MinhHuyDev (`m008v`), tác giả và người duy trì dự án.
 `fbchat-v2` là thư viện Python để gửi và nhận tin nhắn Messenger bằng tài khoản Facebook cá nhân. Thư viện dùng `async/await`; E2EE chạy qua bridge Go. Codebase đã được tổ chức lại từ v2.2.0 và tiếp tục được sửa theo các lỗi người dùng báo về.
 
 Từ 2.3.4, MQTT/E2EE tự nối lại khi mất mạng, phân biệt lỗi cookie và có callback
-trạng thái. Xem [cách cấu hình](DOCS.md#tự-nối-lại).
+trạng thái. Xem [cách cấu hình](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/e2ee.md#tự-nối-lại).
 E2EE cần bridge 2.3.4; wrapper không dùng binary cũ thiếu contract reconnect.
 
 Cảm ơn mọi người đã góp ý và báo lỗi. Đây là API không chính thức nên một số chức năng có thể hỏng khi Facebook thay đổi. Nếu gặp lỗi, mở issue trên [GitHub](https://github.com/m008v/fbchat-v2/issues) kèm cách tái hiện và log đã che thông tin nhạy cảm, hoặc nhắn mình qua [Telegram](https://t.me/MinhHuyDev).
@@ -167,7 +167,7 @@ fbchat-v2/
 │   └── README.md
 ├── build/                            # Binary bridge local
 ├── tests/                            # Unit và async contract tests
-├── DOCS.md                           # Hướng dẫn API đầy đủ
+├── docs/                             # Hướng dẫn API đầy đủ
 ├── FLOWCHART.md                      # Runtime flow
 ├── mindmap-mermaid.md                # Bản đồ codebase
 ├── CHANGELOG.md
@@ -584,7 +584,12 @@ Queue của bot chứa tối đa 1000 event và bỏ event cũ nhất khi đầy
 
 | Tài liệu | Nội dung |
 |---|---|
-| [DOCS.md](DOCS.md) | Hướng dẫn API và workflow đầy đủ |
+| [Bắt đầu](https://github.com/m008v/fbchat-v2/blob/main/docs/getting-started/quickstart.md) | Cài đặt, tạo session và chạy bot mẫu |
+| [Ví dụ tăng dần độ khó](https://github.com/m008v/fbchat-v2/blob/main/examples/README.md) | Echo cơ bản, quản lý nhóm và E2EE |
+| [Tin nhắn thường](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/standard.md) | Gửi/nhận, attachment, reaction và Notes |
+| [E2EE](https://github.com/m008v/fbchat-v2/blob/main/docs/messaging/e2ee.md) | Bridge, readiness, reconnect và kiểm thử |
+| [Thao tác Facebook](https://github.com/m008v/fbchat-v2/blob/main/docs/features/facebook-actions.md) | Bài viết, user và quản lý nhóm |
+| [Tra nhanh](https://github.com/m008v/fbchat-v2/blob/main/docs/recipes/cheatsheet.md) | Timeout, migration và cách xử lý lỗi |
 | [Core](src/fbchat_v2/_core/README.md) | Session, HTTP, storage và login |
 | [Features](src/fbchat_v2/_features/README.md) | Facebook feature và thread |
 | [Messaging](src/fbchat_v2/_messaging/README.md) | Send, listener, attachment và E2EE |
