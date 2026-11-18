@@ -20,7 +20,7 @@ def _responses(*, structured: bool) -> str:
             "ok": True,
             "data": {
                 "protocolVersion": 1,
-                "bridgeVersion": "2.3.4",
+                "bridgeVersion": "2.3.5",
                 "capabilities": capabilities,
             },
         },
@@ -52,8 +52,8 @@ def test_native_smoke_requires_the_current_reconnect_contract(
     )
     monkeypatch.setattr(smoke_bridge_rpc.subprocess, "run", run)
     if structured:
-        smoke_bridge_rpc.smoke_bridge(binary, expected_version="2.3.4")
+        smoke_bridge_rpc.smoke_bridge(binary, expected_version="2.3.5")
     else:
         with pytest.raises(RuntimeError, match="structuredConnectionStatus"):
-            smoke_bridge_rpc.smoke_bridge(binary, expected_version="2.3.4")
+            smoke_bridge_rpc.smoke_bridge(binary, expected_version="2.3.5")
     assert run.call_count == 1

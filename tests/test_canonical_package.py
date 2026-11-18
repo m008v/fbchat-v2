@@ -220,7 +220,7 @@ def _write_test_sdist(
     *,
     symlink_member: str | None = None,
     pkg_info_name: str = "fbchat-v2",
-    pkg_info_version: str = "2.3.4",
+    pkg_info_version: str = "2.3.5",
 ) -> None:
     members = REQUIRED_SDIST_MEMBERS | (extra_members or set())
     with tarfile.open(path, mode="w:gz") as archive:
@@ -255,7 +255,7 @@ def _write_test_wheel(
     for member_name in sorted(members - {record_path}):
         if member_name == f"{WHEEL_DIST_INFO_ROOT}/METADATA":
             payload = (
-                "Metadata-Version: 2.4\nName: fbchat-v2\nVersion: 2.3.4\n\n"
+                "Metadata-Version: 2.4\nName: fbchat-v2\nVersion: 2.3.5\n\n"
             ).encode("utf-8")
         else:
             payload = b"test\n"
@@ -321,7 +321,7 @@ def test_sdist_allowlist_rejects_symlink(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("name", "version", "message"),
     [
-        ("wrong-name", "2.3.4", "Tên distribution"),
+        ("wrong-name", "2.3.5", "Tên distribution"),
         ("fbchat-v2", "9.9.9", "Version trong sdist"),
     ],
 )

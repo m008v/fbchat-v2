@@ -9,7 +9,7 @@ on:
       tag_name:
         description: Existing tag to rebuild missing assets; dispatch this workflow from the same tag ref
         required: true
-        default: v2.3.4
+        default: v2.3.5
 
 permissions:
   contents: read

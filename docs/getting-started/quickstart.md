@@ -11,7 +11,7 @@ Trong trang này:
 - [Bot mẫu `src/main.py`](#bot-mẫu-srcmainpy)
 - [Session storage](#session-storage)
 
-Dùng Python 3.10 trở lên. Các ví dụ bên dưới dùng `fbchat-v2==2.3.4`.
+Dùng Python 3.10 trở lên. Các ví dụ bên dưới dùng `fbchat-v2==2.3.5`.
 Đây là API Facebook không chính thức; endpoint, token HTML, GraphQL `doc_id`,
 payload MQTT và protocol E2EE có thể đổi mà không báo trước.
 
@@ -21,7 +21,7 @@ nhạy cảm. Không đưa chúng vào issue, log, dữ liệu test hoặc commi
 ## Cài package và kiểm tra session
 
 ```bash
-python -m pip install "fbchat-v2==2.3.4"
+python -m pip install "fbchat-v2==2.3.5"
 ```
 
 Đặt cookie vào biến môi trường `FB_COOKIES` trên máy của bạn. Trong PowerShell:
