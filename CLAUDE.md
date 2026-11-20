@@ -12,7 +12,9 @@ Thư mục này còn chứa hệ thống inbox omnichannel dùng thư viện nà
 
 `deploy/` của repo này là **fb-bot**, kênh Facebook của hệ thống đó.
 
-Làm việc với omnichannel, fb-bot hay bất kỳ kênh nào thì **đọc `omnichannel/CLAUDE.md` trước**. File đó có bản đồ repo, quy tắc an toàn (tài khoản thật/thử, không mở thêm phiên Facebook, tunnel chỉ mở webhook) và trạng thái hiện tại (`omnichannel/STATUS.md`).
+Làm việc với omnichannel, fb-bot hay bất kỳ kênh nào thì **đọc `omnichannel/CLAUDE.md` trước**. File đó có bản đồ repo, quy tắc an toàn (tài khoản thật/thử, không mở thêm phiên Facebook, tunnel chỉ mở webhook) và trạng thái hiện tại (`omnichannel/STATUS.md`). Session mới thì đọc tiếp `omnichannel/docs/RUNBOOK.md`: hệ thống chạy ở đâu (stack compose và omi trên server3), cách deploy, phát hành, thử chi nhánh SMS.
+
+Repo thứ năm của hệ thống là tinhthanh/vglink (app Android "Vetgo Phone" và "Vetgo Phone Desktop" cho SMS và cuộc gọi chi nhánh), clone riêng khi cần; tài liệu của nó ở `AGENTS.md` và `docs/RUNBOOK.md` trong repo đó.
 
 ## 📌 Tóm tắt bắt buộc
 
