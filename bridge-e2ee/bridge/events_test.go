@@ -339,6 +339,33 @@ func TestConvertThumbsUpDoesNotMutateWrappedMessage(t *testing.T) {
 	}
 }
 
+func TestConvertThumbsUpFromAttachmentFbid(t *testing.T) {
+	client := newEventPipelineTestClient(t, timeNowMs()-1_000)
+	for _, sticker := range []*table.LSInsertStickerAttachment{
+		{AttachmentFbid: "369239263222822", TargetId: 1234567890},
+		{AttachmentFbid: "369239383222810"},
+		{AttachmentFbid: "not-a-number", TargetId: facebookThumbsUpMediumStickerID},
+	} {
+		converted := client.convertWrappedMessage(&table.WrappedMessage{
+			LSInsertMessage: &table.LSInsertMessage{MessageId: "mid.like"},
+			Stickers:        []*table.LSInsertStickerAttachment{sticker},
+		})
+		if converted.Text != "👍" || len(converted.Attachments) != 0 {
+			t.Fatalf("sticker %+v converted to %#v, want emoji without sticker", sticker, converted)
+		}
+	}
+
+	converted := client.convertWrappedMessage(&table.WrappedMessage{
+		LSInsertMessage: &table.LSInsertMessage{MessageId: "mid.sticker"},
+		Stickers: []*table.LSInsertStickerAttachment{{
+			AttachmentFbid: "144884852352448", TargetId: 1234567890, PreviewUrl: "https://cdn.fb/s.png",
+		}},
+	})
+	if converted.Text != "" || len(converted.Attachments) != 1 || converted.Attachments[0].StickerID != 144884852352448 {
+		t.Fatalf("regular sticker = %#v, want sticker attachment with AttachmentFbid", converted)
+	}
+}
+
 func TestHandleTableRejectsInvalidStandaloneUpserts(t *testing.T) {
 	now := timeNowMs()
 	client := newEventPipelineTestClient(t, now-1_000)

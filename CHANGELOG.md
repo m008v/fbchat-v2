@@ -70,6 +70,10 @@ phiên bản tuân theo [Semantic Versioning](https://semver.org/lang/vi/).
 
 ### Fixed
 
+- Nút Like 👍 của Messenger thành chữ `👍` cả khi mã sticker chỉ nằm ở
+  `AttachmentFbid` (trước chỉ xét `TargetId` nên ra ảnh sticker).
+- fb-bot: file tải qua `downloadMedia` không có MIME (sticker từ CDN) được đoán
+  loại theo đầu tệp, nên không còn tên `sticker.bin`.
 - Bridge E2EE: nâng libsignal lên v0.2.3. Bản v0.2.2 kiểm tra MAC trên tin Signal
   serialize lại thay vì byte nhận được, nên tin từ app Messenger mới (có trường
   protobuf mới) luôn sai MAC: `bad_mac` hoặc `no_valid_session`, kể cả tin mở

@@ -336,6 +336,27 @@ async def test_fetch_attachment_uses_e2ee_or_regular_download() -> None:
         await fetch_attachment(bridge, {"type": "video", "url": "https://x", "fileSize": 999 << 20})  # type: ignore[arg-type]
 
 
+@pytest.mark.asyncio
+async def test_fetch_attachment_sniffs_mime_when_missing() -> None:
+    # Sticker Messenger tải qua URL CDN không có mimeType: đoán từ chữ ký tệp.
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
+    sticker = {"type": "sticker", "url": "https://cdn.fb/s"}
+    file = await fetch_attachment(_FakeBridge(png), sticker)  # type: ignore[arg-type]
+    assert file is not None
+    assert (file["name"], file["content_type"]) == ("sticker.png", "image/png")
+
+    webp = b"RIFF\x10\x00\x00\x00WEBPVP8 "
+    file = await fetch_attachment(_FakeBridge(webp), sticker)  # type: ignore[arg-type]
+    assert file is not None and file["name"] == "sticker.webp"
+
+    # Không nhận ra thì giữ như cũ; MIME đã khai thì không đoán đè.
+    file = await fetch_attachment(_FakeBridge(b"???"), sticker)  # type: ignore[arg-type]
+    assert file is not None and file["name"] == "sticker.bin"
+    declared = {**sticker, "type": "file", "mimeType": "application/pdf"}
+    file = await fetch_attachment(_FakeBridge(png), declared)  # type: ignore[arg-type]
+    assert file is not None and file["content_type"] == "application/pdf"
+
+
 def test_media_rpc_picks_method_by_chat_and_mime() -> None:
     img = {"name": "a", "content_type": "image/png", "data": "QQ=="}
     doc = {"name": "bao-gia.pdf", "content_type": "application/pdf", "data": "QQ=="}
