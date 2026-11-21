@@ -680,19 +680,40 @@ func parseMentionsWithTypes(offsets, lengths, ids, types string) []*Mention {
 	return mentions
 }
 
+// stickerAttachmentID returns the sticker ID: AttachmentFbid (the ID used to
+// send the sticker) when present, otherwise TargetId.
+func stickerAttachmentID(sticker *table.LSInsertStickerAttachment) int64 {
+	if sticker.AttachmentFbid != "" {
+		if id, err := strconv.ParseInt(sticker.AttachmentFbid, 10, 64); err == nil && id != 0 {
+			return id
+		}
+	}
+	return sticker.TargetId
+}
+
+func isThumbsUpID(id int64) bool {
+	return id == facebookThumbsUpSmallStickerID ||
+		id == facebookThumbsUpMediumStickerID ||
+		id == facebookThumbsUpLargeStickerID
+}
+
+// isThumbsUpSticker reports whether a sticker is one of the Like button stickers,
+// whichever of its two ID fields carries the ID.
+func isThumbsUpSticker(sticker *table.LSInsertStickerAttachment) bool {
+	return isThumbsUpID(stickerAttachmentID(sticker)) || isThumbsUpID(sticker.TargetId)
+}
+
 // convertWrappedMessage converts a wrapped message with attachments
 func (c *Client) convertWrappedMessage(msg *table.WrappedMessage) *Message {
 	text := msg.Text
 	stickers := msg.Stickers
-	// Handle thumbs-up sticker as emoji (same as Messenger web client)
-	if len(stickers) == 1 {
-		stickerID := stickers[0].TargetId
-		if stickerID == facebookThumbsUpLargeStickerID ||
-			stickerID == facebookThumbsUpMediumStickerID ||
-			stickerID == facebookThumbsUpSmallStickerID {
-			text = "👍"
-			stickers = nil
-		}
+	// Handle thumbs-up sticker as emoji (same as Messenger web client).
+	// Check the same sticker ID that the attachment would carry
+	// (AttachmentFbid, then TargetId): a like sent from the Messenger app can
+	// carry the sticker ID only in AttachmentFbid.
+	if len(stickers) == 1 && isThumbsUpSticker(stickers[0]) {
+		text = "👍"
+		stickers = nil
 	}
 
 	threadName, threadType := c.threadMeta(msg.ThreadKey)
@@ -744,13 +765,7 @@ func (c *Client) convertWrappedMessage(msg *table.WrappedMessage) *Message {
 	for _, sticker := range stickers {
 		// Try AttachmentFbid first (this is the actual sticker ID for sending)
 		// Fall back to TargetId if AttachmentFbid is not available
-		var stickerID int64
-		if sticker.AttachmentFbid != "" {
-			stickerID, _ = strconv.ParseInt(sticker.AttachmentFbid, 10, 64)
-		}
-		if stickerID == 0 {
-			stickerID = sticker.TargetId
-		}
+		stickerID := stickerAttachmentID(sticker)
 		m.Attachments = append(m.Attachments, &Attachment{
 			Type:      "sticker",
 			URL:       sticker.PreviewUrl,

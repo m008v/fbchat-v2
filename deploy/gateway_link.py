@@ -82,6 +82,16 @@ EXT_BY_MIME = {
     "audio/ogg": "ogg",
     "application/pdf": "pdf",
 }
+# Chữ ký đầu tệp cho file thiếu MIME (sticker Messenger tải qua URL CDN không kèm
+# mimeType): đoán đúng loại để Libredesk hiện ảnh thay vì "sticker.bin".
+MAGIC_MIME = (
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"GIF87a", "image/gif"),
+    (b"GIF89a", "image/gif"),
+    (b"%PDF-", "application/pdf"),
+)
+GENERIC_MIMES = frozenset({"", "application/octet-stream", "binary/octet-stream"})
 
 
 class _Bridge(Protocol):
@@ -274,6 +284,16 @@ def _bridge_of(bot: Any) -> _Bridge | None:
     return getattr(bot.listener, "_bridge", None)
 
 
+def sniff_mime(raw: bytes) -> str:
+    """MIME theo chữ ký đầu tệp; "" nếu không nhận ra."""
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp"
+    for magic, mime in MAGIC_MIME:
+        if raw.startswith(magic):
+            return mime
+    return ""
+
+
 def file_name(name: Any, mime: str, fallback: str) -> str:
     clean = str(name or "").replace("/", "_").replace("\\", "_").strip()[:120]
     if "." in clean:
@@ -313,9 +333,11 @@ async def fetch_attachment(
     else:
         return None
     data = str(result.get("data") or "")
-    size = len(base64.b64decode(data, validate=True))
-    if size == 0 or size > MAX_FILE_BYTES:
+    raw = base64.b64decode(data, validate=True)
+    if len(raw) == 0 or len(raw) > MAX_FILE_BYTES:
         raise ValueError("file rỗng hoặc quá lớn")
+    if mime.split(";")[0].strip().lower() in GENERIC_MIMES:
+        mime = sniff_mime(raw) or mime
     return {
         "name": file_name(attachment.get("fileName"), mime, kind),
         "content_type": mime,
