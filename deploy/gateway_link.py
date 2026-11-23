@@ -80,6 +80,13 @@ EXT_BY_MIME = {
     "audio/mpeg": "mp3",
     "audio/mp4": "m4a",
     "audio/ogg": "ogg",
+    # Tin thoại Messenger (opus) và audio nhân viên gửi (aac) từng thành "audio.bin".
+    "audio/opus": "opus",
+    "audio/aac": "aac",
+    "audio/wav": "wav",
+    "audio/webm": "webm",
+    "video/quicktime": "mov",
+    "video/webm": "webm",
     "application/pdf": "pdf",
 }
 # Chữ ký đầu tệp cho file thiếu MIME (sticker Messenger tải qua URL CDN không kèm
@@ -92,6 +99,7 @@ MAGIC_MIME = (
     (b"%PDF-", "application/pdf"),
 )
 GENERIC_MIMES = frozenset({"", "application/octet-stream", "binary/octet-stream"})
+MEDIA_FAMILIES = frozenset({"image", "video", "audio"})
 
 
 class _Bridge(Protocol):
@@ -298,7 +306,12 @@ def file_name(name: Any, mime: str, fallback: str) -> str:
     clean = str(name or "").replace("/", "_").replace("\\", "_").strip()[:120]
     if "." in clean:
         return clean
-    return f"{clean or fallback}.{EXT_BY_MIME.get(mime.split(';')[0], 'bin')}"
+    base = mime.split(";")[0].strip().lower()
+    family = base.split("/")[0]
+    # GIF Messenger tới với type "video" nhưng là ảnh webp: đặt tên theo loại thật.
+    if not clean and family in MEDIA_FAMILIES and fallback in MEDIA_FAMILIES | {"gif"}:
+        fallback = family
+    return f"{clean or fallback}.{EXT_BY_MIME.get(base, 'bin')}"
 
 
 async def fetch_attachment(

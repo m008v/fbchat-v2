@@ -18,6 +18,7 @@ from gateway_link import (
     summarize,
     describe_message,
     fetch_attachment,
+    file_name,
     media_rpc,
     thread_ref,
 )
@@ -355,6 +356,18 @@ async def test_fetch_attachment_sniffs_mime_when_missing() -> None:
     declared = {**sticker, "type": "file", "mimeType": "application/pdf"}
     file = await fetch_attachment(_FakeBridge(png), declared)  # type: ignore[arg-type]
     assert file is not None and file["content_type"] == "application/pdf"
+
+
+def test_file_name_audio_and_mime_family() -> None:
+    # Tin thoại Messenger (opus) và audio aac từng thành "audio.bin"/"voice.bin" (omi 24/11/2026).
+    assert file_name("", "audio/opus", "audio") == "audio.opus"
+    assert file_name(None, "audio/aac", "voice") == "voice.aac"
+    # GIF Messenger tới với type "video" nhưng là webp: tên theo loại thật.
+    assert file_name("", "image/webp", "video") == "image.webp"
+    assert file_name("", "video/mp4", "video") == "video.mp4"
+    # Tên có sẵn và loại khác (sticker, file) giữ nguyên.
+    assert file_name("bao-gia.pdf", "application/pdf", "file") == "bao-gia.pdf"
+    assert file_name("", "image/png", "sticker") == "sticker.png"
 
 
 def test_media_rpc_picks_method_by_chat_and_mime() -> None:
